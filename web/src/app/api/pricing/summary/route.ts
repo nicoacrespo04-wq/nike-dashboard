@@ -10,16 +10,16 @@ export async function GET() {
       query(`
         SELECT
           COUNT(*) FILTER (WHERE marca = 'ADIDAS') AS adidas_total,
-          COUNT(*) FILTER (WHERE marca = 'Puma')   AS puma_total,
+          COUNT(*) FILTER (WHERE marca = 'PUMA')   AS puma_total,
           COUNT(*) FILTER (WHERE marca = 'NIKE')   AS nike_total,
           ROUND(AVG(competitor_final_price) FILTER (WHERE marca = 'ADIDAS')::numeric, 0) AS adidas_avg_price,
-          ROUND(AVG(competitor_final_price) FILTER (WHERE marca = 'Puma')::numeric, 0)   AS puma_avg_price,
+          ROUND(AVG(competitor_final_price) FILTER (WHERE marca = 'PUMA')::numeric, 0)   AS puma_avg_price,
           COUNT(*) FILTER (WHERE bml_final_price = 'BEAT') AS total_beat,
           COUNT(*) FILTER (WHERE bml_final_price = 'MEET') AS total_meet,
           COUNT(*) FILTER (WHERE bml_final_price = 'LOSE') AS total_lose,
           COUNT(*) FILTER (WHERE bml_final_price NOT IN ('BEAT','MEET','LOSE') OR bml_final_price IS NULL) AS total_nd
         FROM pricing_data
-        WHERE marca IN ('ADIDAS','Puma','NIKE')
+        WHERE marca IN ('ADIDAS','PUMA','NIKE')
       `),
 
       // BML Adidas
@@ -39,7 +39,7 @@ export async function GET() {
           COUNT(*) FILTER (WHERE bml_final_price = 'MEET') AS meet,
           COUNT(*) FILTER (WHERE bml_final_price = 'LOSE') AS lose,
           COUNT(*) FILTER (WHERE bml_final_price NOT IN ('BEAT','MEET','LOSE') OR bml_final_price IS NULL) AS nd
-        FROM pricing_data WHERE marca = 'Puma'
+        FROM pricing_data WHERE marca = 'PUMA'
       `),
 
       // Top 10 franchises Adidas
@@ -60,7 +60,7 @@ export async function GET() {
           ROUND(AVG(competitor_final_price)::numeric,0) AS avg_price,
           ROUND(AVG(gap_final_price_pct)::numeric,4)    AS avg_gap_pct
         FROM pricing_data
-        WHERE marca = 'Puma'
+        WHERE marca = 'PUMA'
           AND franchise_competitor IS NOT NULL AND franchise_competitor <> ''
         GROUP BY franchise_competitor
         ORDER BY count DESC LIMIT 10

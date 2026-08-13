@@ -24,14 +24,14 @@ export async function GET(req: Request) {
   for (const r of rows) {
     const key = `${r.canal}|${r.search_term}`
     if (!grouped[key]) grouped[key] = { canal: r.canal, search_term: r.search_term, winner: '' }
-    const marcaKey = r.marca.toLowerCase() as 'nike' | 'adidas' | 'puma'
+    const marcaKey = r.marca.toLowerCase() as 'nike' | 'adidas' | 'PUMA'
     grouped[key][marcaKey] = r.nike_visibility
   }
   for (const g of Object.values(grouped)) {
     const entries: [string, number][] = [
       ['Nike', g.nike ?? -1],
       ['Adidas', g.adidas ?? -1],
-      ['Puma', g.puma ?? -1],
+      ['PUMA', g.puma ?? -1],
     ]
     entries.sort((a, b) => b[1] - a[1])
     g.winner = entries[0][0]

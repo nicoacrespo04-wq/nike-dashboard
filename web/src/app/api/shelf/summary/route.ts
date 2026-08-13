@@ -48,7 +48,7 @@ export async function GET() {
   `)
   const pumaGlobal = await query<{ avg_visibility: number }>(`
     SELECT AVG(nike_visibility)::float AS avg_visibility
-    FROM retail_media_search WHERE marca = 'Puma' AND nike_visibility IS NOT NULL
+    FROM retail_media_search WHERE marca = 'PUMA' AND nike_visibility IS NOT NULL
   `)
 
   return NextResponse.json({

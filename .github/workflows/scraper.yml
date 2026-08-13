@@ -1,0 +1,137 @@
+name: Nike Dashboard — Weekly Scrapers
+
+on:
+  schedule:
+    - cron: '0 20 * * 1'   # Lunes 20:00 UTC (17:00 Argentina)
+  workflow_dispatch:        # También se puede disparar manual
+
+env:
+  DATABASE_URL:    ${{ secrets.DATABASE_URL }}
+  OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
+  ALERT_EMAIL:     nicolas.crespo@southbay.com.ar
+  SMTP_USER:       ${{ secrets.SMTP_USER }}
+  SMTP_PASS:       ${{ secrets.SMTP_PASS }}
+
+jobs:
+
+  # ── Nike AR (scraping en vivo de nike.com.ar) ──────────────
+  nike-ar:
+    name: Nike AR — nike.com.ar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install deps
+        run: pip install requests psycopg2-binary curl-cffi openai
+        working-directory: Nike_Scrapper_Final
+      - name: Run Nike AR scraper
+        run: python codigo_nike_ar_general.py
+        working-directory: Nike_Scrapper_Final
+      - name: Upload to DB
+        run: python ../nike-dashboard/db/load_csv.py Nike_AR_General_*.csv
+        working-directory: Nike_Scrapper_Final
+        env:
+          TRUNCATE: "false"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nike-ar-${{ github.run_id }}
+          path: Nike_Scrapper_Final/Nike_AR_General_*.csv
+          retention-days: 30
+
+  # ── Competencia (Adidas + Puma) ────────────────────────────
+  competencia:
+    name: Competencia — Adidas & Puma
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install deps
+        run: pip install requests psycopg2-binary curl-cffi openai playwright
+        working-directory: Nike_Scrapper_Final
+      - name: Install Playwright browsers
+        run: python -m playwright install chromium
+      - name: Run Adidas scraper
+        run: python codigo_adidas_7.py
+        working-directory: Nike_Scrapper_Final
+        continue-on-error: true
+      - name: Run Puma scraper
+        run: python codigo_puma.py
+        working-directory: Nike_Scrapper_Final
+        continue-on-error: true
+      - name: Combine outputs
+        run: python combine_outputs.py
+        working-directory: Nike_Scrapper_Final
+        continue-on-error: true
+      - name: Upload to DB
+        run: python ../nike-dashboard/db/load_csv.py pricing_combinado_*.csv
+        working-directory: Nike_Scrapper_Final
+        env:
+          TRUNCATE: "false"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: competencia-${{ github.run_id }}
+          path: |
+            Nike_Scrapper_Final/adidas7_ar_vs_nike_*.csv
+            Nike_Scrapper_Final/puma_ar_assortment_*.csv
+            Nike_Scrapper_Final/pricing_combinado_*.csv
+          retention-days: 30
+
+  # ── Retailers AR ───────────────────────────────────────────
+  retailers-ar:
+    name: Retailers AR
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        retailer:
+          - { name: dexter,       script: codigo_dexter.py }
+          - { name: moov,         script: codigo_moov.py }
+          - { name: sporting,     script: codigo_sporting3.py }
+          - { name: soloDeportes, script: codigo_soloDeportes.py }
+          - { name: grid,         script: codigo_grid.py }
+          - { name: dash,         script: codigo_dash.py }
+          - { name: opensports,   script: codigo_opensports.py }
+          - { name: stockcenter,  script: codigo_stockcenter_v6.py }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install deps
+        run: pip install requests psycopg2-binary playwright curl-cffi openai pandas openpyxl
+      - name: Install Playwright
+        run: python -m playwright install chromium
+      - name: Run ${{ matrix.retailer.name }}
+        run: python ${{ matrix.retailer.script }}
+        working-directory: Nike_Scrapper_Final
+        continue-on-error: true
+      - name: Upload to DB
+        run: |
+          for f in Nike_Scrapper_Final/${{ matrix.retailer.name }}*_vs_nike_*.csv; do
+            [ -f "$f" ] && python nike-dashboard/db/load_csv.py "$f" || true
+          done
+        env:
+          TRUNCATE: "false"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.retailer.name }}-${{ github.run_id }}
+          path: Nike_Scrapper_Final/${{ matrix.retailer.name }}*_vs_nike_*.csv
+          retention-days: 30
+
+  # ── Notificación final ─────────────────────────────────────
+  notify:
+    name: Notificación Final
+    runs-on: ubuntu-latest
+    needs: [nike-ar, competencia, retailers-ar]
+    if: always()
+    steps:
+      - name: Resumen de corrida
+        run: |
+          echo "=== Nike Dashboard Weekly Run ==="
+          echo "Nike AR:     ${{ needs.nike-ar.result }}"
+          echo "Competencia: ${{ needs.competencia.result }}"
+          echo "Retailers:   ${{ needs.retailers-ar.result }}"

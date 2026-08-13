@@ -46,7 +46,7 @@ export default function CompetenciaPage() {
   const [loading, setLoading]     = useState(true)
   const [loadingProds, setLoadingProds] = useState(false)
   const [selectedFranchise, setSelectedFranchise] = useState('')
-  const [activeTab, setActiveTab] = useState<'adidas' | 'puma' | 'both'>('both')
+  const [activeTab, setActiveTab] = useState<'adidas' | 'PUMA' | 'both'>('both')
   const [filters, setFilters]     = useState<Filters>({ marca: '', division: '', canal: '', search: '' })
 
   // Fetch summary (KPIs + BML + top franchises)
@@ -79,7 +79,7 @@ export default function CompetenciaPage() {
     if (filters.canal)        params.set('canal',     filters.canal)
     if (filters.search)       params.set('search',    filters.search)
     if (selectedFranchise)    params.set('franchise', selectedFranchise)
-    if (!filters.marca)       params.set('marca',     activeTab === 'adidas' ? 'ADIDAS' : activeTab === 'puma' ? 'Puma' : '')
+    if (!filters.marca)       params.set('marca',     activeTab === 'adidas' ? 'ADIDAS' : activeTab === 'PUMA' ? 'PUMA' : '')
     fetch(`/api/pricing/products?${params}`)
       .then(r => r.json())
       .then(d => { setProducts(d.products ?? []); setTotalProds(d.total ?? 0) })
@@ -97,7 +97,7 @@ export default function CompetenciaPage() {
   const beatPct   = totalAll > 0 ? Math.round((totalBeat / totalAll) * 100) : 0
 
   const adidasFranchises = franchises.filter(f => f.marca === 'ADIDAS')
-  const pumaFranchises   = franchises.filter(f => f.marca === 'Puma')
+  const pumaFranchises   = franchises.filter(f => f.marca === 'PUMA')
 
   return (
     <div className="space-y-6">
@@ -289,7 +289,7 @@ export default function CompetenciaPage() {
           </div>
           {/* Tabs Adidas/Puma/Ambos */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-semibold">
-            {([['both','Ambas'],['adidas','Adidas'],['puma','Puma']] as const).map(([val, label]) => (
+            {([['both','Ambas'],['adidas','Adidas'],['PUMA','PUMA']] as const).map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => { setActiveTab(val); setPage(1) }}

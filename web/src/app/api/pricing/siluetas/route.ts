@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const conditions = [`silueta IS NOT NULL`, `silueta <> ''`]
   const params: unknown[] = []
   if (marca) { conditions.push(`marca = $1`); params.push(marca) }
-  else        { conditions.push(`marca IN ('ADIDAS','Puma')`) }
+  else        { conditions.push(`marca IN ('ADIDAS','PUMA')`) }
 
   try {
     const rows = await query(`

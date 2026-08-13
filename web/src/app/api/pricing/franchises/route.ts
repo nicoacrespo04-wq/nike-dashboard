@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   let idx = 1
 
   if (marca) { conditions.push(`marca = $${idx++}`); params.push(marca) }
-  else        { conditions.push(`marca IN ('ADIDAS','Puma')`) }
+  else        { conditions.push(`marca IN ('ADIDAS','PUMA')`) }
 
   if (division) { conditions.push(`UPPER(division_competitor) LIKE $${idx++}`); params.push(`%${division.toUpperCase()}%`) }
   if (category) { conditions.push(`category_competitor = $${idx++}`); params.push(category) }
