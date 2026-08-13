@@ -10,7 +10,17 @@ import { formatPrice, formatPct } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Summary {
-  kpis: { adidas_total: number; puma_total: number; total_beat: number; total_meet: number; total_lose: number; adidas_avg_price: number; puma_avg_price: number }
+  kpis: { 
+    adidas_total: number
+    puma_total: number
+    nike_total: number
+    total_beat: number
+    total_meet: number
+    total_lose: number
+    adidas_avg_price: number
+    puma_avg_price: number
+    nike_avg_price: number
+  }
   bml_adidas: { beat: number; meet: number; lose: number; nd: number }
   bml_puma:   { beat: number; meet: number; lose: number; nd: number }
   top_adidas: any[]
