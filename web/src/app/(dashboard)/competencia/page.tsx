@@ -103,17 +103,24 @@ export default function CompetenciaPage() {
     <div className="space-y-6">
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KPICard
           loading={loading}
-          title="SKUs Adidas"
+          title="SKUs Únicos Nike"
+          value={Number(summary?.kpis?.nike_total ?? 0).toLocaleString('es-AR')}
+          subtitle={`Precio prom. ${formatPrice(summary?.kpis?.nike_avg_price)}`}
+          color="#111111"
+        />
+        <KPICard
+          loading={loading}
+          title="SKUs Únicos Adidas"
           value={Number(summary?.kpis?.adidas_total ?? 0).toLocaleString('es-AR')}
           subtitle={`Precio prom. ${formatPrice(summary?.kpis?.adidas_avg_price)}`}
           color="#0046CC"
         />
         <KPICard
           loading={loading}
-          title="SKUs Puma"
+          title="SKUs Únicos Puma"
           value={Number(summary?.kpis?.puma_total ?? 0).toLocaleString('es-AR')}
           subtitle={`Precio prom. ${formatPrice(summary?.kpis?.puma_avg_price)}`}
           color="#E4032E"
@@ -122,15 +129,17 @@ export default function CompetenciaPage() {
           loading={loading}
           title="BEAT Nike"
           value={`${beatPct}%`}
-          subtitle={`${totalBeat.toLocaleString('es-AR')} SKUs más baratos que Nike`}
+          subtitle={`Competencia más barata`}
           color="#E31837"
+          valueSize="md"
         />
         <KPICard
           loading={loading}
-          title="LOSE (Nike gana)"
+          title="Nike Gana"
           value={`${totalAll > 0 ? Math.round((totalLose / totalAll) * 100) : 0}%`}
-          subtitle={`${totalLose.toLocaleString('es-AR')} SKUs Nike más barato`}
+          subtitle={`Nike más barato`}
           color="#27AE60"
+          valueSize="md"
         />
       </div>
 

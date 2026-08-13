@@ -7,12 +7,12 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatPrice(value: number | null | undefined, currency = 'ARS'): string {
   if (value == null || isNaN(value)) return 'N/D'
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
+  
+  // Formato manual sin espacios: $123.456
+  const rounded = Math.round(value)
+  const formatted = rounded.toLocaleString('es-AR')
+  
+  return currency === 'ARS' ? `$${formatted}` : `${currency} ${formatted}`
 }
 
 export function formatPct(value: number | null | undefined): string {

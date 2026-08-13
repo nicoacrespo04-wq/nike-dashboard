@@ -52,32 +52,45 @@ export default function BMLDonut({ data, title, size = 220, showLegend = true }:
   return (
     <div className="flex flex-col items-center">
       {title && <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{title}</p>}
-      <ResponsiveContainer width="100%" height={size}>
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={size * 0.27}
-            outerRadius={size * 0.4}
-            paddingAngle={2}
-            dataKey="value"
-          >
-            {chartData.map((entry) => (
-              <Cell key={entry.name} fill={COLORS[entry.name as keyof typeof COLORS]} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          {showLegend && (
-            <Legend
-              formatter={(value, entry: any) => {
-                const pct = total > 0 ? ((entry.payload.value / total) * 100).toFixed(0) : '0'
-                return <span className="text-xs text-gray-600">{value} <strong>{pct}%</strong></span>
-              }}
-            />
-          )}
-        </PieChart>
-      </ResponsiveContainer>
+      <div className="relative">
+        <ResponsiveContainer width={size} height={size}>
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={size * 0.32}
+              outerRadius={size * 0.48}
+              paddingAngle={3}
+              dataKey="value"
+              strokeWidth={0}
+            >
+              {chartData.map((entry) => (
+                <Cell key={entry.name} fill={COLORS[entry.name as keyof typeof COLORS]} />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-3xl font-bold text-gray-900">{total.toLocaleString('es-AR')}</span>
+          <span className="text-[10px] text-gray-400 uppercase tracking-wide">SKUs</span>
+        </div>
+      </div>
+      {showLegend && (
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs w-full max-w-[200px]">
+          {chartData.map(d => {
+            const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0'
+            return (
+              <div key={d.name} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLORS[d.name as keyof typeof COLORS] }} />
+                <span className="text-gray-600 text-[11px]">{d.name}</span>
+                <strong className="ml-auto text-gray-900 text-[11px]">{pct}%</strong>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

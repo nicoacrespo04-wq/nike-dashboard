@@ -6,14 +6,15 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const [kpis, bmlAdidas, bmlPuma, topAdidas, topPuma] = await Promise.all([
-      // KPIs generales
+      // KPIs generales — DISTINCT por StyleColor para no contar duplicados cross-retailer
       query(`
         SELECT
-          COUNT(*) FILTER (WHERE marca = 'ADIDAS') AS adidas_total,
-          COUNT(*) FILTER (WHERE marca = 'PUMA')   AS puma_total,
-          COUNT(*) FILTER (WHERE marca = 'NIKE')   AS nike_total,
+          COUNT(DISTINCT CASE WHEN marca = 'ADIDAS' THEN style_color END) AS adidas_total,
+          COUNT(DISTINCT CASE WHEN marca = 'PUMA'   THEN style_color END) AS puma_total,
+          COUNT(DISTINCT CASE WHEN marca = 'NIKE'   THEN style_color END) AS nike_total,
           ROUND(AVG(competitor_final_price) FILTER (WHERE marca = 'ADIDAS')::numeric, 0) AS adidas_avg_price,
           ROUND(AVG(competitor_final_price) FILTER (WHERE marca = 'PUMA')::numeric, 0)   AS puma_avg_price,
+          ROUND(AVG(competitor_final_price) FILTER (WHERE marca = 'NIKE')::numeric, 0)   AS nike_avg_price,
           COUNT(*) FILTER (WHERE bml_final_price = 'BEAT') AS total_beat,
           COUNT(*) FILTER (WHERE bml_final_price = 'MEET') AS total_meet,
           COUNT(*) FILTER (WHERE bml_final_price = 'LOSE') AS total_lose,
