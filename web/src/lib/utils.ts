@@ -30,9 +30,9 @@ export type BMLValue = 'BEAT' | 'MEET' | 'LOSE' | 'N/D' | 'NO_US_DATA' | string
 
 export function getBMLColor(bml: BMLValue): string {
   switch (bml?.toUpperCase()) {
-    case 'BEAT': return '#E31837'
-    case 'MEET': return '#F5A623'
-    case 'LOSE': return '#27AE60'
+    case 'BEAT': return '#27AE60'  // Nike más barato (verde)
+    case 'MEET': return '#F5A623'  // Precio similar (naranja)
+    case 'LOSE': return '#E31837'  // Nike más caro (rojo)
     default:     return '#9B9B9B'
   }
 }
@@ -48,9 +48,9 @@ export function getBMLBadgeClass(bml: BMLValue): string {
 
 export function getBMLLabel(bml: BMLValue): string {
   switch (bml?.toUpperCase()) {
-    case 'BEAT': return 'BEAT — Comp. más barata'
+    case 'BEAT': return 'BEAT — Nike más barato'
     case 'MEET': return 'MEET — Precio similar'
-    case 'LOSE': return 'LOSE — Nike más barata'
+    case 'LOSE': return 'LOSE — Nike más caro'
     default:     return 'N/D'
   }
 }

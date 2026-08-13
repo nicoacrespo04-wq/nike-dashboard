@@ -25,8 +25,8 @@ const MARCA_COLOR: Record<string, string> = {
   Puma: '#6B7280',
 }
 
-function pct(v: number | null) {
-  if (v === null || v === undefined) return '—'
+function pct(v: number | null | undefined) {
+  if (v === null || v === undefined || isNaN(v)) return '—'
   return `${Math.round(v * 100)}%`
 }
 
@@ -55,30 +55,35 @@ export default function ShelfPage() {
       {/* KPIs globales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KPICard
-          title="Visibilidad Nike (prom.)"
+          title="Visibilidad Nike"
           value={loading ? '—' : pct(summary?.global.nike ?? null)}
-          subtitle={`${summary?.global.n ?? 0} búsquedas`}
+          subtitle={`Promedio en ${summary?.global.n ?? 0} búsquedas`}
           icon={<Search size={18} />}
           color="#E31837"
           loading={loading}
         />
         <KPICard
-          title="Visibilidad Adidas (prom.)"
+          title="Visibilidad Adidas"
           value={loading ? '—' : pct(summary?.global.adidas ?? null)}
+          subtitle="Promedio en buscadores"
           icon={<Search size={18} />}
+          color="#0046CC"
           loading={loading}
         />
         <KPICard
-          title="Visibilidad Puma (prom.)"
+          title="Visibilidad Puma"
           value={loading ? '—' : pct(summary?.global.puma ?? null)}
+          subtitle="Promedio en buscadores"
           icon={<Search size={18} />}
+          color="#E4032E"
           loading={loading}
         />
         <KPICard
-          title="Retailers monitoreados"
-          value={loading ? '—' : canales.length}
-          subtitle="búsqueda en buscador propio"
+          title="Retailers"
+          value={loading ? '—' : canales.length.toString()}
+          subtitle="Monitoreados con búsquedas"
           icon={<Share2 size={18} />}
+          color="#111111"
           loading={loading}
         />
       </div>

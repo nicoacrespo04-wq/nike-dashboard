@@ -9,7 +9,7 @@ interface BMLDonutProps {
   showLegend?: boolean
 }
 
-const COLORS = { BEAT: '#E31837', MEET: '#F5A623', LOSE: '#27AE60', 'N/D': '#9B9B9B' }
+const COLORS = { BEAT: '#27AE60', MEET: '#F5A623', LOSE: '#E31837', 'N/D': '#9B9B9B' }
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null
@@ -33,15 +33,15 @@ const CenterLabel = ({ cx, cy, total }: any) => (
 )
 
 export default function BMLDonut({ data, title, size = 220, showLegend = true }: BMLDonutProps) {
-  const total = data.beat + data.meet + data.lose + data.nd
+  // Filtrar solo productos con datos (sin N/D)
+  const totalWithData = data.beat + data.meet + data.lose
   const chartData = [
-    { name: 'BEAT', value: data.beat, total },
-    { name: 'MEET', value: data.meet, total },
-    { name: 'LOSE', value: data.lose, total },
-    { name: 'N/D',  value: data.nd,   total },
+    { name: 'BEAT', value: data.beat, total: totalWithData },
+    { name: 'MEET', value: data.meet, total: totalWithData },
+    { name: 'LOSE', value: data.lose, total: totalWithData },
   ].filter(d => d.value > 0)
 
-  if (total === 0) {
+  if (totalWithData === 0) {
     return (
       <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
         Sin datos disponibles
@@ -73,14 +73,14 @@ export default function BMLDonut({ data, title, size = 220, showLegend = true }:
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-gray-900">{total.toLocaleString('es-AR')}</span>
+          <span className="text-3xl font-bold text-gray-900">{totalWithData.toLocaleString('es-AR')}</span>
           <span className="text-[10px] text-gray-400 uppercase tracking-wide">SKUs</span>
         </div>
       </div>
       {showLegend && (
         <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs w-full max-w-[200px]">
           {chartData.map(d => {
-            const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0'
+            const pct = totalWithData > 0 ? ((d.value / totalWithData) * 100).toFixed(0) : '0'
             return (
               <div key={d.name} className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLORS[d.name as keyof typeof COLORS] }} />

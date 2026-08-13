@@ -127,7 +127,7 @@ export default function CompetenciaPage() {
         />
         <KPICard
           loading={loading}
-          title="BEAT Nike"
+          title="LOSE Nike"
           value={`${beatPct}%`}
           subtitle={`Competencia más barata`}
           color="#E31837"
@@ -206,9 +206,9 @@ export default function CompetenciaPage() {
             <BMLDonut data={{ beat: Number(bmlAdidas.beat), meet: Number(bmlAdidas.meet), lose: Number(bmlAdidas.lose), nd: Number(bmlAdidas.nd) }} size={180} />
             <div className="flex flex-col justify-center gap-2 text-xs">
               {[
-                { label: 'BEAT (comp. más barata)', val: bmlAdidas.beat, color: '#E31837' },
+                { label: 'BEAT (Nike más barato)', val: bmlAdidas.beat, color: '#27AE60' },
                 { label: 'MEET (precio similar)',   val: bmlAdidas.meet, color: '#F5A623' },
-                { label: 'LOSE (Nike más barata)',  val: bmlAdidas.lose, color: '#27AE60' },
+                { label: 'LOSE (Nike más caro)',  val: bmlAdidas.lose, color: '#E31837' },
                 { label: 'Sin datos',               val: bmlAdidas.nd,   color: '#9B9B9B' },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between">
@@ -236,9 +236,9 @@ export default function CompetenciaPage() {
             <BMLDonut data={{ beat: Number(bmlPuma.beat), meet: Number(bmlPuma.meet), lose: Number(bmlPuma.lose), nd: Number(bmlPuma.nd) }} size={180} />
             <div className="flex flex-col justify-center gap-2 text-xs">
               {[
-                { label: 'BEAT (comp. más barata)', val: bmlPuma.beat, color: '#E31837' },
+                { label: 'BEAT (Nike más barato)', val: bmlPuma.beat, color: '#27AE60' },
                 { label: 'MEET (precio similar)',   val: bmlPuma.meet, color: '#F5A623' },
-                { label: 'LOSE (Nike más barata)',  val: bmlPuma.lose, color: '#27AE60' },
+                { label: 'LOSE (Nike más caro)',  val: bmlPuma.lose, color: '#E31837' },
                 { label: 'Sin datos',               val: bmlPuma.nd,   color: '#9B9B9B' },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between">
