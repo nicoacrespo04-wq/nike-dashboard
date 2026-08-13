@@ -1,0 +1,1279 @@
+﻿Fecha_Corrida,Scraper,Canal,Marca,Season,Search_Term,Nike_Visibility,Type,Category,Level _1,Level_2,Level_3,Division
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,botines de futbol,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,botines futbol hombre,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,botines futsal,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,botines sala,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,buzo deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,buzo deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,buzo deportivo,0.5,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,campera deportiva,0.5,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,medias deportivas,0.5,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,medias deportivas,0.05,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,medias deportivas,0.4,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,mochila deportiva,0.45,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,mochila deportiva,0.15,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,mochila deportiva,0.25,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,sneakers,0.2,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,sneakers,0.65,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas basquet,0.55,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas basquet,0.35,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas basquet,0.05,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas blancas,0.2,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas blancas,0.7,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas blancas,0.05,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas crossfit,0.2,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas crossfit,0.65,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas entrenamiento,0.2,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas entrenamiento,0.65,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas gym,0.5,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas negras,0.2,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas negras,0.65,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas ninos,0.15,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas ninos,0.45,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas ninos,0.35,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas padel,0.2,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas padel,0.65,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas para correr,0.45,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas para correr,0.45,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas running,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas running,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas running hombre,0.0526,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas running hombre,0.2105,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas running mujer,0.1579,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas running mujer,0.1579,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas training,0.5,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas trekking,0.2,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas trekking,0.65,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Nike,FA26,zapatillas urbanas,0.0526,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Adidas,FA26,zapatillas urbanas,0.2632,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Moov,Puma,FA26,zapatillas urbanas,0.4211,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,calzado,0.25,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,calzado,0.25,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,calzado,0.6,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,calzado,0.6,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,calzado,0.05,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,calzado,0.0,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,cambios,0.0,category,OTHER,cambios,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,cambios,0.0,category,OTHER,cambios,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,cambios,0.0,category,OTHER,cambios,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,entregas,0.0,category,OTHER,entregas,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,entregas,0.0,category,OTHER,entregas,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,entregas,0.0,category,OTHER,entregas,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre,0.3,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre,0.5,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/buzos,0.15,category,OTHER,hombre,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/buzos,0.5,category,OTHER,hombre,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/buzos,0.1,category,OTHER,hombre,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/camisetas,0.15,category,OTHER,hombre,camisetas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/camisetas,0.7,category,OTHER,hombre,camisetas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/camisetas,0.15,category,OTHER,hombre,camisetas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/camperas,0.35,category,OTHER,hombre,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/camperas,0.4,category,OTHER,hombre,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/camperas,0.15,category,OTHER,hombre,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/indumentaria,0.2,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/indumentaria,0.6,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/indumentaria,0.05,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/ojotas,0.0,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/ojotas,0.1,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/ojotas,0.0,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/pantalones,0.05,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/pantalones,0.7,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/pantalones,0.1,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/remeras,0.15,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/remeras,0.65,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/remeras,0.0,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/sandalias,0.0,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/sandalias,0.2,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/sandalias,0.0,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/shorts,0.25,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/shorts,0.35,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/shorts,0.15,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,hombre/zuecos,0.0,category,OTHER,hombre,zuecos,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,hombre/zuecos,0.2,category,OTHER,hombre,zuecos,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,hombre/zuecos,0.0,category,OTHER,hombre,zuecos,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,kids,0.2,category,YOUNG ATHLETES,kids,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,kids,0.25,category,YOUNG ATHLETES,kids,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,kids,0.55,category,YOUNG ATHLETES,kids,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,lanzamiento,0.25,category,OTHER,lanzamiento,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,lanzamiento,0.6,category,OTHER,lanzamiento,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,lanzamiento,0.0,category,OTHER,lanzamiento,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,lanzamiento/invierno ❄,0.2,category,OTHER,lanzamiento,invierno ❄,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,lanzamiento/invierno ❄,0.75,category,OTHER,lanzamiento,invierno ❄,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,lanzamiento/invierno ❄,0.05,category,OTHER,lanzamiento,invierno ❄,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer,0.2,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer,0.65,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer,0.0,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/buzos,0.05,category,OTHER,mujer,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/buzos,0.35,category,OTHER,mujer,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/buzos,0.35,category,OTHER,mujer,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/calzas,0.05,category,OTHER,mujer,calzas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/calzas,0.05,category,OTHER,mujer,calzas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/calzas,0.15,category,OTHER,mujer,calzas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/camperas,0.15,category,OTHER,mujer,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/camperas,0.3,category,OTHER,mujer,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/camperas,0.2,category,OTHER,mujer,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/indumentaria,0.1,category,OTHER,mujer,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/indumentaria,0.5,category,OTHER,mujer,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/indumentaria,0.1,category,OTHER,mujer,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/ojotas,0.0,category,OTHER,mujer,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/ojotas,0.1,category,OTHER,mujer,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/ojotas,0.0,category,OTHER,mujer,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/pantalones,0.15,category,OTHER,mujer,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/pantalones,0.55,category,OTHER,mujer,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/pantalones,0.1,category,OTHER,mujer,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/remeras,0.4,category,OTHER,mujer,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/remeras,0.15,category,OTHER,mujer,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/remeras,0.1,category,OTHER,mujer,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/sandalias,0.0,category,OTHER,mujer,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/sandalias,0.1111,category,OTHER,mujer,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/sandalias,0.0,category,OTHER,mujer,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/shorts,0.15,category,OTHER,mujer,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/shorts,0.25,category,OTHER,mujer,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/shorts,0.1,category,OTHER,mujer,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,mujer/zuecos,0.0,category,OTHER,mujer,zuecos,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,mujer/zuecos,0.2,category,OTHER,mujer,zuecos,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,mujer/zuecos,0.0,category,OTHER,mujer,zuecos,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,sale,0.35,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,sale,0.4,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,sale,0.1,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,zapatillas,0.2,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Nike,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,zapatillas,0.55,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,zapatillas,0.6,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Adidas,FA26,zapatillas,0.6,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Moov,Puma,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,botines de futbol,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,botines de futbol,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,botines de futbol,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,botines futbol hombre,0.15,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,botines futbol hombre,0.45,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,botines futbol hombre,0.15,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,botines futsal,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,botines futsal,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,botines futsal,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,botines sala,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,buzo deportivo,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,buzo deportivo,0.55,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,buzo deportivo,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,campera deportiva,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,campera deportiva,0.2,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,campera deportiva,0.2,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,medias deportivas,0.2,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,medias deportivas,0.5,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,medias deportivas,0.05,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,remera deportiva,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,remera deportiva,0.4,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,remera deportiva,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,ropa deportiva,0.0833,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,short deportivo,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,short deportivo,0.55,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,short deportivo,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,sneakers,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,sneakers,0.25,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,sneakers,0.3,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas basquet,0.3,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas basquet,0.2,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas basquet,0.05,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas blancas,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas blancas,0.25,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas blancas,0.3,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas crossfit,0.625,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas entrenamiento,0.2,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas entrenamiento,0.15,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas entrenamiento,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas gym,0.8421,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas negras,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas negras,0.25,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas negras,0.3,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas ninos,0.05,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas ninos,0.0,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas ninos,0.4,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas padel,0.05,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas padel,0.05,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas running,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas running,0.3,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas running,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas running hombre,0.15,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas running hombre,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas running hombre,0.2,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas running mujer,0.2,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas running mujer,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas running mujer,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas tenis,0.05,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas tenis,0.1,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas trail,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas trail,0.15,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas training,0.2,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas training,0.2,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas training,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas trekking,0.15,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Nike,FA26,zapatillas urbanas,0.125,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Adidas,FA26,zapatillas urbanas,0.1875,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dexter,Puma,FA26,zapatillas urbanas,0.125,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,botines,0.0,category,OTHER,botines,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,botines,0.45,category,OTHER,botines,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,botines,0.2,category,OTHER,botines,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,calzado,0.15,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,calzado,0.1,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,calzado,0.25,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,calzado,0.3,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,calzado,0.35,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,calzado,0.15,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,calzado/botas,0.0,category,OTHER,calzado,botas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,calzado/botas,0.0,category,OTHER,calzado,botas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,calzado/botas,0.0,category,OTHER,calzado,botas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,calzado/sandalias,0.0,category,OTHER,calzado,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,calzado/sandalias,0.1,category,OTHER,calzado,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,calzado/sandalias,0.1,category,OTHER,calzado,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías,0.15,category,OTHER,categorías,,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías,0.45,category,OTHER,categorías,,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías,0.15,category,OTHER,categorías,,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/básquet,0.25,category,BASKETBALL,categorías,básquet,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/básquet,0.2,category,BASKETBALL,categorías,básquet,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/básquet,0.1,category,BASKETBALL,categorías,básquet,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/fútbol,0.4,category,FOOTBALL/SOCCER,categorías,fútbol,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/fútbol,0.4,category,FOOTBALL/SOCCER,categorías,fútbol,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/fútbol,0.05,category,FOOTBALL/SOCCER,categorías,fútbol,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/hockey,0.0,category,OTHER,categorías,hockey,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/hockey,0.0,category,OTHER,categorías,hockey,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/hockey,0.0,category,OTHER,categorías,hockey,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/moda,0.15,category,OTHER,categorías,moda,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/moda,0.4,category,OTHER,categorías,moda,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/moda,0.3,category,OTHER,categorías,moda,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/natación,0.05,category,SWIM,categorías,natación,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/natación,0.1,category,SWIM,categorías,natación,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/natación,0.05,category,SWIM,categorías,natación,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/outdoor,0.0,category,ACTION OUTDOOR,categorías,outdoor,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/outdoor,0.05,category,ACTION OUTDOOR,categorías,outdoor,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/outdoor,0.0,category,ACTION OUTDOOR,categorías,outdoor,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/rugby,0.0,category,RUGBY,categorías,rugby,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/rugby,0.1,category,RUGBY,categorías,rugby,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/rugby,0.35,category,RUGBY,categorías,rugby,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/tenis y pádel,0.0,category,TENNIS,categorías,tenis y pádel,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/tenis y pádel,0.1,category,TENNIS,categorías,tenis y pádel,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/tenis y pádel,0.0,category,TENNIS,categorías,tenis y pádel,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/training,0.1,category,OTHER,categorías,training,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/training,0.35,category,OTHER,categorías,training,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/training,0.1,category,OTHER,categorías,training,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,categorías/voley,0.15,category,OTHER,categorías,voley,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,categorías/voley,0.0,category,OTHER,categorías,voley,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,categorías/voley,0.0,category,OTHER,categorías,voley,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre,0.2,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre,0.45,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre,0.15,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/botas,0.0,category,OTHER,hombre,botas,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/botas,0.0,category,OTHER,hombre,botas,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/botas,0.0,category,OTHER,hombre,botas,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/botines,0.15,category,OTHER,hombre,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/botines,0.45,category,OTHER,hombre,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/botines,0.15,category,OTHER,hombre,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/buzos,0.1,category,OTHER,hombre,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/buzos,0.45,category,OTHER,hombre,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/buzos,0.15,category,OTHER,hombre,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/indumentaria,0.05,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/indumentaria,0.75,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/indumentaria,0.05,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/musculosas,0.0,category,OTHER,hombre,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/musculosas,0.45,category,OTHER,hombre,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/musculosas,0.25,category,OTHER,hombre,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/ojotas,0.0,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/ojotas,0.05,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/ojotas,0.0,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/pantalones,0.15,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/pantalones,0.3,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/pantalones,0.2,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/remeras,0.15,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/remeras,0.25,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/remeras,0.05,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/sandalias,0.0,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/sandalias,0.125,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/sandalias,0.0,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,hombre/shorts,0.15,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,hombre/shorts,0.55,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,hombre/shorts,0.1,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,kids,0.0,category,YOUNG ATHLETES,kids,,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,kids,0.2,category,YOUNG ATHLETES,kids,,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,kids,0.3,category,YOUNG ATHLETES,kids,,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,ojotas,0.05,category,OTHER,ojotas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,ojotas,0.05,category,OTHER,ojotas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,ojotas,0.0,category,OTHER,ojotas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,running,0.4,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,running,0.0,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,running,0.4,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,sale,0.05,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,sale,0.2,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,sale,0.1,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,zapatillas,0.1,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,zapatillas,0.15,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Nike,FA26,zapatillas,0.1,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,zapatillas,0.2,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Adidas,FA26,zapatillas,0.3,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,zapatillas,0.3,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,zapatillas,0.4,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dexter,Puma,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,botines de futbol,0.25,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,botines de futbol,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,botines futbol hombre,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,botines futbol hombre,0.3,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,botines futbol hombre,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,botines futsal,0.3,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,botines futsal,0.15,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,botines sala,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,buzo deportivo,0.5,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,buzo deportivo,0.25,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,buzo deportivo,0.0833,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,campera deportiva,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,campera deportiva,0.35,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,campera deportiva,0.3,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,medias deportivas,0.15,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,medias deportivas,0.3,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,medias deportivas,0.1,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,remera deportiva,0.25,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,remera deportiva,0.15,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,remera deportiva,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,ropa deportiva,0.3333,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,short deportivo,0.35,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,short deportivo,0.2,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,sneakers,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas basquet,0.4,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas basquet,0.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas basquet,0.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas blancas,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas crossfit,0.5714,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas entrenamiento,0.25,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas entrenamiento,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas gym,0.8421,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas negras,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas ninos,0.05,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas ninos,0.0,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas ninos,0.05,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas padel,0.1,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas padel,0.05,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas para correr,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas para correr,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas para correr,0.15,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas running,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas running,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas running hombre,0.45,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas running hombre,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas running hombre,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas running mujer,0.2,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas running mujer,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas running mujer,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas tenis,0.1,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas tenis,0.05,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas trail,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas training,0.25,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas training,0.05,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas trekking,0.1,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Nike,FA26,zapatillas urbanas,0.125,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Adidas,FA26,zapatillas urbanas,0.1875,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,StockCenter,Puma,FA26,zapatillas urbanas,0.125,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,calzado,0.05,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,calzado,0.25,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,calzado,0.05,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,calzado,0.0,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,calzado,0.05,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,calzado,0.0,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,cambios,0.0,category,OTHER,cambios,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,cambios,0.0,category,OTHER,cambios,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,cambios,0.0,category,OTHER,cambios,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías,0.0,category,OTHER,categorías,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías,0.2,category,OTHER,categorías,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías,0.4,category,OTHER,categorías,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/básquet,0.55,category,BASKETBALL,categorías,básquet,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/básquet,0.05,category,BASKETBALL,categorías,básquet,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/básquet,0.05,category,BASKETBALL,categorías,básquet,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/fútbol,0.05,category,FOOTBALL/SOCCER,categorías,fútbol,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/fútbol,0.4,category,FOOTBALL/SOCCER,categorías,fútbol,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/fútbol,0.2,category,FOOTBALL/SOCCER,categorías,fútbol,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/hockey,0.0,category,OTHER,categorías,hockey,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/hockey,0.0,category,OTHER,categorías,hockey,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/hockey,0.0,category,OTHER,categorías,hockey,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/moda,0.2,category,OTHER,categorías,moda,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/moda,0.1,category,OTHER,categorías,moda,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/moda,0.1,category,OTHER,categorías,moda,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/outdoor,0.15,category,ACTION OUTDOOR,categorías,outdoor,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/outdoor,0.05,category,ACTION OUTDOOR,categorías,outdoor,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/outdoor,0.0,category,ACTION OUTDOOR,categorías,outdoor,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/outlet 🚀,0.15,category,OTHER,categorías,outlet 🚀,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/outlet 🚀,0.05,category,OTHER,categorías,outlet 🚀,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/outlet 🚀,0.0,category,OTHER,categorías,outlet 🚀,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/rugby,0.0,category,RUGBY,categorías,rugby,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/rugby,0.1,category,RUGBY,categorías,rugby,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/rugby,0.1,category,RUGBY,categorías,rugby,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/skate,0.5,category,OTHER,categorías,skate,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/skate,0.25,category,OTHER,categorías,skate,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/skate,0.0833,category,OTHER,categorías,skate,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/tenis,0.1,category,TENNIS,categorías,tenis,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/tenis,0.0,category,TENNIS,categorías,tenis,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/tenis,0.0,category,TENNIS,categorías,tenis,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,categorías/training,0.25,category,OTHER,categorías,training,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,categorías/training,0.05,category,OTHER,categorías,training,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,categorías/training,0.05,category,OTHER,categorías,training,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,entregas,0.0,category,OTHER,entregas,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,entregas,0.0,category,OTHER,entregas,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,entregas,0.0,category,OTHER,entregas,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre,0.35,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/botas,0.0,category,OTHER,hombre,botas,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/botas,0.0,category,OTHER,hombre,botas,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/botas,0.0,category,OTHER,hombre,botas,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/botines,0.05,category,OTHER,hombre,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/botines,0.4,category,OTHER,hombre,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/botines,0.15,category,OTHER,hombre,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/buzos y camperas,0.1,category,OTHER,hombre,buzos y camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/buzos y camperas,0.4,category,OTHER,hombre,buzos y camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/buzos y camperas,0.3,category,OTHER,hombre,buzos y camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/indumentaria,0.35,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/indumentaria,0.15,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/indumentaria,0.15,category,OTHER,hombre,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/musculosas,0.2,category,OTHER,hombre,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/musculosas,0.35,category,OTHER,hombre,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/musculosas,0.15,category,OTHER,hombre,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/ojotas,0.0,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/ojotas,0.05,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/ojotas,0.05,category,OTHER,hombre,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/pantalones,0.05,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/pantalones,0.2,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/pantalones,0.15,category,OTHER,hombre,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/remeras,0.3,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/remeras,0.15,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/remeras,0.2,category,OTHER,hombre,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/sandalias,0.0,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/sandalias,0.1429,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/sandalias,0.0,category,OTHER,hombre,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,hombre/shorts,0.5,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,hombre/shorts,0.35,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,hombre/shorts,0.0,category,OTHER,hombre,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,infantil,0.05,category,YOUNG ATHLETES,infantil,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,infantil,0.1,category,YOUNG ATHLETES,infantil,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,infantil,0.0,category,YOUNG ATHLETES,infantil,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer,0.1,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer,0.1,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer,0.05,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/botas,0.0,category,OTHER,mujer,botas,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/botas,0.0,category,OTHER,mujer,botas,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/botas,0.0,category,OTHER,mujer,botas,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/botines,0.0,category,OTHER,mujer,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/botines,0.45,category,OTHER,mujer,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/botines,0.35,category,OTHER,mujer,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/buzos y camperas,0.1,category,OTHER,mujer,buzos y camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/buzos y camperas,0.05,category,OTHER,mujer,buzos y camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/buzos y camperas,0.25,category,OTHER,mujer,buzos y camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/indumentaria,0.3,category,OTHER,mujer,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/indumentaria,0.2,category,OTHER,mujer,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/indumentaria,0.1,category,OTHER,mujer,indumentaria,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/musculosas,0.2,category,OTHER,mujer,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/musculosas,0.15,category,OTHER,mujer,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/musculosas,0.05,category,OTHER,mujer,musculosas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/ojotas,0.0,category,OTHER,mujer,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/ojotas,0.05,category,OTHER,mujer,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/ojotas,0.05,category,OTHER,mujer,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/pantalones,0.15,category,OTHER,mujer,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/pantalones,0.2,category,OTHER,mujer,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/pantalones,0.1,category,OTHER,mujer,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/remeras,0.35,category,OTHER,mujer,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/remeras,0.15,category,OTHER,mujer,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/remeras,0.15,category,OTHER,mujer,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/sandalias,0.0,category,OTHER,mujer,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/sandalias,0.1111,category,OTHER,mujer,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/sandalias,0.1111,category,OTHER,mujer,sandalias,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,mujer/shorts,0.25,category,OTHER,mujer,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,mujer/shorts,0.15,category,OTHER,mujer,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,mujer/shorts,0.05,category,OTHER,mujer,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,running,0.15,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,running,0.05,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,running,0.6,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Nike,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Adidas,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,zapatillas,0.35,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,StockCenter,Puma,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,botines de futbol,0.75,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,botines de futbol,0.0625,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,botines futbol hombre,0.625,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,botines futbol hombre,0.1875,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,botines futsal,0.5,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,botines sala,1.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,buzo deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,buzo deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,buzo deportivo,0.3333,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,campera deportiva,1.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,medias deportivas,0.3333,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,mochila deportiva,0.0625,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,mochila deportiva,0.75,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,mochila deportiva,0.1875,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,remera deportiva,0.5,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,ropa deportiva,0.3333,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,short deportivo,0.8333,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,sneakers,1.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas basquet,0.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas basquet,1.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas basquet,0.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas blancas,0.25,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas blancas,0.4375,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas casual,0.1875,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas casual,0.375,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas entrenamiento,1.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas gym,0.3125,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas gym,0.0625,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas negras,0.0625,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas negras,0.4375,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas negras,0.375,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas ninos,0.0,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas ninos,0.1875,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas ninos,0.3125,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas padel,0.3,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas para correr,0.6875,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas para correr,0.3125,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas running,0.6875,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas running,0.3125,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas running hombre,0.5625,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas running hombre,0.4375,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas running mujer,0.0625,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas running mujer,0.375,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas running mujer,0.4375,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas tenis,0.0625,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas tenis,0.9375,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas trail,1.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas training,0.0625,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas training,0.625,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas training,0.0625,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas trekking,0.4375,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Nike,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Adidas,FA26,zapatillas urbanas,0.1875,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Sporting,Puma,FA26,zapatillas urbanas,0.375,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,básquet,0.0,category,BASKETBALL,básquet,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,básquet,0.8333,category,BASKETBALL,básquet,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,básquet,0.0,category,BASKETBALL,básquet,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,ciclismo,0.0,category,OTHER,ciclismo,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,ciclismo,0.0,category,OTHER,ciclismo,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,ciclismo,0.0,category,OTHER,ciclismo,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,fútbol,0.0,category,FOOTBALL/SOCCER,fútbol,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,fútbol,0.5,category,FOOTBALL/SOCCER,fútbol,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,fútbol,0.3125,category,FOOTBALL/SOCCER,fútbol,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,hombre,0.0625,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,hombre,0.4375,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,hombre,0.25,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,moda,0.0,category,OTHER,moda,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,moda,0.25,category,OTHER,moda,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,moda,0.4375,category,OTHER,moda,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,motorsport,0.0,category,OTHER,motorsport,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,motorsport,0.8125,category,OTHER,motorsport,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,motorsport,0.1875,category,OTHER,motorsport,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,outdoor,0.0,category,ACTION OUTDOOR,outdoor,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,outdoor,0.0625,category,ACTION OUTDOOR,outdoor,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,outdoor,0.0,category,ACTION OUTDOOR,outdoor,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,padel,0.0,category,TENNIS,padel,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,padel,0.3,category,TENNIS,padel,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,padel,0.0,category,TENNIS,padel,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,running,0.0,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,running,0.4167,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,running,0.3333,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,tenis,0.0625,category,TENNIS,tenis,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,tenis,0.5625,category,TENNIS,tenis,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,tenis,0.0,category,TENNIS,tenis,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,training,0.0,category,OTHER,training,,,
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,training,0.0,category,OTHER,training,,,
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,training,0.0,category,OTHER,training,,,
+2026-08-09,retail_media_v8_category,Sporting,Nike,FA26,zapatillas running,0.0,category,RUNNING,zapatillas running,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Sporting,Adidas,FA26,zapatillas running,0.0,category,RUNNING,zapatillas running,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Sporting,Puma,FA26,zapatillas running,0.0,category,RUNNING,zapatillas running,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,botines futbol hombre,0.55,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,botines futbol hombre,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,botines futsal,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,botines futsal,0.6,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,botines sala,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,botines sala,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,buzo deportivo,0.85,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,buzo deportivo,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,buzo deportivo,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,campera deportiva,0.45,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,campera deportiva,0.25,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,campera deportiva,0.3,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,medias deportivas,0.4167,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,medias deportivas,0.4167,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,mochila deportiva,0.9,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,mochila deportiva,0.1,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,remera deportiva,0.45,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,remera deportiva,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,ropa deportiva,0.35,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,ropa deportiva,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,ropa deportiva,0.2,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,short deportivo,0.2,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,short deportivo,0.2,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas basquet,0.65,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas basquet,0.15,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas basquet,0.2,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas blancas,0.55,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas blancas,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas blancas,0.35,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas casual,0.9,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas casual,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas crossfit,0.9,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas crossfit,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas entrenamiento,0.6667,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas gym,0.9,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas gym,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas negras,0.9,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas negras,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas ninos,0.45,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas ninos,0.4,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas ninos,0.15,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas padel,0.9,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas padel,0.1,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas para correr,1.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas running,0.2,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas running hombre,0.1538,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas running mujer,0.4667,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas tenis,0.9,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas tenis,0.1,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas training,0.9,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas training,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas trekking,0.9,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas trekking,0.1,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Nike,FA26,zapatillas urbanas,0.9,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Adidas,FA26,zapatillas urbanas,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Grid,Puma,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,accesorios,,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,accesorios,,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,accesorios,,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,air max,,category,OTHER,air max,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,air max,,category,OTHER,air max,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,air max,,category,OTHER,air max,,,
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,calzado,,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,calzado,,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,calzado,,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,fade nitro,,category,OTHER,fade nitro,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,fade nitro,,category,OTHER,fade nitro,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,fade nitro,,category,OTHER,fade nitro,,,
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,hombre,,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,hombre,,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,hombre,,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,indumentaria,,category,OTHER,indumentaria,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,indumentaria,,category,OTHER,indumentaria,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,indumentaria,,category,OTHER,indumentaria,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,mujer,,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,mujer,,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,mujer,,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,niños,,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,niños,,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,niños,,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,riñoneras,,category,OTHER,riñoneras,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,riñoneras,,category,OTHER,riñoneras,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,riñoneras,,category,OTHER,riñoneras,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,sale,0.05,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,sale,0.2,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,sale,0.0,category,OTHER,sale,,,
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,todas las zapatillas,,category,OTHER,todas las zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,todas las zapatillas,,category,OTHER,todas las zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,todas las zapatillas,,category,OTHER,todas las zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Grid,Nike,FA26,traje de baño,0.05,category,OTHER,traje de baño,,,
+2026-08-09,retail_media_v8_category,Grid,Adidas,FA26,traje de baño,0.2,category,OTHER,traje de baño,,,
+2026-08-09,retail_media_v8_category,Grid,Puma,FA26,traje de baño,0.0,category,OTHER,traje de baño,,,
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,botines de futbol,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,botines de futbol,0.4,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,botines de futbol,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,botines futbol hombre,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,botines futbol hombre,0.35,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,botines futbol hombre,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,botines futsal,0.2,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,botines futsal,0.4,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,botines futsal,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,botines sala,0.15,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,botines sala,0.4,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,buzo deportivo,0.05,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,buzo deportivo,0.5,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,buzo deportivo,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,campera deportiva,0.1111,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,medias deportivas,0.15,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,medias deportivas,0.5,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,mochila deportiva,0.25,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,mochila deportiva,0.3,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,mochila deportiva,0.05,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,remera deportiva,0.55,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,remera deportiva,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,ropa deportiva,0.1818,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,ropa deportiva,0.0909,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas basquet,0.45,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas basquet,0.1,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas basquet,0.05,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas casual,0.4,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas casual,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas crossfit,0.4,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas crossfit,0.15,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas entrenamiento,0.15,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas entrenamiento,0.3,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas gym,0.4,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas gym,0.15,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas negras,0.4,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas negras,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas ninos,0.35,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas ninos,0.15,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas ninos,0.15,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas padel,0.1111,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas running,,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas running,,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas running,,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas running hombre,0.4,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas running hombre,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas running mujer,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas running mujer,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas tenis,0.15,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas tenis,0.2,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas trail,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas training,0.1111,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas trekking,0.4,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas trekking,0.15,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Nike,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Adidas,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,Dash,Puma,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios,0.05,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios,0.15,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios,0.0,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/bolsos,0.0,category,OTHER,accesorios,bolsos,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/bolsos,0.1,category,OTHER,accesorios,bolsos,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/bolsos,0.05,category,OTHER,accesorios,bolsos,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/botineros,0.0,category,OTHER,accesorios,botineros,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/botineros,0.0,category,OTHER,accesorios,botineros,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/botineros,0.0,category,OTHER,accesorios,botineros,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/canilleras,0.0,category,OTHER,accesorios,canilleras,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/canilleras,0.1538,category,OTHER,accesorios,canilleras,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/canilleras,0.1538,category,OTHER,accesorios,canilleras,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/gorras,0.0,category,OTHER,accesorios,gorras,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/gorras,0.2,category,OTHER,accesorios,gorras,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/gorras,0.0,category,OTHER,accesorios,gorras,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/guantes,0.0,category,OTHER,accesorios,guantes,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/guantes,0.1818,category,OTHER,accesorios,guantes,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/guantes,0.0,category,OTHER,accesorios,guantes,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/medias,0.15,category,OTHER,accesorios,medias,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/medias,0.5,category,OTHER,accesorios,medias,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/medias,0.0,category,OTHER,accesorios,medias,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/mochilas,0.25,category,OTHER,accesorios,mochilas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/mochilas,0.3,category,OTHER,accesorios,mochilas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/mochilas,0.05,category,OTHER,accesorios,mochilas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/otros,0.0,category,OTHER,accesorios,otros,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/otros,0.0,category,OTHER,accesorios,otros,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/otros,0.0,category,OTHER,accesorios,otros,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/pelotas,0.0,category,OTHER,accesorios,pelotas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/pelotas,0.1,category,OTHER,accesorios,pelotas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/pelotas,0.0,category,OTHER,accesorios,pelotas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,accesorios/raquetas,0.0,category,OTHER,accesorios,raquetas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,accesorios/raquetas,0.0,category,OTHER,accesorios,raquetas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,accesorios/raquetas,0.0,category,OTHER,accesorios,raquetas,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,calzado,0.3,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,calzado,0.3,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,calzado,0.0,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,calzado/botines,0.2,category,OTHER,calzado,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,calzado/botines,0.45,category,OTHER,calzado,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,calzado/botines,0.0,category,OTHER,calzado,botines,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,calzado/botitas,0.0,category,OTHER,calzado,botitas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,calzado/botitas,0.0,category,OTHER,calzado,botitas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,calzado/botitas,0.0,category,OTHER,calzado,botitas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,calzado/calzado,0.0,category,OTHER,calzado,calzado,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,calzado/calzado,0.0,category,OTHER,calzado,calzado,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,calzado/calzado,0.0,category,OTHER,calzado,calzado,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,calzado/ojotas,0.2,category,OTHER,calzado,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,calzado/ojotas,0.35,category,OTHER,calzado,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,calzado/ojotas,0.1,category,OTHER,calzado,ojotas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,calzado/zapatillas,0.4,category,OTHER,calzado,zapatillas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,calzado/zapatillas,0.15,category,OTHER,calzado,zapatillas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,calzado/zapatillas,0.0,category,OTHER,calzado,zapatillas,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,combos,0.0,category,OTHER,combos,,,
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,combos,0.0,category,OTHER,combos,,,
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,combos,0.0,category,OTHER,combos,,,
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria,0.25,category,OTHER,indumentaria,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria,0.4,category,OTHER,indumentaria,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria,0.0,category,OTHER,indumentaria,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/buzos,0.2,category,OTHER,indumentaria,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/buzos,0.4,category,OTHER,indumentaria,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/buzos,0.05,category,OTHER,indumentaria,buzos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/camisetas,0.1,category,OTHER,indumentaria,camisetas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/camisetas,0.4,category,OTHER,indumentaria,camisetas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/camisetas,0.15,category,OTHER,indumentaria,camisetas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/camperas,0.35,category,OTHER,indumentaria,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/camperas,0.3,category,OTHER,indumentaria,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/camperas,0.0,category,OTHER,indumentaria,camperas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/chombas,0.15,category,OTHER,indumentaria,chombas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/chombas,0.3,category,OTHER,indumentaria,chombas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/chombas,0.15,category,OTHER,indumentaria,chombas,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/conjuntos deportivos,0.0,category,OTHER,indumentaria,conjuntos deportivos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/conjuntos deportivos,0.35,category,OTHER,indumentaria,conjuntos deportivos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/conjuntos deportivos,0.3,category,OTHER,indumentaria,conjuntos deportivos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/otros,0.0,category,OTHER,indumentaria,otros,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/otros,0.0,category,OTHER,indumentaria,otros,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/otros,0.0,category,OTHER,indumentaria,otros,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/pantalones,0.35,category,OTHER,indumentaria,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/pantalones,0.25,category,OTHER,indumentaria,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/pantalones,0.05,category,OTHER,indumentaria,pantalones,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/remeras,0.35,category,OTHER,indumentaria,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/remeras,0.3,category,OTHER,indumentaria,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/remeras,0.0,category,OTHER,indumentaria,remeras,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/shorts,0.3,category,OTHER,indumentaria,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/shorts,0.3,category,OTHER,indumentaria,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/shorts,0.05,category,OTHER,indumentaria,shorts,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Nike,FA26,indumentaria/tops deportivos,0.1818,category,OTHER,indumentaria,tops deportivos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Adidas,FA26,indumentaria/tops deportivos,0.0909,category,OTHER,indumentaria,tops deportivos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_category,Dash,Puma,FA26,indumentaria/tops deportivos,0.0,category,OTHER,indumentaria,tops deportivos,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,botines de futbol,0.05,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,botines futsal,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,botines sala,0.25,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,buzo deportivo,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,buzo deportivo,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,buzo deportivo,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,campera deportiva,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,campera deportiva,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,campera deportiva,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,medias deportivas,0.05,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,remera deportiva,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,ropa deportiva,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,ropa deportiva,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,ropa deportiva,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,short deportivo,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,short deportivo,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,short deportivo,,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas basquet,0.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas basquet,0.05,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas basquet,0.1,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas blancas,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas blancas,0.05,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas casual,0.05,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas gym,0.05,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas negras,0.1,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas ninos,0.0,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas ninos,0.2,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas ninos,0.0,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas padel,0.05,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas running,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas running hombre,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas running hombre,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas running mujer,0.3,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas trail,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas training,0.05,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas training,0.05,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas training,0.2,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas trekking,0.05,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Nike,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Adidas,FA26,zapatillas urbanas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,SoloDeportes,Puma,FA26,zapatillas urbanas,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,accesorios,0.0,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,accesorios,0.35,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,accesorios,0.05,category,OTHER,accesorios,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,calzado,0.05,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,calzado,0.05,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,calzado,0.4,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,calzado,0.25,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,calzado,0.0,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,calzado,0.1,category,OTHER,calzado,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,deportes,0.05,category,OTHER,deportes,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,deportes,0.35,category,OTHER,deportes,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,deportes,0.05,category,OTHER,deportes,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,escolares,0.0,category,OTHER,escolares,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,escolares,0.15,category,OTHER,escolares,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,escolares,0.0,category,OTHER,escolares,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,hombre,0.35,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,invierno,0.0,category,OTHER,invierno,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,invierno,0.2,category,OTHER,invierno,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,invierno,0.0,category,OTHER,invierno,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,motorsport,0.0,category,OTHER,motorsport,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,motorsport,0.05,category,OTHER,motorsport,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,motorsport,0.5,category,OTHER,motorsport,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,mujer,0.0,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,mujer,0.3,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,mujer,0.1,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,nene,0.0,category,OTHER,nene,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,nene,0.25,category,OTHER,nene,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,nene,0.05,category,OTHER,nene,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,niños,0.0,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,niños,0.3,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,niños,0.05,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Nike,FA26,ultimos pares,0.0,category,OTHER,ultimos pares,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Adidas,FA26,ultimos pares,0.45,category,OTHER,ultimos pares,,,
+2026-08-09,retail_media_v8_category,SoloDeportes,Puma,FA26,ultimos pares,0.1,category,OTHER,ultimos pares,,,
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,botines de futbol,0.95,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,botines de futbol,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,botines futbol hombre,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,botines futbol hombre,0.85,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,botines futbol hombre,0.1,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,botines futsal,,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,botines futsal,,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,botines futsal,,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,botines sala,0.0,search,FOOTBALL/SOCCER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,buzo deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,buzo deportivo,0.7143,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,buzo deportivo,0.1429,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,campera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,campera deportiva,0.8333,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,campera deportiva,0.1111,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,medias deportivas,0.6,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,medias deportivas,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,mochila deportiva,0.0,search,SPORTSWEAR,,,,EQUIPMENT DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,remera deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,remera deportiva,0.9167,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,remera deportiva,0.0833,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,ropa deportiva,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,ropa deportiva,0.8,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,ropa deportiva,0.1,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,short deportivo,0.8824,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,short deportivo,0.0,search,SPORTSWEAR,,,,APPAREL DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,sneakers,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas basquet,0.0,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas basquet,0.2222,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas basquet,0.5556,search,BASKETBALL,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas blancas,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas casual,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas casual,0.15,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas casual,0.05,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas crossfit,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas entrenamiento,0.1,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas entrenamiento,0.35,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas entrenamiento,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas gym,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas negras,0.0,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas ninos,0.0,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas ninos,0.25,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas ninos,0.25,search,YOUNG ATHLETES,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas padel,0.4,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas padel,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas para correr,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas para correr,0.65,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas para correr,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas running,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas running,0.5,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas running,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas running hombre,0.25,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas running hombre,0.5,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas running hombre,0.1,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas running mujer,0.35,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas running mujer,0.5,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas running mujer,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas tenis,0.0,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas tenis,0.35,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas tenis,0.35,search,TENNIS,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas trail,0.7,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas trail,0.0,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas trail,0.05,search,RUNNING,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas training,0.0,search,OTHER,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas trekking,0.0,search,ACTION OUTDOOR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Nike,FA26,zapatillas urbanas,0.05,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Adidas,FA26,zapatillas urbanas,0.25,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_search,OpenSports,Puma,FA26,zapatillas urbanas,0.05,search,SPORTSWEAR,,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,básquet,0.1,category,BASKETBALL,básquet,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,básquet,0.55,category,BASKETBALL,básquet,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,básquet,0.0,category,BASKETBALL,básquet,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,disciplinas,0.0,category,OTHER,disciplinas,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,disciplinas,0.0,category,OTHER,disciplinas,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,disciplinas,0.0,category,OTHER,disciplinas,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,hombre,0.0,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,hombre,0.1,category,OTHER,hombre,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,mujer,0.0,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,mujer,0.0,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,mujer,0.15,category,OTHER,mujer,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,niños,0.0,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,niños,0.5,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,niños,0.2,category,YOUNG ATHLETES,niños,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,novedades,0.0,category,OTHER,novedades,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,novedades,0.0,category,OTHER,novedades,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,novedades,0.05,category,OTHER,novedades,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,running,0.15,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,running,0.2,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,running,0.45,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,running,0.45,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,running,0.25,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,running,0.15,category,RUNNING,running,,,
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,zapatillas,0.35,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,zapatillas,0.1,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Nike,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,zapatillas,0.3,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,zapatillas,0.0,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,zapatillas,0.25,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Adidas,FA26,zapatillas,0.1,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,zapatillas,0.15,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,zapatillas,0.05,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
+2026-08-09,retail_media_v8_category,OpenSports,Puma,FA26,zapatillas,0.1,category,OTHER,zapatillas,,,FOOTWEAR DIVISION
