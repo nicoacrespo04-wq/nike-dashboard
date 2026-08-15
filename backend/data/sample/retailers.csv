@@ -1,0 +1,11 @@
+id,name,country_code,channel,importance
+1,nike.com.ar,AR,D2C,0.95
+2,Dexter,AR,B2B,0.85
+3,Stock Center,AR,B2B,0.8
+4,Solo Deportes,AR,B2B,0.7
+5,Open Sports,AR,B2B,0.65
+6,Moov,AR,MARKETPLACE,0.6
+7,Sporting,AR,B2B,0.55
+8,Grid,AR,B2B,0.45
+9,nike.com,US,D2C,0.9
+10,Foot Locker US,US,B2B,0.8

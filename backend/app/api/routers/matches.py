@@ -60,6 +60,7 @@ def product_matches(product_id: int, limit: int = Query(10, ge=1, le=50),
         "matches": [{
             "id": r["id"],
             "match_score": r["match_score"],
+            "raw_match_score": r["raw_match_score"],
             "confidence": r["confidence"],
             "coverage": r["coverage"],
             "competitor": product_card(prods.get(r["competitor_product_id"])),
@@ -86,6 +87,7 @@ def get_match(match_id: int) -> dict[str, Any]:
     return {
         "id": match["id"],
         "match_score": match["match_score"],
+        "raw_match_score": match["raw_match_score"],
         "confidence": match["confidence"],
         "coverage": match["coverage"],
         "nike_product": product_card(prods.get(match["nike_product_id"])),
@@ -115,6 +117,7 @@ def list_matches(min_score: float = Query(0, ge=0, le=100),
         "items": [{
             "id": r["id"],
             "match_score": r["match_score"],
+            "raw_match_score": r["raw_match_score"],
             "confidence": r["confidence"],
             "nike_product": product_card(prods.get(r["nike_product_id"])),
             "competitor_product": product_card(prods.get(r["competitor_product_id"])),

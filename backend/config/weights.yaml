@@ -19,6 +19,26 @@ competitive_match:
     social:           0.10
     reviews:          0.10
 
+  # Ajuste por evidencia (shrinkage bayesiano).
+  #
+  # `combine()` renormaliza sobre los factores con datos, y eso es correcto para
+  # NO castigar a un producto por tener el catálogo incompleto. Pero al RANKEAR
+  # pares entre sí, ese mismo mecanismo premia la ignorancia: un par sin datos
+  # editoriales ni sociales se evalúa sólo con los factores fáciles (semantic y
+  # price, altos entre dos zapatillas de running cualesquiera) y termina por
+  # encima de un par con rivalidad documentada, cuya evidencia real puntúa en
+  # valores medios. Eso invierte el propósito del motor.
+  #
+  # Solución: el score crudo se conserva intacto para la explicación
+  # ("de lo que pudimos medir, se parecen un 77%") y el ranking usa un score
+  # ajustado que arrastra hacia un prior neutro en proporción a lo que NO se
+  # pudo medir:
+  #     ajustado = crudo * cobertura + prior * (1 - cobertura)
+  # Con cobertura 1.0 ambos coinciden. Poner `enabled: false` para desactivarlo.
+  evidence_shrinkage:
+    enabled: true
+    prior: 0.35
+
   # Umbral de score para persistir un match (evita explosión combinatoria)
   min_score_to_persist: 35.0
   # Top-N competidores a guardar por producto Nike
@@ -59,6 +79,13 @@ competitive_match:
       silhouette:  0.20
       colors:      0.15
       materials:   0.15
+    # Fracción mínima del peso visual que debe tener datos para que el factor
+    # sea creíble. Sin esto, un par cuya única señal es la etiqueta de silueta
+    # puntúa 0.0 ("visualmente distintos") con peso completo, cuando en
+    # realidad no hay evidencia visual: dos vocabularios de enrichment que
+    # dicen "trainer" y "runner" sobre la misma silueta bastan para hundir el
+    # match. Por debajo del umbral el factor se marca sin datos y se renormaliza.
+    min_evidence_weight: 0.40
 
   editorial:
     # Puntos por tipo de mención, saturados con log
@@ -186,7 +213,10 @@ opportunities:
     min_demand_signal:          0.50
     max_nike_share:             0.25
   premiumization_opportunity:
-    min_match_score:            70.0
+    # Calibrado contra la escala AJUSTADA POR EVIDENCIA (ver
+    # competitive_match.evidence_shrinkage): un par con cobertura parcial rinde
+    # menos que en la escala cruda, así que 70 dejaba la regla muerta.
+    min_match_score:            60.0
     min_nike_cheaper_pct:       8.0
   promotional_pressure:
     min_competitors_on_markdown: 2

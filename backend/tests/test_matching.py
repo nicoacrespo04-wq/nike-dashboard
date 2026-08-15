@@ -384,11 +384,17 @@ def test_run_matching_is_idempotent(db):
 
 
 def test_works_without_embeddings_module(db):
+    # El fallback por atributos necesita evidencia suficiente (ver
+    # competitive_match.visual.min_evidence_weight): la silueta sola no alcanza,
+    # así que el fixture aporta también color y material.
     with get_conn(db) as conn:
         _insert(conn, "products", [product(1, 1, "Nike Pegasus 41"), product(2, 3, "Asics Novablast 5")])
         _insert(conn, "product_attributes", [
-            {"product_id": p, "attr_group": "visual", "attr_name": "silhouette", "value_text": "low-top running"}
+            {"product_id": p, "attr_group": "visual", "attr_name": name, "value_text": value}
             for p in (1, 2)
+            for name, value in (("silhouette", "low-top running"),
+                                ("dominant_color", "negro"),
+                                ("upper_material", "engineered mesh"))
         ])
     ctx = build_context(db)
     result = compute_match(ctx.products[1], ctx.products[2], ctx)
@@ -397,6 +403,40 @@ def test_works_without_embeddings_module(db):
     assert by_name["semantic"]["detail"]["text_similarity_backend"] == "unavailable"
     assert by_name["visual"]["available"] is True     # fallback por atributos
     assert by_name["semantic"]["available"] is True
+
+
+def test_visual_needs_minimum_evidence(db):
+    """Una sola sub-señal visual no basta para afirmar (di)similitud.
+
+    Sin este piso, dos vocabularios de enrichment que dicen "trainer" y
+    "runner" sobre la misma silueta producen un visual=0.0 rotundo que hunde
+    el match de dos productos que sí compiten.
+    """
+    with get_conn(db) as conn:
+        _insert(conn, "products", [product(1, 1, "Nike Pegasus 41"), product(2, 3, "Asics Novablast 5")])
+        _insert(conn, "product_attributes", [
+            {"product_id": 1, "attr_group": "visual", "attr_name": "silhouette", "value_text": "trainer"},
+            {"product_id": 2, "attr_group": "visual", "attr_name": "silhouette", "value_text": "runner"},
+        ])
+    ctx = build_context(db)
+    by_name = {f["factor"]: f for f in compute_match(ctx.products[1], ctx.products[2], ctx).factors}
+    assert by_name["visual"]["available"] is False
+    assert "evidencia visual insuficiente" in by_name["visual"]["detail"]["reason"]
+
+
+def test_evidence_shrinkage_ranks_documented_rivalry_first():
+    """Con menos cobertura, el score ajustado cae hacia el prior.
+
+    Es lo que evita que un par sin evidencia editorial ni social le gane a uno
+    con rivalidad documentada sólo por evaluarse con los factores más fáciles.
+    """
+    from app.services.matching import evidence_adjusted
+
+    poor = evidence_adjusted(77.0, 0.60)    # score alto, poca evidencia
+    rich = evidence_adjusted(74.0, 0.85)    # score algo menor, más evidencia
+    assert rich > poor
+    # Con cobertura total el ajuste es neutro.
+    assert evidence_adjusted(80.0, 1.0) == pytest.approx(80.0)
 
 
 def test_uses_embeddings_when_available(db, monkeypatch):
@@ -418,12 +458,20 @@ def test_uses_embeddings_when_available(db, monkeypatch):
 # ── 6. feature importance del ejemplo del brief ─────────────
 
 
-def test_feature_importance_breakdown(db):
+@pytest.mark.parametrize("use_embeddings", [False, True], ids=["sin-embeddings", "con-embeddings"])
+def test_feature_importance_breakdown(db, monkeypatch, use_embeddings):
     """Pegasus 41 vs Novablast 5: los 7 factores disponibles y contribución legible."""
+    if use_embeddings:
+        monkeypatch.setattr(matching, "_embeddings_module", SimpleNamespace(
+            backend_name=lambda: "tfidf",
+            text_similarity=lambda a, b: 0.55,
+            image_similarity=lambda a, b: (0.62, "clip-vit-b32"),
+        ), raising=False)
+
     with get_conn(db) as conn:
         _insert(conn, "products", [
             product(1, 1, "Nike Pegasus 41", franchise="Pegasus", msrp=159999.0, price_band="mid"),
-            product(2, 3, "Asics Novablast 5", franchise="Novablast", msrp=179999.0,
+            product(2, 3, "Asics Novablast 5", franchise="Novablast", msrp=169999.0,
                     price_band="premium", subcategory="neutral running shoes",
                     description="Zapatilla neutra de entrenamiento diario con espuma FF Blast."),
         ])
@@ -432,21 +480,23 @@ def test_feature_importance_breakdown(db):
             {"product_id": 1, "attr_group": "visual", "attr_name": "colors", "value_text": "negro blanco"},
             {"product_id": 1, "attr_group": "visual", "attr_name": "materials", "value_text": "mesh engineered"},
             {"product_id": 2, "attr_group": "visual", "attr_name": "silhouette", "value_text": "low-top running"},
-            {"product_id": 2, "attr_group": "visual", "attr_name": "colors", "value_text": "blanco azul"},
+            {"product_id": 2, "attr_group": "visual", "attr_name": "colors", "value_text": "negro blanco"},
             {"product_id": 2, "attr_group": "visual", "attr_name": "materials", "value_text": "mesh knit"},
         ])
         _insert(conn, "price_observations", [
             {"product_id": 1, "retailer_id": 1, "observed_at": days_ago(2), "current_price": 149999.0},
             {"product_id": 1, "retailer_id": 2, "observed_at": days_ago(2), "current_price": 155999.0},
-            {"product_id": 2, "retailer_id": 1, "observed_at": days_ago(2), "current_price": 172999.0},
-            {"product_id": 2, "retailer_id": 3, "observed_at": days_ago(2), "current_price": 179999.0},
+            {"product_id": 2, "retailer_id": 1, "observed_at": days_ago(2), "current_price": 165999.0},
+            {"product_id": 2, "retailer_id": 2, "observed_at": days_ago(2), "current_price": 169999.0},
+            {"product_id": 2, "retailer_id": 3, "observed_at": days_ago(2), "current_price": 169999.0},
         ])
         _insert(conn, "editorial_mentions", [
             {"source_name": f"medio-{i}", "title": "Pegasus 41 vs Novablast 5",
-             "published_at": days_ago(20 * i), "mention_type": mt,
+             "published_at": days_ago(12 * i), "mention_type": mt,
              "product_a_id": 1, "product_b_id": 2, "country_code": "AR"}
             for i, mt in enumerate(("versus", "alternative", "versus", "ranking",
-                                    "alternative", "versus", "review"), start=1)
+                                    "alternative", "versus", "review", "versus",
+                                    "alternative", "versus", "ranking", "versus"), start=1)
         ] + [
             {"source_name": "guia", "title": "Mejores daily trainers 2026",
              "published_at": days_ago(45), "mention_type": "same_list",

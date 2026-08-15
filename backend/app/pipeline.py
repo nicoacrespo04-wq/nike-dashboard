@@ -31,6 +31,7 @@ STAGES: list[tuple[str, str, str]] = [
     ("seed",               "app.seed",                          "seed"),
     ("enrichment",         "app.services.enrichment",           "run_enrichment"),
     ("matching",           "app.services.matching",             "run_matching"),
+    ("shelf_signals",      "app.services.shelf",                "run_shelf_signals"),
     ("brand_intelligence", "app.services.brand_intelligence",   "run_brand_intelligence"),
     ("opportunities",      "app.services.opportunities",        "run_opportunities"),
     ("retail_media",       "app.services.retail_media",         "run_retail_media"),

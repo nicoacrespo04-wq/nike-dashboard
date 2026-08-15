@@ -202,7 +202,8 @@ CREATE TABLE IF NOT EXISTS competitive_matches (
     id                    INTEGER PRIMARY KEY,
     nike_product_id       INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     competitor_product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    match_score           REAL NOT NULL,     -- 0..100
+    match_score           REAL NOT NULL,     -- 0..100, ajustado por evidencia (ranking)
+    raw_match_score       REAL,              -- 0..100, sin ajustar (explicación)
     confidence            TEXT,              -- LOW|MEDIUM|HIGH
     coverage              REAL,              -- fracción del peso total con datos
     computed_at           TEXT DEFAULT (datetime('now')),

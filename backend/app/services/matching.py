@@ -312,6 +312,25 @@ def _score_visual(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | No
     score = _blend(parts, sub_weights)
     if score is None:
         detail["reason"] = "sin señales visuales (ni embedding ni atributos)"
+        return score, detail
+
+    # Un score visual apoyado en una sola sub-señal débil no es creíble: si la
+    # única evidencia es la etiqueta de silueta, "trainer" vs "runner" produce
+    # un 0.0 rotundo sobre dos zapatillas que son el mismo tipo de producto.
+    # Exigimos una fracción mínima del peso visual con datos reales; por debajo,
+    # el factor se declara sin datos y `combine()` lo renormaliza.
+    total_weight = sum(sub_weights.values()) or 1.0
+    evidence = sum(sub_weights.get(k, 0.0) for k, v in parts.items() if v is not None)
+    min_evidence = float(section("competitive_match", "visual", "min_evidence_weight", default=0.0))
+    detail["evidence_weight"] = round(evidence / total_weight, 4)
+    if evidence / total_weight < min_evidence:
+        detail["reason"] = (
+            f"evidencia visual insuficiente ({evidence / total_weight:.0%} del peso, "
+            f"mínimo {min_evidence:.0%}): "
+            + ", ".join(k for k, v in parts.items() if v is not None)
+        )
+        return None, detail
+
     return score, detail
 
 
@@ -327,6 +346,30 @@ _SEMANTIC_FIELDS = (
 )
 
 
+# "unisex" no es un segmento distinto de "men"/"women": los incluye. Tratarlo
+# como mismatch castiga a marcas que etiquetan unisex (ASICS, Adidas) contra
+# marcas que separan por género — un artefacto de etiquetado, no competencia real.
+_GENDER_UNIVERSAL = {"unisex", "uni", "todos", "all"}
+
+
+def _gender_similarity(a: Any, b: Any) -> float | None:
+    """Similitud de género tolerante a 'unisex'. None si falta alguno."""
+    na, nb = _norm(a), _norm(b)
+    if not na or not nb:
+        return None
+    if na == nb:
+        return 1.0
+    if na in _GENDER_UNIVERSAL or nb in _GENDER_UNIVERSAL:
+        return 1.0
+    return 0.0
+
+
+def _gender_conflict(a: Any, b: Any) -> bool:
+    """Sólo hay conflicto real de género entre dos segmentos opuestos."""
+    sim = _gender_similarity(a, b)
+    return sim is not None and sim == 0.0
+
+
 def _score_semantic(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """Similitud de propósito: taxonomía ponderada + similitud textual de descripciones."""
     field_weights = weights("competitive_match", "semantic", "field_weights")
@@ -336,7 +379,10 @@ def _score_semantic(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | 
     detail: dict[str, Any] = {"fields": {}}
 
     for fname in _SEMANTIC_FIELDS:
-        sim = _field_similarity(nike.get(fname), comp.get(fname))
+        if fname == "gender":
+            sim = _gender_similarity(nike.get(fname), comp.get(fname))
+        else:
+            sim = _field_similarity(nike.get(fname), comp.get(fname))
         parts[fname] = sim
         detail["fields"][fname] = {
             "nike": nike.get(fname),
@@ -372,11 +418,13 @@ def _score_semantic(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | 
         return None, detail
 
     # -- penalización dura: no comparten gender o category --
+    # Ojo: para gender no alcanza con la desigualdad literal (ver _gender_conflict).
     mismatches = []
-    for fname in ("gender", "category"):
-        a, b = _norm(nike.get(fname)), _norm(comp.get(fname))
-        if a and b and a != b:
-            mismatches.append(fname)
+    if _gender_conflict(nike.get("gender"), comp.get("gender")):
+        mismatches.append("gender")
+    cat_a, cat_b = _norm(nike.get("category")), _norm(comp.get("category"))
+    if cat_a and cat_b and cat_a != cat_b:
+        mismatches.append("category")
     if mismatches:
         score = clamp(score * penalty)
         detail["hard_mismatch"] = {"fields": mismatches, "penalty": penalty}
@@ -710,6 +758,27 @@ def compute_match(nike: dict, competitor: dict, ctx: MatchContext) -> CompositeS
 # ── persistencia ────────────────────────────────────────────
 
 
+def evidence_adjusted(score: float, coverage: float) -> float:
+    """Arrastra el score hacia un prior neutro según lo que NO se pudo medir.
+
+    `compute_match` devuelve el score crudo, que responde "de lo que pudimos
+    medir, ¿cuánto se parecen?" — y para eso renormalizar sobre los factores
+    disponibles es lo correcto. Pero el ranking responde otra pregunta: "¿de
+    todos los pares, cuáles compiten de verdad?". Ahí la falta de evidencia sí
+    tiene que costar, o los pares sin datos editoriales ni sociales le ganan a
+    los que tienen rivalidad documentada, sólo porque se los evalúa con los
+    factores más fáciles.
+
+    Ambos números se persisten: `raw_match_score` explica, `match_score` ordena.
+    """
+    cfg = section("competitive_match", "evidence_shrinkage", default={}) or {}
+    if not cfg.get("enabled", False):
+        return score
+    prior = float(cfg.get("prior", 0.0)) * 100.0
+    cov = clamp(float(coverage))
+    return score * cov + prior * (1.0 - cov)
+
+
 def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
     """Recalcula TODOS los matches competitivos y los persiste (idempotente).
 
@@ -736,15 +805,19 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
                 continue
             pairs_evaluated += 1
             result = compute_match(nike, comp, ctx)
-            if result.score >= min_score:
+            # El umbral y el orden usan el score ajustado por evidencia.
+            if evidence_adjusted(result.score, result.coverage) >= min_score:
                 candidates.append((comp, result))
-        candidates.sort(key=lambda item: item[1].score, reverse=True)
+        candidates.sort(key=lambda item: evidence_adjusted(item[1].score, item[1].coverage),
+                        reverse=True)
         if top_n:
             candidates = candidates[:top_n]
         kept.extend((nike, comp, res) for comp, res in candidates)
 
     match_rows = [
-        (nike["id"], comp["id"], round(res.score, 4), res.confidence, round(res.coverage, 4))
+        (nike["id"], comp["id"],
+         round(evidence_adjusted(res.score, res.coverage), 4),
+         round(res.score, 4), res.confidence, round(res.coverage, 4))
         for nike, comp, res in kept
     ]
 
@@ -754,8 +827,9 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
         conn.execute("DELETE FROM competitive_matches")
         conn.executemany(
             "INSERT INTO competitive_matches "
-            "(nike_product_id, competitor_product_id, match_score, confidence, coverage) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "(nike_product_id, competitor_product_id, match_score, raw_match_score, "
+            " confidence, coverage) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             match_rows,
         )
         ids = {

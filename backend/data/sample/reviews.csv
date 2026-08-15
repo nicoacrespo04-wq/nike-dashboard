@@ -1,0 +1,156 @@
+id,product_id,retailer_id,source,rating,review_count,review_text,observed_at
+1,1,1,nike.com.ar,4.4,322,,2026-08-15
+2,1,2,Dexter,4.5,194,,2026-08-15
+3,1,3,Stock Center,4.3,122,,2026-08-15
+4,2,1,nike.com.ar,4.5,166,,2026-08-15
+5,2,2,Dexter,4.6,57,,2026-08-15
+6,2,3,Stock Center,4.3,319,,2026-08-15
+7,3,1,nike.com.ar,4.1,426,,2026-08-15
+8,3,2,Dexter,4.1,358,,2026-08-15
+9,3,3,Stock Center,3.9,48,,2026-08-15
+10,4,1,nike.com.ar,4.3,207,,2026-08-15
+11,4,2,Dexter,4.4,99,,2026-08-15
+12,4,3,Stock Center,4.6,150,,2026-08-15
+13,5,1,nike.com.ar,4.3,391,,2026-08-15
+14,6,1,nike.com.ar,4.7,136,,2026-08-15
+15,7,1,nike.com.ar,4.1,184,,2026-08-15
+16,7,2,Dexter,4.4,142,,2026-08-15
+17,7,3,Stock Center,4.3,132,,2026-08-15
+18,8,1,nike.com.ar,4.1,274,,2026-08-15
+19,8,2,Dexter,4.1,135,,2026-08-15
+20,8,3,Stock Center,3.9,40,,2026-08-15
+21,9,1,nike.com.ar,3.9,267,,2026-08-15
+22,9,2,Dexter,3.5,89,,2026-08-15
+23,9,3,Stock Center,3.9,156,,2026-08-15
+24,10,1,nike.com.ar,4.2,338,,2026-08-15
+25,10,2,Dexter,4.1,226,,2026-08-15
+26,10,6,Moov,4.2,160,,2026-08-15
+27,11,1,nike.com.ar,4.5,105,,2026-08-15
+28,11,2,Dexter,4.6,253,,2026-08-15
+29,11,3,Stock Center,4.5,263,,2026-08-15
+30,12,1,nike.com.ar,3.4,244,,2026-08-15
+31,12,2,Dexter,3.9,171,,2026-08-15
+32,13,1,nike.com.ar,4.7,250,,2026-08-15
+33,13,2,Dexter,4.8,182,,2026-08-15
+34,13,3,Stock Center,4.9,162,,2026-08-15
+35,14,1,nike.com.ar,4.4,96,,2026-08-15
+36,14,6,Moov,4.2,193,,2026-08-15
+37,15,1,nike.com.ar,4.3,388,,2026-08-15
+38,15,6,Moov,4.5,118,,2026-08-15
+39,16,2,Dexter,4.5,373,,2026-08-15
+40,16,3,Stock Center,4.6,148,,2026-08-15
+41,16,4,Solo Deportes,4.5,204,,2026-08-15
+42,17,2,Dexter,4.3,64,,2026-08-15
+43,17,3,Stock Center,4.8,298,,2026-08-15
+44,17,4,Solo Deportes,4.4,88,,2026-08-15
+45,18,2,Dexter,4.3,29,,2026-08-15
+46,18,3,Stock Center,4.4,289,,2026-08-15
+47,18,4,Solo Deportes,4.5,316,,2026-08-15
+48,19,2,Dexter,4.6,139,,2026-08-15
+49,19,3,Stock Center,4.6,262,,2026-08-15
+50,19,4,Solo Deportes,4.5,266,,2026-08-15
+51,20,2,Dexter,4.5,277,,2026-08-15
+52,20,4,Solo Deportes,4.1,132,,2026-08-15
+53,21,3,Stock Center,4.6,58,,2026-08-15
+54,22,2,Dexter,4.6,356,,2026-08-15
+55,22,3,Stock Center,4.2,189,,2026-08-15
+56,22,4,Solo Deportes,4.3,288,,2026-08-15
+57,23,2,Dexter,4.5,388,,2026-08-15
+58,23,3,Stock Center,4.4,212,,2026-08-15
+59,23,4,Solo Deportes,4.2,108,,2026-08-15
+60,24,2,Dexter,4.5,332,,2026-08-15
+61,24,4,Solo Deportes,4.7,212,,2026-08-15
+62,25,3,Stock Center,4.5,186,,2026-08-15
+63,26,2,Dexter,3.8,106,,2026-08-15
+64,26,3,Stock Center,3.6,161,,2026-08-15
+65,26,5,Open Sports,4.1,196,,2026-08-15
+66,27,2,Dexter,3.6,143,,2026-08-15
+67,27,3,Stock Center,3.8,337,,2026-08-15
+68,27,5,Open Sports,3.8,263,,2026-08-15
+69,28,2,Dexter,3.6,335,,2026-08-15
+70,28,5,Open Sports,3.5,153,,2026-08-15
+71,28,6,Moov,3.5,179,,2026-08-15
+72,29,2,Dexter,4.6,384,,2026-08-15
+73,29,3,Stock Center,4.4,357,,2026-08-15
+74,29,4,Solo Deportes,4.3,44,,2026-08-15
+75,30,2,Dexter,3.7,54,,2026-08-15
+76,30,3,Stock Center,3.8,32,,2026-08-15
+77,30,4,Solo Deportes,3.9,264,,2026-08-15
+78,31,2,Dexter,4.3,316,,2026-08-15
+79,31,3,Stock Center,4.2,174,,2026-08-15
+80,31,4,Solo Deportes,4.0,236,,2026-08-15
+81,32,3,Stock Center,4.0,249,,2026-08-15
+82,32,4,Solo Deportes,4.3,263,,2026-08-15
+83,33,2,Dexter,4.3,55,,2026-08-15
+84,33,5,Open Sports,4.3,140,,2026-08-15
+85,33,6,Moov,4.3,193,,2026-08-15
+86,34,2,Dexter,3.6,50,,2026-08-15
+87,34,6,Moov,3.6,47,,2026-08-15
+88,35,3,Stock Center,3.8,305,,2026-08-15
+89,35,4,Solo Deportes,3.8,99,,2026-08-15
+90,36,2,Dexter,3.8,333,,2026-08-15
+91,36,3,Stock Center,3.7,273,,2026-08-15
+92,36,4,Solo Deportes,3.8,25,,2026-08-15
+93,37,2,Dexter,4.4,131,,2026-08-15
+94,37,3,Stock Center,4.4,269,,2026-08-15
+95,37,4,Solo Deportes,4.3,260,,2026-08-15
+96,38,2,Dexter,4.2,278,,2026-08-15
+97,38,5,Open Sports,4.0,141,,2026-08-15
+98,38,6,Moov,4.1,258,,2026-08-15
+99,39,3,Stock Center,4.4,60,,2026-08-15
+100,39,6,Moov,4.7,184,,2026-08-15
+101,39,8,Grid,4.4,131,,2026-08-15
+102,40,2,Dexter,3.8,251,,2026-08-15
+103,40,4,Solo Deportes,3.9,29,,2026-08-15
+104,41,3,Stock Center,4.4,355,,2026-08-15
+105,42,2,Dexter,3.6,322,,2026-08-15
+106,42,3,Stock Center,3.9,298,,2026-08-15
+107,42,4,Solo Deportes,3.7,76,,2026-08-15
+108,43,2,Dexter,4.1,299,,2026-08-15
+109,43,4,Solo Deportes,4.1,187,,2026-08-15
+110,44,2,Dexter,4.2,188,,2026-08-15
+111,44,3,Stock Center,4.2,215,,2026-08-15
+112,44,5,Open Sports,3.9,35,,2026-08-15
+113,45,3,Stock Center,4.4,167,,2026-08-15
+114,45,4,Solo Deportes,4.4,273,,2026-08-15
+115,1,1,nike.com.ar,5.0,,Le metí 300 km y siguen impecables. La amortiguación es justa para rodajes de 10 a 15 km y el calce me quedó perfecto en mi talle habitual.,2026-07-02
+116,1,2,dexter.com.ar,4.0,,"Muy cómodas para el uso diario, aunque el precio ya se fue a las nubes. Ojo que vienen un poco angostas de antepié si tenés el pie ancho.",2026-06-28
+117,1,3,stockcenter.com.ar,4.0,,"Buena zapatilla, la venía usando desde la 40. La durabilidad de la suela es lo mejor, pero conseguir talle 44 fue una odisea.",2026-08-01
+118,1,,comunidad running AR,3.0,,"Cumplen, pero por lo que salen esperaba más amortiguación. Comparadas con la Novablast las siento más duras en rodajes largos.",2026-07-20
+119,2,1,nike.com.ar,5.0,,"La amortiguación es una nube, ideal para días de piernas cansadas. El calce es holgado en el mediopié, yo bajaría medio talle.",2026-07-25
+120,2,3,stockcenter.com.ar,4.0,,"Comodísimas, pero pesan bastante. Para rodaje regenerativo son un lujo, para series no las usaría.",2026-08-05
+121,2,,comunidad running AR,5.0,,Vengo del Nimbus y la Vomero 18 no le tiene nada que envidiar en confort. La agarré en oferta y a ese precio es una compra obvia.,2026-08-08
+122,3,1,nike.com.ar,4.0,,"El soporte se nota apenas apoyás, muy buena para los que pronamos. Un poco rígida los primeros 50 km hasta que se acomoda.",2026-06-22
+123,3,4,solodeportes.com.ar,4.0,,"Estable y durable, la uso para ir y volver del trabajo y para rodajes. La relación precio calidad es buena comparada con la Kayano.",2026-08-10
+124,4,2,dexter.com.ar,5.0,,Amortiguación exagerada en el mejor sentido. Después de un maratón las usé para recuperar y las piernas lo agradecieron.,2026-07-11
+125,4,,comunidad running AR,3.0,,"Muy cómodas pero se sienten inestables en curvas. Además la espuma se marcó rápido, no sé si aguantan los 800 km que prometen.",2026-06-30
+126,5,1,nike.com.ar,5.0,,"Para series y fondos rápidos vuela. El calce es angosto y la lengüeta finita, pero una vez atada no se mueve nada.",2026-08-03
+127,6,1,nike.com.ar,4.0,,"Las llevé al cerro y agarraron bien en tierra suelta. En roca mojada patinan un poco, pero para trail liviano cumplen de sobra.",2026-07-14
+128,7,6,moov.com.ar,5.0,,Un clásico que no falla. Cómodas para caminar todo el día aunque pesan; el cuero se ensucia enseguida si son blancas.,2026-07-06
+129,7,8,grid.com.ar,4.0,,"Calidad de siempre, pero encontrar talle 39 en oferta es imposible. Calzan grandes, conviene bajar medio número.",2026-08-09
+130,8,5,opensports.com.ar,4.0,,"Muy cómodas para caminar, la cámara de aire se siente. Para entrenar no sirven, son puramente urbanas.",2026-06-19
+131,9,2,dexter.com.ar,5.0,,"Las esperé meses hasta que entró el colorway. Estéticamente perfectas, la comodidad es aceptable nada más.",2026-08-11
+132,9,,comunidad sneakers AR,4.0,,"Buenísimas, pero la disponibilidad de talles es un desastre: siempre quedan los extremos. Y el precio en Argentina duele.",2026-07-29
+133,10,6,moov.com.ar,4.0,,"Cuero de buena calidad para el precio. El calce es angosto adelante, si tenés pie ancho probátelas antes.",2026-07-17
+134,11,3,stockcenter.com.ar,5.0,,"Livianísimos, se sienten como una media. El agarre en cancha firme es excelente, pero el upper es delicado y se raya fácil.",2026-08-06
+135,12,2,dexter.com.ar,4.0,,El control de pelota es notable con el Gripknit. Tardan en amoldarse y el precio está muy por encima de la competencia.,2026-06-25
+136,13,4,solodeportes.com.ar,5.0,,Para crossfit son insuperables: base firme para sentadilla y aguantan el rope climb. Para correr más de 1 km son incómodas.,2026-07-23
+137,14,5,opensports.com.ar,3.0,,"Livianas y flexibles, buenas para gimnasio. La suela se gastó rápido y no tienen casi amortiguación.",2026-07-09
+138,15,6,moov.com.ar,4.0,,"Las compré para caminar y son un lujo, el rocker ayuda mucho. Me pareció caro para lo que es una zapatilla de caminata.",2026-08-12
+139,16,2,dexter.com.ar,5.0,,"Rebotan muchísimo, dan ganas de salir a correr. Muy cómodas de entrada, sin período de adaptación, y el precio es competitivo.",2026-08-07
+140,16,4,solodeportes.com.ar,5.0,,Mejor compra del año. Amortiguación y respuesta en la misma zapatilla; encima consegui talle sin problema.,2026-07-27
+141,17,3,stockcenter.com.ar,5.0,,"El confort es de otro nivel, ideal para fondos largos. Son caras, pero duran mucho y no me hicieron ni una ampolla.",2026-07-13
+142,17,,comunidad running AR,4.0,,"Comodísimas aunque pesadas. Si las conseguís con descuento valen la pena, a precio de lista es mucha plata.",2026-06-21
+143,18,4,solodeportes.com.ar,4.0,,"El soporte es progresivo, no se siente la barra rígida de antes. Excelentes para pronadores, pero el precio es prohibitivo.",2026-08-02
+144,19,7,sporting.com.ar,4.0,,"Muy buena relación precio calidad. Amortiguación correcta para 10 km, nada del otro mundo pero cumple todos los días.",2026-07-05
+145,20,4,solodeportes.com.ar,4.0,,Agarre impecable en barro y protección real contra piedras. El calce es angosto y tardan en secar después de un cruce de agua.,2026-06-18
+146,22,5,opensports.com.ar,4.0,,Por lo que salen son un golazo. La amortiguación es buena y las varillas se sienten en la transición; el upper podría ser mejor.,2026-08-04
+147,22,2,dexter.com.ar,4.0,,Cómodas y estables para empezar a correr. Buena disponibilidad de talles y precio muy por debajo de las Nike equivalentes.,2026-07-19
+148,23,5,opensports.com.ar,4.0,,"Más urbanas que de running, la verdad. Comodísimas para caminar y el agarre Continental es real, pero son carísimas.",2026-07-01
+149,26,6,moov.com.ar,5.0,,"Se agotan en dos días cada vez que entran. Calzan angostas, pedí medio talle más; estéticamente no hay con qué darles hoy.",2026-08-13
+150,26,8,grid.com.ar,4.0,,"Lindísimas pero incómodas para caminar mucho, la suela es finita. Aún así las uso todos los días por como quedan.",2026-07-24
+151,30,4,solodeportes.com.ar,5.0,,"Vienen en anchos, algo que ninguna otra marca ofrece acá. Durabilidad excelente y amortiguación equilibrada.",2026-06-26
+152,31,3,stockcenter.com.ar,4.0,,"Muy cómodas para rodajes largos, el rocker ayuda un montón. Se ensucia rápido el upper y no siempre hay talles grandes.",2026-08-14
+153,36,4,solodeportes.com.ar,5.0,,La placa se siente en cuanto acelerás. Muy buena para series y encima el PUMAGRIP agarra en piso mojado.,2026-07-31
+154,38,6,moov.com.ar,5.0,,"Están en todos lados y se entiende por qué: son lindas, cómodas y salen bastante menos que las Samba.",2026-08-10
+155,42,2,dexter.com.ar,3.0,,El sensor está bueno pero la zapatilla se siente dura. Por ese precio prefiero una ASICS o una Nike.,2026-06-24

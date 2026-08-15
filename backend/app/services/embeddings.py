@@ -38,6 +38,11 @@ _CHAR_NGRAMS = (3, 5)
 _WORD_MAX_FEATURES = 4096
 _CHAR_MAX_FEATURES = 8192
 
+# La cache en disco sólo tiene sentido para corpus (no para pares sueltos:
+# esos ya viven en la cache de similitudes en memoria).
+_DISK_CACHE_MIN_BATCH = 8
+_MAX_MEMORY_BATCHES = 2048
+
 # Nombres canónicos de backend
 _BACKEND_ST = "sentence_transformers"
 _BACKEND_TFIDF = "tfidf"
@@ -255,8 +260,11 @@ def text_vectors(texts: list[str]) -> np.ndarray:
     else:
         matrix = _l2_normalize(_tfidf_matrix(prepared))
 
+    if len(_BATCH_CACHE) >= _MAX_MEMORY_BATCHES:      # FIFO simple, sin dependencias
+        _BATCH_CACHE.pop(next(iter(_BATCH_CACHE)))
     _BATCH_CACHE[key] = matrix
-    _disk_store(key, matrix)
+    if len(prepared) >= _DISK_CACHE_MIN_BATCH:
+        _disk_store(key, matrix)
     return matrix
 
 
