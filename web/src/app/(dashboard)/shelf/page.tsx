@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Star, Share2, Lock } from 'lucide-react'
+import { Search, Star, Share2, Lock, AlertTriangle } from 'lucide-react'
 import KPICard from '@/components/ui/KPICard'
+import { fetchJson, errorMessage } from '@/lib/fetchJson'
+import { formatRatioPct } from '@/lib/utils'
 
 interface SummaryResponse {
   byCanal: Record<string, { marca: string; wins: number; pct: number }[]>
@@ -21,50 +23,75 @@ interface SearchRow {
 
 const MARCA_COLOR: Record<string, string> = {
   Nike: '#E31837',
-  Adidas: '#111111',
-  Puma: '#6B7280',
+  Adidas: '#0046CC',
+  Puma: '#E4032E',
 }
 
-function pct(v: number | null | undefined) {
-  if (v === null || v === undefined || isNaN(v)) return '—'
-  return `${Math.round(v * 100)}%`
-}
+// `nike_visibility` es un float 0..1: hay que formatearlo explícitamente como
+// porcentaje. Si de verdad no hay dato mostramos "N/D", nunca vacío.
+const pct = (v: number | null | undefined) => formatRatioPct(v)
 
 export default function ShelfPage() {
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [rows, setRows] = useState<SearchRow[]>([])
   const [canalFilter, setCanalFilter] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
+    setError(null)
     Promise.all([
-      fetch('/api/shelf/summary').then((r) => r.json()),
-      fetch(`/api/shelf/searches${canalFilter ? `?canal=${canalFilter}` : ''}`).then((r) => r.json()),
-    ]).then(([s, d]) => {
-      setSummary(s)
-      setRows(d.rows)
-      setLoading(false)
-    })
+      fetchJson<SummaryResponse>('/api/shelf/summary'),
+      fetchJson<{ rows: SearchRow[] }>(
+        `/api/shelf/searches${canalFilter ? `?canal=${encodeURIComponent(canalFilter)}` : ''}`
+      ),
+    ])
+      .then(([s, d]) => {
+        if (cancelled) return
+        setSummary(s)
+        setRows(d.rows ?? [])
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(errorMessage(err))
+        setSummary(null)
+        setRows([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [canalFilter])
 
   const canales = summary ? Object.keys(summary.byCanal).sort() : []
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="nike-card border border-red-200 bg-red-50 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700">No se pudieron cargar los datos de Share of Shelf</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* KPIs globales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KPICard
           title="Visibilidad Nike"
-          value={loading ? '—' : pct(summary?.global.nike ?? null)}
-          subtitle={`Promedio en ${summary?.global.n ?? 0} búsquedas`}
+          value={pct(summary?.global?.nike)}
+          subtitle={`Promedio en ${summary?.global?.n ?? 0} búsquedas`}
           icon={<Search size={18} />}
           color="#E31837"
           loading={loading}
         />
         <KPICard
           title="Visibilidad Adidas"
-          value={loading ? '—' : pct(summary?.global.adidas ?? null)}
+          value={pct(summary?.global?.adidas)}
           subtitle="Promedio en buscadores"
           icon={<Search size={18} />}
           color="#0046CC"
@@ -72,7 +99,7 @@ export default function ShelfPage() {
         />
         <KPICard
           title="Visibilidad Puma"
-          value={loading ? '—' : pct(summary?.global.puma ?? null)}
+          value={pct(summary?.global?.puma)}
           subtitle="Promedio en buscadores"
           icon={<Search size={18} />}
           color="#E4032E"
@@ -80,7 +107,7 @@ export default function ShelfPage() {
         />
         <KPICard
           title="Retailers"
-          value={loading ? '—' : canales.length.toString()}
+          value={canales.length.toString()}
           subtitle="Monitoreados con búsquedas"
           icon={<Share2 size={18} />}
           color="#111111"
@@ -94,9 +121,14 @@ export default function ShelfPage() {
         <p className="text-xs text-gray-400 mb-4">
           % de términos de búsqueda donde la marca aparece primero (mejor posición) en el buscador del sitio.
         </p>
+        {!loading && canales.length === 0 && (
+          <p className="text-xs text-gray-400 py-6 text-center">
+            {error ? 'Sin datos por el error de arriba.' : 'Sin datos de búsquedas todavía.'}
+          </p>
+        )}
         <div className="space-y-4">
           {canales.map((canal) => {
-            const marcas = summary!.byCanal[canal].sort((a, b) => b.pct - a.pct)
+            const marcas = [...summary!.byCanal[canal]].sort((a, b) => b.pct - a.pct)
             return (
               <div key={canal}>
                 <div className="flex items-center justify-between mb-1.5">

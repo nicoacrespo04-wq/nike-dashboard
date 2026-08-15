@@ -1,54 +1,254 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
+/* ══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   Single source of truth for colours, spacing, radii and elevation.
+   Mirrors tailwind.config.ts so raw CSS (charts, SVG, pseudo-elements) can
+   reach the same values.
+   ══════════════════════════════════════════════════════════════════════════ */
 :root {
+  /* Marca */
   --nike-black: #111111;
   --nike-red: #E31837;
   --nike-white: #FFFFFF;
   --nike-gray: #F5F5F5;
   --nike-dark-gray: #757575;
-  --bml-beat: #E31837;
+  --brand-adidas: #0046CC;
+  --brand-puma: #E4032E;
+
+  /* Texto */
+  --ink: #111111;
+  --ink-soft: #3D3D3D;
+  --ink-muted: #757575;
+  --ink-faint: #9B9B9B;
+
+  /* Superficies */
+  --surface: #FFFFFF;
+  --surface-muted: #FAFAFA;
+  --surface-page: #F5F5F5;
+  --surface-sunken: #F0F0F0;
+  --border: #EDEDED;
+  --border-strong: #DCDCDC;
+
+  /* ── BML ────────────────────────────────────────────────────────────────
+     Semántica (NO invertir):
+       BEAT = Nike más barato  → verde
+       MEET = precio similar   → naranja
+       LOSE = Nike más caro    → rojo
+     ---------------------------------------------------------------------- */
+  --bml-beat: #27AE60;
   --bml-meet: #F5A623;
-  --bml-lose: #27AE60;
+  --bml-lose: #E31837;
   --bml-nd: #9B9B9B;
+
+  --bml-beat-soft: #E7F6ED;
+  --bml-meet-soft: #FEF3E0;
+  --bml-lose-soft: #FCE8EC;
+  --bml-nd-soft: #F2F2F2;
+  --bml-beat-ink: #1B7A43;
+  --bml-meet-ink: #9A6206;
+  --bml-lose-ink: #A81028;
+  --bml-nd-ink: #6B6B6B;
+
+  /* Radios y elevación */
+  --radius-card: 0.75rem;
+  --shadow-card: 0 1px 2px 0 rgba(17, 17, 17, 0.04), 0 1px 3px 0 rgba(17, 17, 17, 0.04);
+  --shadow-popover: 0 8px 24px -6px rgba(17, 17, 17, 0.18), 0 2px 6px -2px rgba(17, 17, 17, 0.08);
+
+  /* Ritmo vertical */
+  --space-card: 1.25rem;
+  --space-section: 1.5rem;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-  background: #F5F5F5;
-  color: #111111;
+  background: var(--surface-page);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar Nike */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #F5F5F5; }
-::-webkit-scrollbar-thumb { background: #CCCCCC; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #111111; }
-
-/* BML badges */
-.bml-beat  { @apply bg-red-100 text-red-700 font-semibold; }
-.bml-meet  { @apply bg-yellow-100 text-yellow-700 font-semibold; }
-.bml-lose  { @apply bg-green-100 text-green-700 font-semibold; }
-.bml-nd    { @apply bg-gray-100 text-gray-500 font-semibold; }
-
-/* Table styles */
-.nike-table { @apply w-full text-sm; }
-.nike-table thead tr { @apply bg-nike-black text-white; }
-.nike-table thead th { @apply px-3 py-3 text-left font-semibold tracking-wide text-xs uppercase; }
-.nike-table tbody tr { @apply border-b border-gray-100 hover:bg-gray-50 transition-colors; }
-.nike-table tbody td { @apply px-3 py-2.5 text-gray-700; }
-
-/* Card */
-.nike-card {
-  @apply bg-white rounded-xl shadow-sm border border-gray-100 p-5;
+/* Foco visible y consistente en TODO control interactivo.
+   `:focus-visible` evita el anillo al hacer click con mouse. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--nike-red);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Sidebar active */
-.sidebar-link { @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all text-sm font-medium; }
-.sidebar-link.active { @apply text-white bg-nike-red; }
+/* Scrollbar Nike */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--surface-page); }
+::-webkit-scrollbar-thumb { background: #CCCCCC; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--nike-black); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+
+  /* ════════════════════════════════════════════════════════════════════════
+     CARD
+     ════════════════════════════════════════════════════════════════════════ */
+  .nike-card {
+    @apply bg-white rounded-card shadow-card border border-surface-border p-card;
+  }
+
+  /* Card sin padding: para tablas y contenido que sangra hasta el borde.
+     Reemplaza el patrón ad-hoc `nike-card !p-0 overflow-hidden`. */
+  .nike-card-flush {
+    @apply bg-white rounded-card shadow-card border border-surface-border overflow-hidden p-0;
+  }
+
+  /* Header interno de una card flush (título + acciones) */
+  .nike-card-header {
+    @apply px-card py-4 border-b border-surface-border flex items-start justify-between gap-4;
+  }
+
+  .nike-card-body {
+    @apply p-card;
+  }
+
+  .nike-card-interactive {
+    @apply transition-shadow duration-fast hover:shadow-card-hover;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TIPOGRAFÍA — jerarquía numérica
+     ════════════════════════════════════════════════════════════════════════ */
+
+  /* Cifras alineadas verticalmente en columnas numéricas */
+  .tabnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  /* Etiqueta recesiva (títulos de KPI, encabezados de sección) */
+  .label-caps {
+    @apply text-label font-semibold uppercase text-nike-muted;
+  }
+
+  /* El número protagonista de una card */
+  .metric-value {
+    @apply font-extrabold text-nike-ink tabnum;
+  }
+
+  /* Texto secundario bajo un número */
+  .metric-support {
+    @apply text-xs text-nike-muted;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TABLA
+     ════════════════════════════════════════════════════════════════════════ */
+
+  /* Contenedor con scroll horizontal propio: la tabla ancha nunca empuja
+     el layout de la página. Combinar con `max-h-*` para header sticky. */
+  .nike-table-wrap {
+    @apply w-full min-w-0 overflow-x-auto overflow-y-auto overscroll-x-contain;
+  }
+
+  .nike-table { @apply w-full text-sm border-collapse; }
+
+  .nike-table thead tr { @apply bg-nike-black text-white; }
+
+  .nike-table thead th {
+    @apply px-3 py-3 text-left font-semibold tracking-wide text-xs uppercase bg-nike-black text-white whitespace-nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+
+  /* Escape hatch para tablas donde el sticky no aplica */
+  .nike-table-static thead th { position: static; }
+
+  .nike-table tbody tr { @apply border-b border-gray-100 transition-colors duration-fast; }
+
+  /* Zebra sutil: suficiente para guiar el ojo, no tanto como para competir
+     con el resaltado de hover. */
+  .nike-table tbody tr:nth-child(even) { @apply bg-surface-muted; }
+
+  /* El hover se define DESPUÉS de la zebra para ganar en cascada */
+  .nike-table tbody tr:hover { background-color: #F4F4F4; }
+
+  .nike-table tbody td { @apply px-3 py-2.5 text-gray-700 align-middle; }
+
+  /* Celdas numéricas: derecha + cifras tabulares */
+  .nike-table .num,
+  .nike-table td.num,
+  .nike-table th.num { @apply text-right tabnum whitespace-nowrap; }
+
+  /* Fila seleccionada / destacada */
+  .nike-table tbody tr[data-highlight='true'] {
+    box-shadow: inset 2px 0 0 0 var(--nike-red);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     BADGES
+     ════════════════════════════════════════════════════════════════════════ */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded px-2 py-0.5 text-micro font-bold uppercase tracking-wide whitespace-nowrap;
+  }
+
+  /* BML — colores corregidos para respetar la semántica documentada.
+     (Antes `.bml-beat` era rojo y `.bml-lose` verde, invertido respecto de
+     getBMLColor() en lib/utils.ts.) */
+  .bml-beat { background: var(--bml-beat-soft); color: var(--bml-beat-ink); @apply font-semibold; }
+  .bml-meet { background: var(--bml-meet-soft); color: var(--bml-meet-ink); @apply font-semibold; }
+  .bml-lose { background: var(--bml-lose-soft); color: var(--bml-lose-ink); @apply font-semibold; }
+  .bml-nd   { background: var(--bml-nd-soft);   color: var(--bml-nd-ink);   @apply font-semibold; }
+
+  /* Marca */
+  .badge-nike   { @apply bg-nike-black text-white; }
+  .badge-adidas { @apply text-white; background: var(--brand-adidas); }
+  .badge-puma   { @apply text-white; background: var(--brand-puma); }
+  .badge-neutral { @apply bg-gray-100 text-gray-600; }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     CONTROLES DE FILTRO
+     ════════════════════════════════════════════════════════════════════════ */
+  .field-control {
+    @apply border border-surface-border-strong rounded-lg px-3 py-2 text-sm text-gray-700 bg-white
+           transition-colors duration-fast hover:border-gray-400
+           focus:outline-none focus:border-nike-black;
+  }
+
+  .segmented {
+    @apply inline-flex rounded-lg border border-surface-border-strong overflow-hidden text-xs font-semibold bg-white;
+  }
+
+  .segmented-item {
+    @apply px-4 py-2 transition-colors duration-fast text-gray-600 hover:bg-gray-50;
+  }
+
+  .segmented-item[aria-pressed='true'],
+  .segmented-item[data-active='true'] {
+    @apply bg-nike-black text-white hover:bg-nike-black;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     SKELETON
+     ════════════════════════════════════════════════════════════════════════ */
+  .skeleton {
+    @apply rounded bg-gray-200;
+    background-image: linear-gradient(90deg, #E9E9E9 0%, #F3F3F3 40%, #E9E9E9 80%);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     SIDEBAR (sin cambios de API)
+     ════════════════════════════════════════════════════════════════════════ */
+  .sidebar-link { @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all text-sm font-medium; }
+  .sidebar-link.active { @apply text-white bg-nike-red; }
+}

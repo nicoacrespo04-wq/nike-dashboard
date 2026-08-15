@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+
 // Heat-map BML (Beat/Meet/Lose) por retailer x franchise, SOLO filas de
 // productos Nike vendidos en retailers B2B (comparados contra el precio
 // de nike.com.ar via nike_ar_general, que es lo que ya calcula
@@ -29,7 +30,7 @@ export async function GET() {
         COUNT(*) FILTER (WHERE bml_final_price NOT IN ('BEAT','MEET','LOSE') OR bml_final_price IS NULL) AS nd,
         ROUND(AVG(gap_final_price_pct) FILTER (WHERE gap_final_price_pct IS NOT NULL)::numeric, 4) AS avg_gap_pct
       FROM pricing_data
-      WHERE marca = 'NIKE'
+      WHERE UPPER(marca) = 'NIKE'
         AND scraper NOT IN ('nike_ar_general','nike_co_general','nike_us_general','URU','USA','ADIDAS_7','Puma_AR')
       GROUP BY scraper, franchise
       HAVING COUNT(*) >= 3

@@ -20,15 +20,24 @@ function createPool(): Pool {
   })
 }
 
-// Singleton para evitar múltiples pools en dev (hot-reload)
-const pool = global._pgPool ?? createPool()
-if (process.env.NODE_ENV !== 'production') global._pgPool = pool
+/**
+ * Singleton perezoso para evitar múltiples pools en dev (hot-reload).
+ *
+ * Se crea en el primer `query()`, NO al importar el módulo: durante
+ * `next build` Next.js importa cada route handler para recolectar metadata y,
+ * si el pool se creaba en el import, el build entero fallaba con
+ * "DATABASE_URL no está configurada" en cualquier entorno sin base.
+ */
+export function getPool(): Pool {
+  if (!global._pgPool) global._pgPool = createPool()
+  return global._pgPool
+}
 
 export async function query<T = Record<string, unknown>>(
   sql: string,
   params?: unknown[]
 ): Promise<T[]> {
-  const client = await pool.connect()
+  const client = await getPool().connect()
   try {
     const result = await client.query(sql, params)
     return result.rows as T[]
@@ -45,7 +54,7 @@ export async function queryOne<T = Record<string, unknown>>(
   return rows[0] ?? null
 }
 
-export default pool
+export default getPool
 
 // ── Tipos TypeScript para la tabla principal ──────────────────
 

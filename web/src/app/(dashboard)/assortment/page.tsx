@@ -2,21 +2,35 @@
 
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { AlertTriangle } from 'lucide-react'
 import KPICard from '@/components/ui/KPICard'
 import { formatPrice } from '@/lib/utils'
+import { fetchJson, errorMessage } from '@/lib/fetchJson'
 
 export default function AssortmentPage() {
   const [data, setData]       = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
   const [tab, setTab]         = useState<'franchises'|'siluetas'|'gaps'>('franchises')
 
   useEffect(() => {
+    let cancelled = false
     Promise.all([
-      fetch('/api/pricing/franchises').then(r => r.json()),
-      fetch('/api/pricing/siluetas').then(r => r.json()),
-    ]).then(([fr, si]) => {
-      setData({ franchises: fr.franchises ?? [], siluetas: si.siluetas ?? [] })
-    }).finally(() => setLoading(false))
+      fetchJson<{ franchises: any[] }>('/api/pricing/franchises'),
+      fetchJson<{ siluetas: any[] }>('/api/pricing/siluetas'),
+    ])
+      .then(([fr, si]) => {
+        if (cancelled) return
+        setData({ franchises: fr.franchises ?? [], siluetas: si.siluetas ?? [] })
+        setError(null)
+      })
+      .catch(err => {
+        if (cancelled) return
+        setError(errorMessage(err))
+        setData({ franchises: [], siluetas: [] })
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   const franchises = data?.franchises ?? []
@@ -43,11 +57,22 @@ export default function AssortmentPage() {
       }
       return acc
     }, [])
-    .sort((a, b) => (b.NIKE || 0) + (b.ADIDAS || 0) + (b.Puma || 0) - ((a.NIKE || 0) + (a.ADIDAS || 0) + (a.Puma || 0)))
+    // El endpoint devuelve la marca normalizada con UPPER(): 'NIKE'/'ADIDAS'/'PUMA'.
+    .sort((a, b) => (b.NIKE || 0) + (b.ADIDAS || 0) + (b.PUMA || 0) - ((a.NIKE || 0) + (a.ADIDAS || 0) + (a.PUMA || 0)))
     .slice(0, 15)
 
   return (
     <div className="space-y-6">
+
+      {error && (
+        <div className="nike-card border border-red-200 bg-red-50 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700">No se pudieron cargar los datos de Assortment</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -144,7 +169,7 @@ export default function AssortmentPage() {
               <Legend />
               <Bar dataKey="NIKE"   fill="#111111" radius={[3,3,0,0]} />
               <Bar dataKey="ADIDAS" fill="#0046CC" radius={[3,3,0,0]} />
-              <Bar dataKey="Puma"   fill="#E4032E" radius={[3,3,0,0]} />
+              <Bar dataKey="PUMA"   fill="#E4032E" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

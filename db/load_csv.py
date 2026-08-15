@@ -12,9 +12,18 @@ Variables de entorno:
     CSV_PATH       — path al CSV (opcional, usa default si no se setea)
     BATCH_SIZE     — filas por batch (default: 500)
     TRUNCATE       — si "true", trunca la tabla antes de insertar
+
+    ── Sanitización de precios (ver bloque "SANITIZACIÓN DE PRECIOS") ──
+    PRICE_SANITIZE            — "false" para desactivarla (default: true)
+    PRICE_MIN_ARS             — piso plausible en ARS (default: 1000)
+    PRICE_MAX_ARS             — techo plausible en ARS (default: 2000000)
+    PRICE_MAX_CUOTAS          — máx. de cuotas parseables (default: 24)
+    PRICE_INVALIDATE_DERIVED  — "false" para NO anular gaps/BML/USD de las
+                                filas cuyo precio fue corregido (default: true)
 """
 import csv
 import os
+import re
 import sys
 import time
 import uuid
@@ -34,6 +43,13 @@ CSV_PATH    = sys.argv[1] if len(sys.argv) > 1 else os.getenv("CSV_PATH", DEFAUL
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 BATCH_SIZE   = int(os.getenv("BATCH_SIZE", "500"))
 DO_TRUNCATE  = os.getenv("TRUNCATE", "false").lower() == "true"
+
+# ── Sanitización de precios ───────────────────────────────────
+PRICE_SANITIZE           = os.getenv("PRICE_SANITIZE", "true").lower() != "false"
+PRICE_MIN_ARS            = float(os.getenv("PRICE_MIN_ARS", "1000"))
+PRICE_MAX_ARS            = float(os.getenv("PRICE_MAX_ARS", "2000000"))
+PRICE_MAX_CUOTAS         = int(os.getenv("PRICE_MAX_CUOTAS", "24"))
+PRICE_INVALIDATE_DERIVED = os.getenv("PRICE_INVALIDATE_DERIVED", "true").lower() != "false"
 
 # Columnas del CSV → columnas de la tabla
 COL_MAP = {
@@ -140,6 +156,133 @@ def log(msg: str):
     print(f"[{ts}] {msg}", flush=True)
 
 
+# ══════════════════════════════════════════════════════════════
+# SANITIZACIÓN DE PRECIOS
+# ══════════════════════════════════════════════════════════════
+# Los scrapers originales no están en este repo y el CSV llega con dos tipos
+# de basura conocidos:
+#
+#  1) PRECIO INFLADO POR CUOTAS
+#     El parser se comió el "N cuotas sin interés" y guardó el TOTAL
+#     financiado en vez del precio unitario. Los casos reportados son
+#     exactamente 8x el precio real:
+#         2.639.992 = 329.999 x 8
+#         2.399.992 = 299.999 x 8
+#         2.079.992 = 259.999 x 8
+#
+#  2) PRECIO EN 0
+#     `Competitor_Final_Price = 0` NO significa "gratis": es dato ausente.
+#     Si entra a la base contamina compliance, violaciones de PVP (aparece
+#     como -100%), gaps, promedios, markdown y BML.
+#
+# CRITERIO (heurística sobre datos sucios — ajustable por env var):
+#   · `<= 0`                        → NULL (dato ausente)
+#   · dentro de [MIN, MAX]          → se deja como está
+#   · fuera de rango + cuotas conocidas y `precio/cuotas` plausible
+#                                   → se corrige dividiendo por las cuotas
+#   · fuera de rango sin corrección → NULL (preferimos N/D antes que un
+#                                     número que el negocio no puede usar)
+#
+# No adivinamos el divisor cuando las cuotas no vienen declaradas: varios
+# divisores podrían "funcionar" y sería inventar dato.
+#
+# El mismo criterio está replicado en `web/src/lib/price.ts` (capa de
+# lectura). Si se cambia acá, cambiarlo allá también.
+# ══════════════════════════════════════════════════════════════
+
+# Grupos precio → columna de cuotas que puede explicar el inflado.
+PRICE_GROUPS = [
+    (("competitor_final_price", "competitor_full_price", "competitor_price_shipping"),
+     "cuotas_competitor"),
+    (("nike_final_price", "nike_full_price", "nike_price_shipping"),
+     "cuotas_nike"),
+]
+
+# Columnas derivadas del precio del competidor. Si el precio de origen fue
+# corregido o descartado, lo que el CSV traía calculado sobre el valor sucio
+# ya no es confiable: se anula para que la UI muestre N/D en vez de un número
+# derivado de basura.
+COMPETITOR_DERIVED_COLS = (
+    "gap_final_price_pct", "gap_full_price_pct", "gap_shipping_pct",
+    "price_index",
+    "competitor_price_usd", "competitor_price_usd_iva", "competitor_price_usd_iva_bf",
+    "gap_full_price_usd", "gap_full_price_usd_iva", "gap_full_price_usd_iva_bf",
+    "gap_final_price_usd", "gap_markdown_price_usd",
+    "bml_final_price", "bml_full_price", "bml_with_shipping", "bml_cuotas",
+    "bml_vs_nikear", "bml_vs_nikear_iva", "bml_vs_nikear_iva_bf",
+)
+
+_CUOTAS_RE = re.compile(r"\d+")
+
+
+def parse_cuotas(raw):
+    """'8 cuotas sin interés' / '12x' / 6 → int. None si no se puede inferir."""
+    if raw is None:
+        return None
+    m = _CUOTAS_RE.search(str(raw))
+    if not m:
+        return None
+    cuotas = int(m.group(0))
+    if cuotas < 2 or cuotas > PRICE_MAX_CUOTAS:
+        return None
+    return cuotas
+
+
+def is_plausible_price(value) -> bool:
+    if value is None:
+        return False
+    return PRICE_MIN_ARS <= value <= PRICE_MAX_ARS
+
+
+def sanitize_price(value, cuotas):
+    """
+    Devuelve (precio_saneado, motivo).
+    motivo ∈ {None, 'zero', 'cuotas', 'out_of_range'}
+    """
+    if value is None:
+        return None, None
+    if value <= 0:
+        return None, "zero"
+    if is_plausible_price(value):
+        return value, None
+    if cuotas:
+        unit = value / cuotas
+        if is_plausible_price(unit):
+            return round(unit, 2), "cuotas"
+    return None, "out_of_range"
+
+
+def sanitize_prices(record: dict, stats: dict) -> None:
+    """Sanea in-place los precios de una fila ya mapeada a columnas de la tabla."""
+    if not PRICE_SANITIZE:
+        return
+
+    competitor_touched = False
+
+    for cols, cuotas_col in PRICE_GROUPS:
+        cuotas = parse_cuotas(record.get(cuotas_col))
+        for col in cols:
+            original = record.get(col)
+            fixed, reason = sanitize_price(original, cuotas)
+            if reason is None:
+                continue
+            record[col] = fixed
+            stats[reason] = stats.get(reason, 0) + 1
+            stats.setdefault("by_col", {})
+            stats["by_col"][col] = stats["by_col"].get(col, 0) + 1
+            if cuotas_col == "cuotas_competitor":
+                competitor_touched = True
+
+    if competitor_touched and PRICE_INVALIDATE_DERIVED:
+        invalidated = False
+        for col in COMPETITOR_DERIVED_COLS:
+            if record.get(col) is not None:
+                record[col] = None
+                invalidated = True
+        if invalidated:
+            stats["derived_invalidated"] = stats.get("derived_invalidated", 0) + 1
+
+
 def main():
     if not DATABASE_URL:
         print("ERROR: DATABASE_URL no está configurada.")
@@ -169,8 +312,17 @@ def main():
         conn.commit()
 
     log(f"Leyendo CSV: {CSV_PATH}")
+    if PRICE_SANITIZE:
+        log(f"Sanitización de precios ACTIVA — rango plausible "
+            f"[{PRICE_MIN_ARS:,.0f}, {PRICE_MAX_ARS:,.0f}] ARS, "
+            f"cuotas máx {PRICE_MAX_CUOTAS}, "
+            f"invalidar derivados: {PRICE_INVALIDATE_DERIVED}")
+    else:
+        log("Sanitización de precios DESACTIVADA (PRICE_SANITIZE=false)")
+
     total = inserted = errors = 0
     batch = []
+    price_stats: dict = {}
     start = time.time()
 
     db_cols = list(COL_MAP.values())
@@ -185,7 +337,10 @@ def main():
         for row in reader:
             total += 1
             try:
-                values = tuple(clean(row.get(csv_col, ""), db_col) for csv_col, db_col in COL_MAP.items())
+                record = {db_col: clean(row.get(csv_col, ""), db_col)
+                          for csv_col, db_col in COL_MAP.items()}
+                sanitize_prices(record, price_stats)
+                values = tuple(record[db_col] for db_col in db_cols)
                 batch.append(values)
             except Exception as e:
                 errors += 1
@@ -235,6 +390,16 @@ def main():
     log(f"  Total filas CSV : {total:,}")
     log(f"  Insertadas      : {inserted:,}")
     log(f"  Errores         : {errors:,}")
+
+    if PRICE_SANITIZE:
+        by_col = price_stats.get("by_col", {})
+        log("  ── Sanitización de precios ──")
+        log(f"  Precios <= 0 → NULL          : {price_stats.get('zero', 0):,}")
+        log(f"  Corregidos por cuotas (/N)   : {price_stats.get('cuotas', 0):,}")
+        log(f"  Fuera de rango → NULL        : {price_stats.get('out_of_range', 0):,}")
+        log(f"  Filas con derivados anulados : {price_stats.get('derived_invalidated', 0):,}")
+        for col, n in sorted(by_col.items(), key=lambda kv: -kv[1]):
+            log(f"      · {col}: {n:,}")
     log("=" * 50)
 
 

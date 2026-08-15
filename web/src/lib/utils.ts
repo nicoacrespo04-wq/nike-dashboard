@@ -15,6 +15,21 @@ export function formatPrice(value: number | null | undefined, currency = 'ARS'):
   return currency === 'ARS' ? `$${formatted}` : `${currency} ${formatted}`
 }
 
+/**
+ * Formatea un ratio 0..1 (ej. `nike_visibility`) como porcentaje entero.
+ * Devuelve `emptyLabel` ("N/D" por defecto) cuando no hay dato, para que la
+ * tarjeta nunca quede vacía ni muestre un valor engañoso.
+ */
+export function formatRatioPct(
+  value: number | string | null | undefined,
+  emptyLabel = 'N/D'
+): string {
+  if (value === null || value === undefined || value === '') return emptyLabel
+  const n = Number(value)
+  if (!Number.isFinite(n)) return emptyLabel
+  return `${Math.round(n * 100)}%`
+}
+
 export function formatPct(value: number | null | undefined): string {
   if (value == null || isNaN(value)) return 'N/D'
   const pct = value * 100

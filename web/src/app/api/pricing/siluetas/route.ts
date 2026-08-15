@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { validPriceSql } from '@/lib/price'
 
 export const dynamic = 'force-dynamic'
+
+// Precio saneado (ver web/src/lib/price.ts).
+const FINAL = validPriceSql('competitor_final_price')
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -9,21 +13,21 @@ export async function GET(req: NextRequest) {
 
   const conditions = [`silueta IS NOT NULL`, `silueta <> ''`]
   const params: unknown[] = []
-  if (marca) { conditions.push(`marca = $1`); params.push(marca) }
-  else        { conditions.push(`marca IN ('ADIDAS','PUMA')`) }
+  if (marca) { conditions.push(`UPPER(marca) = UPPER($1)`); params.push(marca) }
+  else        { conditions.push(`UPPER(marca) IN ('ADIDAS','PUMA')`) }
 
   try {
     const rows = await query(`
       SELECT
         silueta,
-        marca,
-        COUNT(*)                                           AS count,
-        ROUND(AVG(competitor_final_price)::numeric, 0)    AS avg_price,
+        UPPER(marca)                                       AS marca,
+        COUNT(DISTINCT style_color)                        AS count,
+        ROUND(AVG(${FINAL})::numeric, 0)                   AS avg_price,
         COUNT(*) FILTER (WHERE bml_final_price = 'BEAT')  AS beat,
         COUNT(*) FILTER (WHERE bml_final_price = 'LOSE')  AS lose
       FROM pricing_data
       WHERE ${conditions.join(' AND ')}
-      GROUP BY silueta, marca
+      GROUP BY silueta, UPPER(marca)
       ORDER BY count DESC
     `, params)
 

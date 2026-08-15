@@ -2,25 +2,54 @@
 
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 import KPICard from '@/components/ui/KPICard'
 import { formatPrice, cn } from '@/lib/utils'
+import { fetchJson, errorMessage } from '@/lib/fetchJson'
+
+// Filas por página de la tabla de violaciones. El KPI NO usa este número:
+// usa `violations_total`, que viene de un COUNT(*) sin LIMIT.
+const VIOLATIONS_PAGE_SIZE = 50
 
 export default function ControlRetailersPage() {
   const [pvp, setPvp]           = useState<any>(null)
   const [markdown, setMarkdown] = useState<any>(null)
   const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
   const [tab, setTab]           = useState<'pvp'|'markdown'|'bml'>('pvp')
+  const [violationsPage, setViolationsPage] = useState(1)
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
     Promise.all([
-      fetch('/api/pricing/pvp-compliance').then(r => r.json()),
-      fetch('/api/pricing/markdown-analysis').then(r => r.json()),
-    ]).then(([p, m]) => { setPvp(p); setMarkdown(m) })
-    .finally(() => setLoading(false))
-  }, [])
+      fetchJson(`/api/pricing/pvp-compliance?page=${violationsPage}&pageSize=${VIOLATIONS_PAGE_SIZE}`),
+      fetchJson('/api/pricing/markdown-analysis'),
+    ])
+      .then(([p, m]) => {
+        if (cancelled) return
+        setPvp(p); setMarkdown(m)
+      })
+      .catch(err => {
+        if (cancelled) return
+        setError(errorMessage(err))
+        setPvp(null); setMarkdown(null)
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [violationsPage])
 
   const retailers   = pvp?.retailers   ?? []
   const violations  = pvp?.violations  ?? []
+  // Total REAL de violaciones (COUNT(*) en el endpoint). Antes el KPI usaba
+  // `violations.length`, que estaba topeado por el LIMIT de la tabla y por eso
+  // siempre decía 100.
+  const violationsTotal = Number(pvp?.violations_total ?? 0)
+  const violationsPageSize = Number(pvp?.violations_page_size ?? VIOLATIONS_PAGE_SIZE)
+  const violationsTotalPages = Number(pvp?.violations_total_pages ?? 0)
+  const violationsFrom = violationsTotal === 0 ? 0 : (violationsPage - 1) * violationsPageSize + 1
+  const violationsTo   = Math.min(violationsPage * violationsPageSize, violationsTotal)
   const byMarca     = markdown?.by_marca    ?? []
   const byRetailer  = markdown?.by_retailer ?? []
   const topMarkdowns = markdown?.top_markdowns ?? []
@@ -48,18 +77,31 @@ export default function ControlRetailersPage() {
   return (
     <div className="space-y-6">
 
+      {error && (
+        <div className="nike-card border border-red-200 bg-red-50 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700">No se pudieron cargar los datos de Control de Retailers</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KPICard loading={loading} title="Cumplimiento PVP promedio" value={`${avgCompliance}%`}
           subtitle="todos los retailers Nike" color={avgCompliance >= 90 ? '#27AE60' : avgCompliance >= 70 ? '#F5A623' : '#E31837'} />
-        <KPICard loading={loading} title="Violaciones PVP" value={violations.length}
-          subtitle="retailers vendiendo bajo precio sugerido" color="#E31837" />
+        <KPICard loading={loading} title="Violaciones PVP" value={violationsTotal.toLocaleString('es-AR')}
+          subtitle="SKUs por debajo del precio sugerido" color="#E31837" />
         <KPICard loading={loading} title="Catálogo Nike en promo"
-          value={nikeMarkdown ? `${nikeMarkdown.promo_pct}%` : '—'}
+          value={nikeMarkdown ? `${nikeMarkdown.promo_pct ?? 'N/D'}%` : 'N/D'}
           subtitle={`~${nikeMarkdown?.avg_markdown_pct ?? 0}% descuento promedio`} color="#F5A623" />
         <KPICard loading={loading} title="Catálogo Adidas en promo"
-          value={adidasMarkdown ? `${adidasMarkdown.promo_pct}%` : '—'}
+          value={adidasMarkdown ? `${adidasMarkdown.promo_pct ?? 'N/D'}%` : 'N/D'}
           subtitle="vs Nike en retailers compartidos" color="#0046CC" />
+        <KPICard loading={loading} title="Catálogo Puma en promo"
+          value={pumaMarkdown ? `${pumaMarkdown.promo_pct ?? 'N/D'}%` : 'N/D'}
+          subtitle="vs Nike en retailers compartidos" color="#E4032E" />
       </div>
 
       {/* Tabs */}
@@ -79,7 +121,9 @@ export default function ControlRetailersPage() {
           <div className="nike-card !p-0 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Cumplimiento por Retailer</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Verde ≥90% · Amarillo 70-90% · Rojo &lt;70%</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Verde ≥90% · Amarillo 70-90% · Rojo &lt;70% · Cumplen + Bajo + Sobre = Con PVP
+              </p>
             </div>
             <table className="nike-table">
               <thead><tr>
@@ -89,11 +133,12 @@ export default function ControlRetailersPage() {
                 <th className="text-right">Cumplen</th>
                 <th className="text-right">Bajo PVP</th>
                 <th className="text-right">Sobre PVP</th>
+                <th className="text-right">Sin precio</th>
                 <th className="text-center">Cumplimiento</th>
               </tr></thead>
               <tbody>
                 {loading
-                  ? Array.from({length:8}).map((_,i) => <tr key={i} className="animate-pulse border-b"><td colSpan={7}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td></tr>)
+                  ? Array.from({length:8}).map((_,i) => <tr key={i} className="animate-pulse border-b"><td colSpan={8}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td></tr>)
                   : retailers.map((r: any) => (
                     <tr key={r.scraper}>
                       <td className="font-semibold">{r.scraper}</td>
@@ -102,6 +147,11 @@ export default function ControlRetailersPage() {
                       <td className="text-right font-mono text-green-600">{Number(r.compliant).toLocaleString('es-AR')}</td>
                       <td className="text-right font-mono text-red-600">{Number(r.below_pvp).toLocaleString('es-AR')}</td>
                       <td className="text-right font-mono text-yellow-600">{Number(r.above_pvp).toLocaleString('es-AR')}</td>
+                      {/* Filas con PVP pero sin precio usable (0 o inflado por
+                          cuotas): quedan fuera de los 3 buckets a propósito. */}
+                      <td className="text-right font-mono text-gray-400" title="Con PVP pero sin precio de competidor válido (N/D)">
+                        {Number(r.without_price ?? 0).toLocaleString('es-AR')}
+                      </td>
                       <td className="text-center"><ComplianceBadge pct={r.compliance_pct} /></td>
                     </tr>
                   ))
@@ -110,29 +160,58 @@ export default function ControlRetailersPage() {
             </table>
           </div>
 
-          {violations.length > 0 && (
+          {!loading && violationsTotal > 0 && (
             <div className="nike-card !p-0 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-500" />
                 <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Violaciones de Precio Sugerido</h2>
-                <span className="text-xs text-gray-400 ml-auto">{violations.length} productos</span>
+                <span className="text-xs text-gray-400 ml-auto">
+                  Mostrando {violationsFrom.toLocaleString('es-AR')}–{violationsTo.toLocaleString('es-AR')} de {violationsTotal.toLocaleString('es-AR')} productos
+                </span>
               </div>
-              <table className="nike-table">
-                <thead><tr><th>Retailer</th><th>Producto</th><th>Franchise</th><th className="text-right">Precio Comp.</th><th className="text-right">PVP Sugerido</th><th className="text-right">Diferencia</th><th>Link</th></tr></thead>
-                <tbody>
-                  {violations.slice(0,50).map((v: any, i: number) => (
-                    <tr key={i}>
-                      <td><span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded font-medium">{v.scraper}</span></td>
-                      <td className="text-gray-800">{v.marketing_name}</td>
-                      <td className="text-xs text-gray-500">{v.franchise_scrapper ?? '—'}</td>
-                      <td className="text-right text-red-600 font-semibold">{formatPrice(v.competitor_final_price)}</td>
-                      <td className="text-right text-gray-600">{formatPrice(v.precio_sugerido)}</td>
-                      <td className="text-right font-bold text-red-600">{v.diff_pct}%</td>
-                      <td>{v.link_pdp_competitor ? <a href={v.link_pdp_competitor} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">Ver →</a> : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="nike-table">
+                  <thead><tr><th>Retailer</th><th>StyleColor</th><th>Producto</th><th>Franchise</th><th className="text-right">Precio Comp.</th><th className="text-right">PVP Sugerido</th><th className="text-right">Diferencia</th><th>Link</th></tr></thead>
+                  <tbody>
+                    {violations.map((v: any, i: number) => (
+                      <tr key={`${v.scraper}-${v.style_color}-${i}`}>
+                        <td><span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded font-medium">{v.scraper}</span></td>
+                        <td className="font-mono text-xs text-gray-600">{v.style_color ?? '—'}</td>
+                        <td className="text-gray-800">{v.marketing_name ?? '—'}</td>
+                        <td className="text-xs text-gray-500">{v.franchise_scrapper ?? '—'}</td>
+                        {/* formatPrice devuelve "N/D" para null: nunca "$0". */}
+                        <td className="text-right text-red-600 font-semibold">{formatPrice(v.competitor_final_price)}</td>
+                        <td className="text-right text-gray-600">{formatPrice(v.precio_sugerido)}</td>
+                        <td className="text-right font-bold text-red-600">{v.diff_pct != null ? `${v.diff_pct}%` : 'N/D'}</td>
+                        <td>{v.link_pdp_competitor ? <a href={v.link_pdp_competitor} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">Ver →</a> : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {violationsTotalPages > 1 && (
+                <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">
+                    Página {violationsPage} de {violationsTotalPages.toLocaleString('es-AR')}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setViolationsPage(p => Math.max(1, p - 1))}
+                      disabled={violationsPage <= 1}
+                      className="inline-flex items-center gap-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft size={13} /> Anterior
+                    </button>
+                    <button
+                      onClick={() => setViolationsPage(p => Math.min(violationsTotalPages, p + 1))}
+                      disabled={violationsPage >= violationsTotalPages}
+                      className="inline-flex items-center gap-1 text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Siguiente <ChevronRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -150,11 +229,15 @@ export default function ControlRetailersPage() {
             ].map(({ marca, data: d, color }) => (
               <div key={marca} className="nike-card">
                 <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color }}>{marca}</p>
-                <p className="text-3xl font-bold text-gray-900 mb-1">{d?.promo_pct ?? '—'}%</p>
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {d?.promo_pct != null ? `${d.promo_pct}%` : 'N/D'}
+                </p>
                 <p className="text-xs text-gray-400">catálogo en promo</p>
                 <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs">
                   <span className="text-gray-500">Dto. promedio</span>
-                  <strong className="text-orange-600">{d?.avg_markdown_pct ?? '—'}%</strong>
+                  <strong className="text-orange-600">
+                    {d?.avg_markdown_pct != null ? `${d.avg_markdown_pct}%` : 'N/D'}
+                  </strong>
                 </div>
                 <div className="flex justify-between text-xs mt-1">
                   <span className="text-gray-500">SKUs en promo</span>
@@ -169,14 +252,16 @@ export default function ControlRetailersPage() {
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Top Descuentos Activos</h2>
             </div>
+            <div className="overflow-x-auto">
             <table className="nike-table">
-              <thead><tr><th>Marca</th><th>Producto</th><th>Franchise</th><th>Retailer</th><th className="text-right">Precio Original</th><th className="text-right">Precio Final</th><th className="text-right">Descuento</th><th className="text-center">BML</th></tr></thead>
+              <thead><tr><th>Marca</th><th>StyleColor</th><th>Producto</th><th>Franchise</th><th>Retailer</th><th className="text-right">Precio Original</th><th className="text-right">Precio Final</th><th className="text-right">Descuento</th><th className="text-center">BML</th></tr></thead>
               <tbody>
                 {loading
-                  ? Array.from({length:8}).map((_,i) => <tr key={i} className="animate-pulse border-b"><td colSpan={8}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td></tr>)
+                  ? Array.from({length:8}).map((_,i) => <tr key={i} className="animate-pulse border-b"><td colSpan={9}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td></tr>)
                   : topMarkdowns.slice(0,50).map((p: any, i: number) => (
                     <tr key={i}>
                       <td><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${p.marca === 'NIKE' ? 'bg-gray-900 text-white' : p.marca === 'ADIDAS' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>{p.marca}</span></td>
+                      <td className="font-mono text-[11px] text-gray-600">{p.style_color ?? '—'}</td>
                       <td className="text-gray-800 text-xs">{p.product_name_competitor?.slice(0,35) ?? '—'}</td>
                       <td className="text-xs text-gray-500">{p.franchise_competitor ?? '—'}</td>
                       <td className="text-xs"><span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{p.scraper}</span></td>
@@ -189,6 +274,7 @@ export default function ControlRetailersPage() {
                 }
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

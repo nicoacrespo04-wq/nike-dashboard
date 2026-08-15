@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { BarChart2, Filter, RefreshCw } from 'lucide-react'
+import { BarChart2, Filter, RefreshCw, AlertTriangle } from 'lucide-react'
 import KPICard from '@/components/ui/KPICard'
 import BMLDonut from '@/components/charts/BMLDonut'
 import FranchiseBar from '@/components/charts/FranchiseBar'
 import PricingTable from '@/components/tables/PricingTable'
 import { formatPrice, formatPct } from '@/lib/utils'
+import { fetchJson, errorMessage } from '@/lib/fetchJson'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Summary {
@@ -34,6 +35,25 @@ interface Filters {
   search:   string
 }
 
+interface FranchiseRow {
+  franchise:   string
+  marca:       string
+  division:    string | null
+  count:       number | string
+  avg_price:   number | string | null
+  promo_pct:   number | string | null
+  in_promo:    number | string | null
+  avg_gap_pct: number | string | null
+  beat:        number | string
+  meet:        number | string
+  lose:        number | string
+}
+
+interface FranchisesResponse {
+  franchises: FranchiseRow[]
+  categories: string[]
+}
+
 const DIVISIONES = [
   { value: '',         label: 'Todas las divisiones' },
   { value: 'FOOTWEAR', label: 'Footwear' },
@@ -58,13 +78,23 @@ export default function CompetenciaPage() {
   const [selectedFranchise, setSelectedFranchise] = useState('')
   const [activeTab, setActiveTab] = useState<'adidas' | 'PUMA' | 'both'>('both')
   const [filters, setFilters]     = useState<Filters>({ marca: '', division: '', canal: '', search: '' })
+  const [error, setError]         = useState<string | null>(null)
+
+  // ── Top Franchises Nike (bloque propio, con su filtro de categoría) ──
+  const [nikeFranchises, setNikeFranchises] = useState<FranchiseRow[]>([])
+  const [nikeCategories, setNikeCategories] = useState<string[]>([])
+  const [nikeCategory, setNikeCategory]     = useState('')
+  const [loadingNike, setLoadingNike]       = useState(true)
+  const [nikeError, setNikeError]           = useState<string | null>(null)
 
   // Fetch summary (KPIs + BML + top franchises)
   useEffect(() => {
-    fetch('/api/pricing/summary')
-      .then(r => r.json())
-      .then(setSummary)
-      .finally(() => setLoading(false))
+    let cancelled = false
+    fetchJson<Summary>('/api/pricing/summary')
+      .then(d => { if (!cancelled) { setSummary(d); setError(null) } })
+      .catch(err => { if (!cancelled) { setError(errorMessage(err)); setSummary(null) } })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   // Fetch franchises cuando cambian filtros
@@ -73,12 +103,35 @@ export default function CompetenciaPage() {
     if (filters.marca)    params.set('marca',    filters.marca)
     if (filters.division) params.set('division', filters.division)
     if (filters.canal)    params.set('canal',    filters.canal)
-    fetch(`/api/pricing/franchises?${params}`)
-      .then(r => r.json())
-      .then(d => setFranchises(d.franchises ?? []))
+    fetchJson<FranchisesResponse>(`/api/pricing/franchises?${params}`)
+      .then(d => { setFranchises(d.franchises ?? []); setError(null) })
+      .catch(err => { setError(errorMessage(err)); setFranchises([]) })
   }, [filters])
 
   useEffect(() => { fetchFranchises() }, [fetchFranchises])
+
+  // Fetch franchises Nike — independiente de los filtros de arriba (que son
+  // de Adidas/Puma); sólo lo afecta el filtro de categoría de su propio bloque.
+  useEffect(() => {
+    let cancelled = false
+    setLoadingNike(true)
+    const params = new URLSearchParams({ marca: 'NIKE' })
+    if (nikeCategory) params.set('category', nikeCategory)
+    fetchJson<FranchisesResponse>(`/api/pricing/franchises?${params}`)
+      .then(d => {
+        if (cancelled) return
+        setNikeFranchises(d.franchises ?? [])
+        setNikeCategories(d.categories ?? [])
+        setNikeError(null)
+      })
+      .catch(err => {
+        if (cancelled) return
+        setNikeError(errorMessage(err))
+        setNikeFranchises([])
+      })
+      .finally(() => { if (!cancelled) setLoadingNike(false) })
+    return () => { cancelled = true }
+  }, [nikeCategory])
 
   // Fetch products
   const fetchProducts = useCallback(() => {
@@ -90,9 +143,9 @@ export default function CompetenciaPage() {
     if (filters.search)       params.set('search',    filters.search)
     if (selectedFranchise)    params.set('franchise', selectedFranchise)
     if (!filters.marca)       params.set('marca',     activeTab === 'adidas' ? 'ADIDAS' : activeTab === 'PUMA' ? 'PUMA' : '')
-    fetch(`/api/pricing/products?${params}`)
-      .then(r => r.json())
-      .then(d => { setProducts(d.products ?? []); setTotalProds(d.total ?? 0) })
+    fetchJson<{ products: any[]; total: number }>(`/api/pricing/products?${params}`)
+      .then(d => { setProducts(d.products ?? []); setTotalProds(d.total ?? 0); setError(null) })
+      .catch(err => { setError(errorMessage(err)); setProducts([]); setTotalProds(0) })
       .finally(() => setLoadingProds(false))
   }, [page, filters, selectedFranchise, activeTab])
 
@@ -104,13 +157,25 @@ export default function CompetenciaPage() {
   const totalMeet = Number(summary?.kpis?.total_meet ?? 0)
   const totalLose = Number(summary?.kpis?.total_lose ?? 0)
   const totalAll  = totalBeat + totalMeet + totalLose
+  // BEAT = Nike más barato (gana) · LOSE = Nike más caro (pierde). Ver lib/utils.ts.
   const beatPct   = totalAll > 0 ? Math.round((totalBeat / totalAll) * 100) : 0
+  const losePct   = totalAll > 0 ? Math.round((totalLose / totalAll) * 100) : 0
 
   const adidasFranchises = franchises.filter(f => f.marca === 'ADIDAS')
   const pumaFranchises   = franchises.filter(f => f.marca === 'PUMA')
 
   return (
     <div className="space-y-6">
+
+      {error && (
+        <div className="nike-card border border-red-200 bg-red-50 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700">No se pudieron cargar los datos de Competencia</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -138,7 +203,7 @@ export default function CompetenciaPage() {
         <KPICard
           loading={loading}
           title="LOSE Nike"
-          value={`${beatPct}%`}
+          value={`${losePct}%`}
           subtitle={`Competencia más barata`}
           color="#E31837"
           valueSize="md"
@@ -146,7 +211,7 @@ export default function CompetenciaPage() {
         <KPICard
           loading={loading}
           title="Nike Gana"
-          value={`${totalAll > 0 ? Math.round((totalLose / totalAll) * 100) : 0}%`}
+          value={`${beatPct}%`}
           subtitle={`Nike más barato`}
           color="#27AE60"
           valueSize="md"
@@ -163,7 +228,7 @@ export default function CompetenciaPage() {
         >
           <option value="">Adidas + Puma</option>
           <option value="ADIDAS">Solo Adidas</option>
-          <option value="Puma">Solo Puma</option>
+          <option value="PUMA">Solo Puma</option>
         </select>
 
         <select
@@ -291,6 +356,77 @@ export default function CompetenciaPage() {
             selectedFranchise={selectedFranchise}
             height={380}
           />
+        </div>
+      </div>
+
+      {/* ── Top Franchises Nike (con filtro por categoría) ── */}
+      <div className="nike-card !p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#E31837] inline-block" />
+              Top Franchises Nike
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              SKUs únicos (StyleColor), precio promedio y % en promo
+              {nikeCategory && ` · Categoría: ${nikeCategory}`}
+            </p>
+          </div>
+          <select
+            value={nikeCategory}
+            onChange={e => setNikeCategory(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-gray-400"
+          >
+            <option value="">Todas las categorías</option>
+            {nikeCategories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        {nikeError && (
+          <div className="px-5 py-4 flex items-start gap-2 bg-red-50 border-b border-red-200">
+            <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-red-600">{nikeError}</p>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="nike-table">
+            <thead><tr>
+              <th>Franchise</th>
+              <th>División</th>
+              <th className="text-right">SKUs</th>
+              <th className="text-right">Precio Prom.</th>
+              <th className="text-right">SKUs en promo</th>
+              <th className="text-right">% en promo</th>
+            </tr></thead>
+            <tbody>
+              {loadingNike
+                ? Array.from({length:8}).map((_,i) => (
+                    <tr key={i} className="animate-pulse border-b">
+                      <td colSpan={6}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td>
+                    </tr>
+                  ))
+                : nikeFranchises.length === 0
+                  ? <tr><td colSpan={6} className="text-center text-xs text-gray-400 py-6">
+                      {nikeError ? 'Sin datos por el error de arriba.' : 'Sin franchises Nike para esta categoría.'}
+                    </td></tr>
+                  : nikeFranchises.slice(0, 20).map(f => (
+                    <tr key={`${f.franchise}-${f.division ?? ''}`}>
+                      <td className="font-medium">{f.franchise}</td>
+                      <td className="text-xs text-gray-500">{f.division ?? '—'}</td>
+                      <td className="text-right font-mono">{Number(f.count).toLocaleString('es-AR')}</td>
+                      <td className="text-right">{formatPrice(f.avg_price != null ? Number(f.avg_price) : null)}</td>
+                      <td className="text-right font-mono text-orange-600">
+                        {Number(f.in_promo ?? 0) > 0 ? Number(f.in_promo).toLocaleString('es-AR') : '—'}
+                      </td>
+                      <td className="text-right font-bold text-orange-600">
+                        {f.promo_pct != null ? `${f.promo_pct}%` : 'N/D'}
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
         </div>
       </div>
 
