@@ -16,6 +16,7 @@ from fastapi import APIRouter, Query
 from app.api.serializers import (count, expand_opportunities, expand_retail_media,
                                  product_card, products_by_id, table_exists)
 from app.db import query
+from app.services.common import from_json
 
 router = APIRouter(prefix="/api", tags=["overview"])
 
@@ -78,11 +79,17 @@ def overview(country: str = "AR", limit: int = Query(6, ge=1, le=25)) -> dict[st
 
     brand_highlights: list[dict[str, Any]] = []
     if table_exists("brand_insights"):
-        brand_highlights = query(
-            "SELECT bi.*, b.name AS brand FROM brand_insights bi "
-            "LEFT JOIN brands b ON b.id = bi.brand_id "
-            "WHERE bi.country_code = ? AND bi.confidence IN ('HIGH','MEDIUM') "
-            "ORDER BY bi.signal_volume DESC LIMIT ?", (country, limit))
+        # `evidence` se guarda como JSON en texto. Hay que parsearlo igual que en
+        # /api/brand/insights: si no, el cliente recibe un string y un insight con
+        # evidencia real parece no tenerla.
+        brand_highlights = [
+            {**r, "evidence": from_json(r.get("evidence"), [])}
+            for r in query(
+                "SELECT bi.*, b.name AS brand FROM brand_insights bi "
+                "LEFT JOIN brands b ON b.id = bi.brand_id "
+                "WHERE bi.country_code = ? AND bi.confidence IN ('HIGH','MEDIUM') "
+                "ORDER BY bi.signal_volume DESC LIMIT ?", (country, limit))
+        ]
 
     assortment_gaps = [o for o in opportunities if o.get("family") == "assortment"]
 
