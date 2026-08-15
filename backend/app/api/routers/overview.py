@@ -23,6 +23,42 @@ router = APIRouter(prefix="/api", tags=["overview"])
 RISK_FAMILIES = ("pricing", "competitive_threat", "distribution")
 
 
+def _resolve_entities(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Traduce `entity_id` a un nombre legible.
+
+    Las señales guardan el id crudo, así que sin esto la UI muestra "Marca #5".
+    Para `franchise` el `entity_id` ya es el nombre.
+    """
+    brand_ids = [r["entity_id"] for r in rows if r.get("entity_type") == "brand"]
+    prod_ids = [r["entity_id"] for r in rows if r.get("entity_type") == "product"]
+
+    def _lookup(table: str, ids: list[Any], column: str) -> dict[str, str]:
+        clean = [str(i) for i in ids if i is not None]
+        if not clean or not table_exists(table):
+            return {}
+        placeholders = ",".join("?" * len(clean))
+        return {
+            str(r["id"]): r[column]
+            for r in query(f"SELECT id, {column} FROM {table} WHERE id IN ({placeholders})",  # noqa: S608
+                           clean)
+        }
+
+    brands = _lookup("brands", brand_ids, "name")
+    products = _lookup("products", prod_ids, "product_name")
+
+    out = []
+    for r in rows:
+        entity_id, entity_type = str(r.get("entity_id")), r.get("entity_type")
+        if entity_type == "brand":
+            label = brands.get(entity_id)
+        elif entity_type == "product":
+            label = products.get(entity_id)
+        else:
+            label = entity_id          # franchise: el id ya es el nombre
+        out.append({**r, "entity_label": label or f"{entity_type} {entity_id}"})
+    return out
+
+
 @router.get("/overview")
 def overview(country: str = "AR", limit: int = Query(6, ge=1, le=25)) -> dict[str, Any]:
     kpis = {
@@ -58,10 +94,24 @@ def overview(country: str = "AR", limit: int = Query(6, ge=1, le=25)) -> dict[st
 
     momentum: list[dict[str, Any]] = []
     if table_exists("market_signals"):
-        momentum = query(
-            "SELECT * FROM market_signals "
-            "WHERE signal_type IN ('social_momentum','editorial_momentum','review_momentum') "
-            "ORDER BY ABS(COALESCE(acceleration, 0)) DESC LIMIT ?", (limit,))
+        # Se ordena por `value` (el momentum 0..100, que ya combina volumen,
+        # tendencia y aceleración según config) y NO por `acceleration`: ésta
+        # queda NULL cuando no hay una tercera ventana de datos, y ordenar por
+        # una columna vacía daba un orden arbitrario con "▲ 0.00" en pantalla.
+        # `delta` tampoco sirve para ordenar: sobre bases chicas produce ratios
+        # absurdos (se vieron +493.200%).
+        # El panel es "momentum de COMPETIDORES": se excluyen las señales cuya
+        # entidad es la marca foco o un producto suyo.
+        rows = query(
+            "SELECT * FROM market_signals ms "
+            "WHERE ms.signal_type IN ('social_momentum','editorial_momentum','review_momentum') "
+            "  AND NOT (ms.entity_type = 'brand' AND ms.entity_id IN "
+            "           (SELECT CAST(id AS TEXT) FROM brands WHERE is_focus = 1)) "
+            "  AND NOT (ms.entity_type = 'product' AND ms.entity_id IN "
+            "           (SELECT CAST(p.id AS TEXT) FROM products p "
+            "            JOIN brands b ON b.id = p.brand_id WHERE b.is_focus = 1)) "
+            "ORDER BY ms.value DESC, ABS(COALESCE(ms.delta, 0)) DESC LIMIT ?", (limit,))
+        momentum = _resolve_entities(rows)
 
     top_matches: list[dict[str, Any]] = []
     if table_exists("competitive_matches"):

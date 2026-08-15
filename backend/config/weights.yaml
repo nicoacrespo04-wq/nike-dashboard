@@ -129,10 +129,18 @@ business_importance:
   # gate = clamp(competitive_relevance, gate_floor, 1.0)
   gate_floor: 0.35
 
+  # Calibrados contra el techo REAL de la escala, no contra 100.
+  # El gate es multiplicativo y `competitive_relevance = match_score/100`, así
+  # que la importancia queda acotada por el mejor match observado (~0.69 con el
+  # dataset demo). Con umbrales de 78/60, CRITICAL y HIGH eran inalcanzables por
+  # construcción y TODO caía en MEDIUM/LOW: la severidad dejaba de discriminar,
+  # que es justo para lo que existe.
+  # Reajustar cuando cambie la escala de match (más evidencia => matches más
+  # altos => este techo sube).
   severity_thresholds:
-    critical: 78.0
-    high:     60.0
-    medium:   40.0
+    critical: 62.0
+    high:     50.0
+    medium:   35.0
     # por debajo => LOW
 
   # Importancia por franquicia (0..1). Default para las no listadas.
