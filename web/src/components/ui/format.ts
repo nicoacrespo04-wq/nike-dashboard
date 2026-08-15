@@ -18,9 +18,14 @@
  */
 
 import { formatPrice } from '@/lib/utils'
+import { ND } from '@/lib/format'
 
-/** Texto canónico para "no hay dato". Se usa en toda la UI. */
-export const ND = 'N/D'
+/**
+ * Texto canónico para "no hay dato". Vive en `lib/format.ts` (junto al resto
+ * del formateo) y se re-exporta acá para no romper a quien lo importe desde
+ * `@/components/ui`.
+ */
+export { ND }
 
 /** Techo de render. Muy por encima del techo de negocio (`PRICE_MAX_ARS`). */
 export const MAX_PLAUSIBLE_PRICE = 50_000_000

@@ -11,10 +11,24 @@ export type BadgeTone =
   | 'lose'
   | 'nd'
 
+/**
+ * Colores explícitos para etiquetas cuyo color sale de la paleta de datos
+ * (severidad, confianza, recomendación de retail media) y no de la paleta de
+ * marca. Se pasan como estilo inline para no multiplicar clases utilitarias
+ * por cada estado del motor.
+ */
+export interface BadgeColors {
+  text: string
+  bg: string
+  border: string
+}
+
 export interface BadgeProps {
   children: React.ReactNode
   tone?: BadgeTone
   size?: 'sm' | 'md'
+  /** Si viene, gana sobre `tone`. Ver `BadgeColors`. */
+  colors?: BadgeColors
   className?: string
   title?: string
 }
@@ -31,11 +45,28 @@ const TONE: Record<BadgeTone, string> = {
 }
 
 /** Badge consistente. Toda etiqueta corta de la app pasa por acá. */
-export function Badge({ children, tone = 'neutral', size = 'sm', className, title }: BadgeProps) {
+export function Badge({
+  children,
+  tone = 'neutral',
+  size = 'sm',
+  colors,
+  className,
+  title,
+}: BadgeProps) {
   return (
     <span
       title={title}
-      className={cn('badge', TONE[tone], size === 'md' && 'text-[11px] px-2.5 py-1', className)}
+      className={cn(
+        'badge',
+        colors ? 'border' : TONE[tone],
+        size === 'md' && 'text-[11px] px-2.5 py-1',
+        className,
+      )}
+      style={
+        colors
+          ? { color: colors.text, backgroundColor: colors.bg, borderColor: colors.border }
+          : undefined
+      }
     >
       {children}
     </span>

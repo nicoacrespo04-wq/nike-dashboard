@@ -2,6 +2,12 @@ import { cn } from '@/lib/utils'
 import { InfoTip } from './Tooltip'
 
 export interface SectionHeaderProps {
+  /**
+   * Línea corta en rojo sobre el título. La usan las pantallas de
+   * INTELLIGENCE para declarar qué pregunta responde la sección
+   * ("¿Quién compite?", "¿Cuánto importa?").
+   */
+  eyebrow?: string
   /** Título de la sección. */
   title: string
   /** Bajada: qué muestra esta sección o cómo leerla. */
@@ -28,6 +34,7 @@ export interface SectionHeaderProps {
  * jerarquía consistente y soporte de tooltip metodológico.
  */
 export default function SectionHeader({
+  eyebrow,
   title,
   subtitle,
   hint,
@@ -41,6 +48,9 @@ export default function SectionHeader({
   return (
     <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
       <div className="min-w-0">
+        {eyebrow && (
+          <p className="mb-1 text-label font-bold uppercase text-nike-red">{eyebrow}</p>
+        )}
         <Heading
           className={cn(
             'flex items-center gap-2 font-bold uppercase tracking-wide text-nike-ink',

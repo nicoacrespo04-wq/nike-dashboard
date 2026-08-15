@@ -127,10 +127,25 @@ body {
      TIPOGRAFÍA — jerarquía numérica
      ════════════════════════════════════════════════════════════════════════ */
 
-  /* Cifras alineadas verticalmente en columnas numéricas */
-  .tabnum {
+  /* Cifras alineadas verticalmente en columnas numéricas.
+     `.tabular` es el alias que usan las páginas de INTELLIGENCE: misma regla,
+     un solo lugar donde vive. */
+  .tabnum,
+  .tabular {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  /* Trama para "no hay dato": la ausencia se ve, no se adivina.
+     La usan las barras de factores/drivers cuando un factor quedó excluido. */
+  .hatch-muted {
+    background-image: repeating-linear-gradient(
+      135deg,
+      #D8D8D8 0px,
+      #D8D8D8 2px,
+      #EFEFEF 2px,
+      #EFEFEF 6px
+    );
   }
 
   /* Etiqueta recesiva (títulos de KPI, encabezados de sección) */

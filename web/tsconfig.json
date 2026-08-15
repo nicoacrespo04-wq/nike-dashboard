@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    // Necesario para iterar Map/Set con spread (`[...map.entries()]`) sin
+    // `downlevelIteration`. Next transpila igual para los navegadores objetivo.
+    "target": "es2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

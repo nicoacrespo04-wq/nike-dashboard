@@ -20,6 +20,7 @@ const config: Config = {
         nike: {
           black:       '#111111',
           red:         '#E31837',
+          'red-dark':  '#B81229',
           white:       '#FFFFFF',
           gray:        '#F5F5F5',
           'dark-gray': '#757575',
@@ -30,6 +31,23 @@ const config: Config = {
           'ink-soft':   '#3D3D3D',
           muted:        '#757575',
           faint:        '#9B9B9B',
+        },
+
+        /**
+         * Alias semánticos usados por las páginas de INTELLIGENCE.
+         * NO son una segunda paleta: apuntan a los mismos hex de arriba
+         * (`ink.primary` === `nike.ink`, `line.DEFAULT` === `surface.border`).
+         * Existen para que el código portado del Decision Engine lea igual de
+         * bien sin duplicar valores de color.
+         */
+        ink: {
+          primary:   '#111111',
+          secondary: '#3D3D3D',
+          muted:     '#757575',
+        },
+        line: {
+          DEFAULT: '#EDEDED',
+          strong:  '#DCDCDC',
         },
 
         // ── Competitor brands — single source of truth ────────────────────
@@ -65,6 +83,7 @@ const config: Config = {
         // ── Surfaces / chrome ─────────────────────────────────────────────
         surface: {
           DEFAULT: '#FFFFFF',
+          card:    '#FFFFFF',
           muted:   '#FAFAFA',
           page:    '#F5F5F5',
           sunken:  '#F0F0F0',
@@ -86,6 +105,9 @@ const config: Config = {
       fontSize: {
         micro:      ['0.625rem', { lineHeight: '0.875rem', letterSpacing: '0.06em' }],
         label:      ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.08em' }],
+        // Igual tamaño que `label` pero sin tracking: para texto corrido chico
+        // (metadatos, notas al pie de una card) donde el espaciado molesta.
+        '2xs':      ['0.6875rem', { lineHeight: '1rem' }],
         'metric-sm': ['1.5rem',  { lineHeight: '1.05', letterSpacing: '-0.02em' }],
         'metric-md': ['1.875rem', { lineHeight: '1.05', letterSpacing: '-0.025em' }],
         'metric-lg': ['2.25rem', { lineHeight: '1', letterSpacing: '-0.03em' }],
@@ -107,6 +129,7 @@ const config: Config = {
         card:       '0 1px 2px 0 rgba(17,17,17,0.04), 0 1px 3px 0 rgba(17,17,17,0.04)',
         'card-hover': '0 4px 12px -2px rgba(17,17,17,0.10), 0 2px 4px -2px rgba(17,17,17,0.06)',
         popover:    '0 8px 24px -6px rgba(17,17,17,0.18), 0 2px 6px -2px rgba(17,17,17,0.08)',
+        pop:        '0 8px 24px rgba(17,17,17,0.10)',
         'sticky-header': '0 1px 0 0 rgba(17,17,17,0.08)',
       },
 

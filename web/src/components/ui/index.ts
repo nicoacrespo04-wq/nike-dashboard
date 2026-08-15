@@ -4,6 +4,18 @@
  * Importar desde acá: `import { EmptyState, SectionHeader } from '@/components/ui'`
  */
 
+export { default as Card } from './Card'
+export type { CardProps } from './Card'
+
+export { default as MeterBar } from './MeterBar'
+export type { MeterBarProps } from './MeterBar'
+
+export { default as PageIntro } from './PageIntro'
+export type { PageIntroProps } from './PageIntro'
+
+export { default as AsyncSection } from './AsyncSection'
+export type { AsyncSectionProps, AsyncState } from './AsyncSection'
+
 export { default as EmptyState } from './EmptyState'
 export type { EmptyStateProps } from './EmptyState'
 
@@ -36,7 +48,7 @@ export type {
 } from './FilterBar'
 
 export { default as Badge, BrandBadge, BMLBadge, brandTone } from './Badge'
-export type { BadgeProps, BadgeTone, BrandBadgeProps, BMLBadgeProps } from './Badge'
+export type { BadgeProps, BadgeTone, BadgeColors, BrandBadgeProps, BMLBadgeProps } from './Badge'
 
 export { default as KPICard } from './KPICard'
 export type { KPICardProps, KPIDelta, DeltaDirection } from './KPICard'
