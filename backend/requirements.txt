@@ -11,13 +11,35 @@ httpx>=0.27
 # Desarrollo
 pytest>=8.2
 
+# ── Opcional: ingesta desde PostgreSQL/Supabase ─────────────
+# Sólo hace falta para `python -m app.ingest --dsn ...` (leer `pricing_data`
+# de Postgres). El motor, el pipeline demo y `--csv` funcionan sin esto, y el
+# módulo lo importa dentro de la función con un error claro si falta.
+#
+#   pip install psycopg2-binary>=2.9
+
 # ── Opcionales: modelos locales ─────────────────────────────
 # El motor funciona sin esto (usa TF-IDF de scikit-learn y comparación
 # determinística de atributos visuales). Instalalos sólo si querés
 # embeddings más finos. Corren 100% local — no se envía nada a ninguna API.
+# NO los agregues arriba: son pesados y el camino por defecto no los necesita.
 #
-#   pip install sentence-transformers   # similitud semántica de texto
-#   pip install torch transformers      # CLIP/SigLIP para similitud visual
+#   # Similitud semántica de texto (~90 MB de wheels + ~90 MB de modelo)
+#   pip install sentence-transformers
+#
+#   # Similitud VISUAL con CLIP/SigLIP local. Instalá la rueda CPU:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+#   pip install transformers pillow
+#   # Peso: torch CPU ~200 MB, transformers+tokenizers ~40 MB, pillow ~3 MB.
+#   # El modelo se descarga una sola vez a ~/.cache/huggingface:
+#   #   openai/clip-vit-base-patch32          ~600 MB  (151M params, d=512)
+#   #   google/siglip-base-patch16-224        ~800 MB  (más preciso, más lento)
+#   # Descarga inicial (única vez, requiere red):
+#   #   python -c "from transformers import CLIPModel, CLIPProcessor as P; \
+#   #     m='openai/clip-vit-base-patch32'; CLIPModel.from_pretrained(m); P.from_pretrained(m)"
+#   # Después el motor carga SIEMPRE con local_files_only=True: nunca descarga solo.
+#
+# Detalle completo y cascada de decisión: backend/docs/embeddings.md
 #
 # RESTRICCIÓN DE DISEÑO: prohibido usar LLMs cloud (OpenAI, Anthropic, Gemini).
 # No agregar esas dependencias a este archivo.

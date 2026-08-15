@@ -79,10 +79,24 @@ def temp_config(tmp_path, monkeypatch):
 
 def test_redescubre_los_dos_casos_historicos(demo_db, temp_config):
     """Con la calibración vieja, el harness marca los dos umbrales UNREACHABLE."""
+    # Los valores históricos fueron 78/60 y 70, calibrados cuando el techo de
+    # match era 69.1. Al recuperar el factor visual la escala subió a ~75, así
+    # que fijarlos literalmente ya no reproduce el incidente. Se derivan del
+    # dato vigente: lo que se prueba es el MECANISMO —un umbral por encima del
+    # techo se reporta UNREACHABLE— no unos números que envejecen.
+    # CRITICAL se pone por encima de la COTA ANALÍTICA (no del máximo
+    # observado): así el veredicto tiene que apoyarse en la fórmula del gate y
+    # no en que al dataset no le haya tocado. HIGH sólo supera lo observado,
+    # que es el caso empírico.
+    base = {r["path"]: r for r in calibration.reachability_report(demo_db)}
+    bi_analytic = base["business_importance.severity_thresholds.high"]["analytic_max"]
+    bi_max = calibration.score_distributions(demo_db)["business_importance"]["max"]
+    match_max = calibration.score_distributions(demo_db)["match_score"]["max"]
     temp_config(**{
-        "business_importance.severity_thresholds": {"critical": 78.0, "high": 60.0,
+        "business_importance.severity_thresholds": {"critical": bi_analytic + 5.0,
+                                                    "high": bi_max + 5.0,
                                                     "medium": 40.0},
-        "opportunities.premiumization_opportunity.min_match_score": 70.0,
+        "opportunities.premiumization_opportunity.min_match_score": match_max + 5.0,
     })
 
     rows = {r["path"]: r for r in calibration.reachability_report(demo_db)}
@@ -90,10 +104,10 @@ def test_redescubre_los_dos_casos_historicos(demo_db, temp_config):
     critical = rows["business_importance.severity_thresholds.critical"]
     assert critical["status"] == calibration.STATUS_UNREACHABLE
     assert critical["n_pass"] == 0
-    # El gate multiplicativo lo vuelve imposible POR CONSTRUCCIÓN, no por suerte
-    # del dataset: el veredicto se apoya en la cota analítica.
+    # Con el umbral por encima de la cota derivada del gate, el veredicto se
+    # apoya en la fórmula y no en la suerte del dataset.
     assert critical["basis"] == "analítica"
-    assert critical["analytic_max"] < 78.0
+    assert critical["analytic_max"] < bi_analytic + 5.0
 
     high = rows["business_importance.severity_thresholds.high"]
     assert high["status"] == calibration.STATUS_UNREACHABLE
@@ -102,7 +116,7 @@ def test_redescubre_los_dos_casos_historicos(demo_db, temp_config):
     premium = rows["opportunities.premiumization_opportunity.min_match_score"]
     assert premium["status"] == calibration.STATUS_UNREACHABLE
     assert premium["n_pass"] == 0
-    assert premium["observed_max"] < 70.0
+    assert premium["observed_max"] < match_max + 5.0
 
     # Y quedan listados como problemas en el resumen del reporte.
     summary = calibration.report(demo_db)["summary"]
@@ -117,7 +131,9 @@ def test_regla_apagada_por_umbral_se_reporta_como_rota(demo_db, data, temp_confi
     assert healthy["premiumization_opportunity"]["status"] == calibration.YIELD_OK
     assert healthy["premiumization_opportunity"]["blocking"] == []
 
-    temp_config(**{"opportunities.premiumization_opportunity.min_match_score": 70.0})
+    match_max = calibration.score_distributions(demo_db)["match_score"]["max"]
+    temp_config(**{
+        "opportunities.premiumization_opportunity.min_match_score": match_max + 5.0})
 
     rows = {r["rule"]: r for r in calibration.rule_yield_report(demo_db)}
     premium = rows["premiumization_opportunity"]
@@ -209,8 +225,11 @@ def test_cota_analitica_de_business_importance(data):
         100.0 * floor * life_max,
     )
     assert metric.analytic_max == pytest.approx(min(100.0, expected), rel=1e-6)
-    # El techo es MUY inferior a 100: eso es lo que hacía inalcanzable al 78.
-    assert metric.analytic_max < 80.0
+    # El techo es MUY inferior a 100 —eso es lo que hacía inalcanzable al 78
+    # original— y además tiene que ser una cota VÁLIDA: nunca por debajo de lo
+    # observado. No se fija un número: depende de la escala de match vigente.
+    assert metric.analytic_max < 100.0
+    assert metric.analytic_max >= metric.observed_max
     assert metric.observed_max <= metric.analytic_max
 
 
@@ -416,6 +435,8 @@ def test_cli_corre_y_devuelve_cero(demo_db, capsys):
 
 
 def test_cli_strict_falla_con_umbral_inalcanzable(demo_db, temp_config, capsys):
-    temp_config(**{"opportunities.premiumization_opportunity.min_match_score": 70.0})
+    match_max = calibration.score_distributions(demo_db)["match_score"]["max"]
+    temp_config(**{
+        "opportunities.premiumization_opportunity.min_match_score": match_max + 5.0})
     assert calibration.main(["--db", str(demo_db), "--strict"]) == 1
     capsys.readouterr()
