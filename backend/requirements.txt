@@ -1,0 +1,23 @@
+# Núcleo — todo lo que el MVP necesita para correr localmente.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pyyaml>=6.0
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+httpx>=0.27
+
+# Desarrollo
+pytest>=8.2
+
+# ── Opcionales: modelos locales ─────────────────────────────
+# El motor funciona sin esto (usa TF-IDF de scikit-learn y comparación
+# determinística de atributos visuales). Instalalos sólo si querés
+# embeddings más finos. Corren 100% local — no se envía nada a ninguna API.
+#
+#   pip install sentence-transformers   # similitud semántica de texto
+#   pip install torch transformers      # CLIP/SigLIP para similitud visual
+#
+# RESTRICCIÓN DE DISEÑO: prohibido usar LLMs cloud (OpenAI, Anthropic, Gemini).
+# No agregar esas dependencias a este archivo.
