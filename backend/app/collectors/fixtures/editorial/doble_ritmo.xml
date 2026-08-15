@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Doble Ritmo — running en Argentina</title>
+    <link>https://dobleritmo.example/</link>
+    <description>Reviews y comparativas de zapatillas de running en Argentina</description>
+    <item>
+      <title>Pegasus 41 vs Supernova Rise 2: el duelo del entrenamiento diario en Argentina</title>
+      <link>https://dobleritmo.example/pegasus-41-vs-supernova-rise-2/</link>
+      <pubDate>Mon, 08 Jun 2026 09:00:00 -0300</pubDate>
+      <description><![CDATA[<p>A precio argentino la Adidas Supernova Rise 2 aparece entre 20% y 25% por debajo de la Nike Pegasus 41, con una amortiguación muy parecida. Probamos las dos en rodajes de 12 km.</p>]]></description>
+    </item>
+    <item>
+      <title>Nike Pegasus 41 vs ASICS Novablast 5: cuál es el mejor daily trainer</title>
+      <link>https://dobleritmo.example/pegasus-41-vs-novablast-5/</link>
+      <pubDate>Tue, 12 May 2026 10:30:00 -0300</pubDate>
+      <description><![CDATA[<p>La Pegasus 41 gana en durabilidad y previsibilidad; la Novablast 5 devuelve mucha más energía. En Argentina la diferencia de precio inclina la balanza.</p>]]></description>
+    </item>
+    <item>
+      <title>Review: Nike Vomero 18, la más cómoda del line-up</title>
+      <link>https://dobleritmo.example/review-nike-vomero-18/</link>
+      <pubDate>Sat, 20 Jun 2026 08:00:00 -0300</pubDate>
+      <description><![CDATA[<p>La Nike Vomero 18 se siente más dinámica que la generación anterior gracias al ZoomX. Es la opción de kilometraje cómodo para el corredor recreativo.</p>]]></description>
+    </item>
+    <item>
+      <title>Alternativas a la Nike Invincible 3 en máxima amortiguación</title>
+      <link>https://dobleritmo.example/alternativas-a-la-invincible-3/</link>
+      <pubDate>Thu, 02 Jul 2026 11:00:00 -0300</pubDate>
+      <description><![CDATA[<p>Si buscás algo más estable, el New Balance 1080v13 ofrece un rocker más suave. La Adidas Ultraboost 5 es la opción más durable, aunque pesa bastante más.</p>]]></description>
+    </item>
+  </channel>
+</rss>

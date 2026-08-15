@@ -1,0 +1,33 @@
+{
+  "articles": [
+    {
+      "title": "Cinco alternativas a la Nike Vomero 18 en máxima amortiguación",
+      "text": "Si buscás algo más estable que la Vomero, el New Balance 1080v13 ofrece un rocker más suave. La ASICS Gel-Nimbus 26 es la más blanda del grupo y la Adidas Ultraboost 5 la más durable.",
+      "url": "https://roadtrailrun.example/vomero-18-alternatives/",
+      "source_name": "Road Trail Run",
+      "published_at": "2026-05-30",
+      "country_code": "AR"
+    },
+    {
+      "title": "Best basketball shoes for 2026",
+      "text": "Guía de compra de básquet. Probamos los modelos disponibles en el mercado local.",
+      "list_items": [
+        "Nike Jordan 1 Low — la más versátil dentro y fuera de la cancha.",
+        "Under Armour Curry 12 — la mejor para bases rápidos.",
+        "Puma MB.04 — la sorpresa de la temporada."
+      ],
+      "url": "https://dobleritmo.example/best-basketball-shoes-2026/",
+      "source_name": "Doble Ritmo",
+      "published_at": "2026-07-05",
+      "country_code": "AR"
+    },
+    {
+      "title": "La Puma Palermo es la sorpresa del año en zapatillas retro",
+      "text": "Con un precio bastante menor al de la Adidas Samba OG, la Palermo se comió el segmento retro en Argentina.",
+      "url": "https://dobleritmo.example/palermo-puma-tendencia/",
+      "source_name": "Doble Ritmo",
+      "published_at": "2026-07-28",
+      "country_code": "AR"
+    }
+  ]
+}

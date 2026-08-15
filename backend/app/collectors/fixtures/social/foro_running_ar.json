@@ -1,0 +1,19 @@
+{
+  "source_type": "forum",
+  "country_code": "AR",
+  "notes": "Hilos públicos de foros de running AR. Los campos de identidad del volcado original (autor, id) NO se leen: el colector sólo toma texto y fecha.",
+  "posts": [
+    {"text": "Estoy entre las Pegasus 41 y las Novablast 5, cuál compro? Corro 50 km por semana en asfalto", "created_at": "2026-08-02"},
+    {"text": "Tuve las dos: la Novablast 5 rebota más, la Pegasus 41 dura más. Para fondo largo me quedo con la Nike", "created_at": "2026-08-05"},
+    {"text": "Pegasus 41 o Supernova Rise 2? La diferencia de precio en Argentina es enorme", "created_at": "2026-07-29"},
+    {"text": "Comparando Pegasus 41 contra Gel-Cumulus 26, la ASICS sale bastante menos y calza parecido", "created_at": "2026-07-21"},
+    {"text": "Las Pegasus 41 me bancan 60 km semanales sin ningún problema, comodísimas", "created_at": "2026-08-10"},
+    {"text": "Las Nike están carísimas acá, un fangote para lo que son. Igual la Pegasus 41 sigue siendo la más confiable", "created_at": "2026-08-11"},
+    {"text": "Busco Nike Dunk Low talle 42, no hay stock en ningún lado hace tres semanas", "created_at": "2026-08-12"},
+    {"text": "Me quiero comprar unas Air Force 1 blancas otra vez, nunca fallan", "created_at": "2026-08-13"},
+    {"text": "La Vomero 18 es comodísima para rodajes largos, la recomiendo", "created_at": "2026-07-12"},
+    {"text": "Entre Vomero 18 y Gel-Nimbus 26 me quedo con la ASICS, la Nike me queda angosta", "created_at": "2026-07-15"},
+    {"text": "Adidas viene metiendo presión con la Supernova Rise 2 a mitad de precio", "created_at": "2026-06-30"},
+    {"text": "Alguien probó la Novablast 5 en trail? La uso para todo y aguanta bien", "created_at": "2026-06-25"}
+  ]
+}
