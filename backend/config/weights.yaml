@@ -1,0 +1,286 @@
+# ============================================================
+# Configuración central de scoring.
+# NINGÚN peso debe estar hardcodeado en las funciones.
+# Todos los servicios leen desde acá vía app.config.get_config().
+# ============================================================
+
+version: "1.0.0"
+
+# ── COMPETITIVE MATCH SCORE (0..100) ────────────────────────
+# score = 100 * sum(w_i * s_i para factores disponibles) / sum(w_i disponibles)
+# Los factores sin datos NO penalizan: se excluyen y se renormaliza el peso.
+competitive_match:
+  weights:
+    visual:           0.15
+    semantic:         0.25
+    price:            0.15
+    retailer_overlap: 0.10
+    editorial:        0.15
+    social:           0.10
+    reviews:          0.10
+
+  # Umbral de score para persistir un match (evita explosión combinatoria)
+  min_score_to_persist: 35.0
+  # Top-N competidores a guardar por producto Nike
+  top_n_per_product: 10
+
+  # Confianza según cobertura = suma de pesos con datos reales
+  confidence_thresholds:
+    high:   0.70
+    medium: 0.45
+    # por debajo de medium => LOW
+
+  # Sub-parámetros por factor
+  price:
+    # Similitud de precio: 1 - min(1, |gap| / tolerance)
+    gap_tolerance_pct: 40.0
+    # Peso relativo entre comparar MSRP vs precio actual vs banda
+    sub_weights:
+      msrp:           0.40
+      current_price:  0.35
+      price_band:     0.25
+
+  semantic:
+    # Peso de los campos de taxonomía en el score semántico determinístico
+    field_weights:
+      use_case:                 0.30
+      category:                 0.15
+      sport:                    0.10
+      performance_vs_lifestyle: 0.10
+      gender:                   0.10
+      subcategory:              0.05
+      text_similarity:          0.20   # embeddings/TF-IDF de descripción
+    # Si dos productos no comparten gender o category, el score se atenúa
+    hard_mismatch_penalty: 0.45
+
+  visual:
+    sub_weights:
+      embedding:   0.50   # CLIP/SigLIP si está disponible
+      silhouette:  0.20
+      colors:      0.15
+      materials:   0.15
+
+  editorial:
+    # Puntos por tipo de mención, saturados con log
+    mention_type_scores:
+      versus:      1.00
+      alternative: 0.85
+      same_list:   0.45
+      ranking:     0.40
+      review:      0.15
+    saturation_k: 4.0     # score = 1 - exp(-puntos / k)
+    recency_half_life_days: 365
+
+  social:
+    saturation_k: 25.0    # sobre co-menciones del período
+    recency_half_life_days: 180
+    min_comentions: 2
+
+  reviews:
+    # Similitud de atributos valorados extraídos de reviews (Jaccard ponderado)
+    min_reviews_for_signal: 3
+    rating_weight: 0.25   # parte del score que aporta la cercanía de rating
+
+# ── BUSINESS IMPORTANCE SCORE (0..100) ──────────────────────
+# importance = 100 * gate * sum(w_i * s_i) / sum(w_i)
+# donde gate = relevancia competitiva (un gap sin competencia real no importa)
+business_importance:
+  weights:
+    competitive_relevance:  0.20   # match score del competidor principal
+    franchise_importance:   0.12   # peso de la franquicia (ver franchise_importance)
+    revenue_proxy:          0.12   # SKUs × cobertura × precio
+    retailer_importance:    0.10   # importancia de los retailers involucrados
+    market_coverage:        0.08   # en cuántos retailers está presente
+    price_gap:              0.10   # magnitud del gap de precio
+    review_volume:          0.08
+    social_momentum:        0.08
+    editorial_momentum:     0.05
+    share_of_shelf:         0.04
+    promo_intensity:        0.03
+
+  # Multiplicador que apaga oportunidades sin relevancia competitiva.
+  # gate = clamp(competitive_relevance, gate_floor, 1.0)
+  gate_floor: 0.35
+
+  severity_thresholds:
+    critical: 78.0
+    high:     60.0
+    medium:   40.0
+    # por debajo => LOW
+
+  # Importancia por franquicia (0..1). Default para las no listadas.
+  franchise_importance:
+    default:      0.45
+    Pegasus:      0.95
+    Vomero:       0.80
+    Structure:    0.65
+    Invincible:   0.75
+    "Air Force 1": 0.95
+    "Air Max":    0.90
+    Dunk:         0.85
+    Jordan:       0.95
+    Mercurial:    0.85
+    Phantom:      0.70
+    Metcon:       0.60
+    "Free Run":   0.50
+
+  # Importancia por etapa de ciclo de vida
+  lifecycle_multiplier:
+    launch:    1.10
+    growth:    1.15
+    mature:    1.00
+    decline:   0.80
+    clearance: 0.65
+
+# ── RETAIL MEDIA OPPORTUNITY SCORE (0..100) ─────────────────
+# Objetivo: decidir cuándo conviene invertir en visibilidad en vez de descuento.
+retail_media:
+  weights:
+    nike_stock_health:      0.20   # stock/disponibilidad Nike alta => más score
+    price_competitiveness:  0.20   # Nike ya competitivo en precio => más score
+    competitive_relevance:  0.15   # match score con el competidor
+    business_importance:    0.15
+    competitor_momentum:    0.12   # social + editorial + reviews del competidor
+    shelf_gap:              0.10   # bajo share of shelf Nike => oportunidad
+    competitor_stock_gap:   0.08   # competidor con quiebre => capturar demanda
+
+  thresholds:
+    # Nike se considera "competitivo en precio" si el gap está dentro de esta banda
+    price_competitive_pct:     5.0
+    price_disadvantage_pct:    12.0   # por encima => evaluar precio antes que media
+    nike_stock_high_pct:       70.0
+    nike_stock_low_pct:        35.0
+    competitor_stockout_pct:   40.0
+    high_momentum:             0.60
+    min_score_to_report:       45.0
+
+  confidence_thresholds:
+    high:   0.70
+    medium: 0.45
+
+# ── OPPORTUNITY ENGINE ──────────────────────────────────────
+opportunities:
+  # Umbrales de disparo por regla. Cada regla produce 0..N oportunidades.
+  price_competitiveness_risk:
+    min_competitor_cheaper_pct: 10.0
+    min_retailers:              2
+  over_discounting_risk:
+    min_discount_gap_pp:        8.0     # Nike descuenta X pp más que comparables
+    max_price_disadvantage_pct: 3.0     # ...pese a estar ya competitivo
+  full_price_opportunity:
+    max_competitor_cheaper_pct: 2.0
+    min_nike_discount_pct:      10.0
+  assortment_gap:
+    min_sku_ratio:              2.0     # competidores/Nike SKUs en el segmento
+    min_competitor_skus:        6
+  distribution_gap:
+    min_retailer_coverage_gap:  2       # retailers donde está el competidor y Nike no
+  share_of_shelf_risk:
+    min_shelf_drop_pp:          4.0
+  competitor_momentum:
+    min_acceleration:           0.35
+  competitor_stockout_opportunity:
+    max_competitor_availability_pct: 40.0
+    min_nike_availability_pct:       70.0
+  assortment_white_space:
+    min_demand_signal:          0.50
+    max_nike_share:             0.25
+  premiumization_opportunity:
+    min_match_score:            70.0
+    min_nike_cheaper_pct:       8.0
+  promotional_pressure:
+    min_competitors_on_markdown: 2
+    min_avg_discount_pct:        20.0
+  product_launch_threat:
+    max_days_since_launch:      120
+    min_retailer_coverage:      2
+
+  # Familia por tipo (para agrupar en el frontend)
+  families:
+    price_competitiveness_risk:      pricing
+    over_discounting_risk:           pricing
+    full_price_opportunity:          pricing
+    premiumization_opportunity:      pricing
+    promotional_pressure:            pricing
+    assortment_gap:                  assortment
+    assortment_white_space:          assortment
+    distribution_gap:                distribution
+    share_of_shelf_risk:             distribution
+    competitor_stockout_opportunity: stock
+    competitor_momentum:             competitive_threat
+    product_launch_threat:           competitive_threat
+
+# ── BRAND / CONSUMER INTELLIGENCE (Argentina) ───────────────
+brand_intelligence:
+  country: AR
+  # Ventanas de análisis en días
+  current_window_days:  30
+  previous_window_days: 30
+
+  momentum:
+    # Brand Momentum = volumen normalizado × dirección × aceleración
+    weights:
+      volume:       0.35
+      trend:        0.35
+      acceleration: 0.30
+    spike_threshold: 0.50    # variación que marca un pico
+
+  confidence:
+    # Confianza del insight según volumen de señal
+    high_min_volume:   80
+    medium_min_volume: 25
+
+  # Taxonomía de insights. Cada dimensión con sus tópicos.
+  taxonomy:
+    brand_perception:
+      [premium, aspirational, innovative, fashionable, performance,
+       accessible, expensive, good_value, exclusive, mainstream]
+    product_perception:
+      [comfort, quality, design, durability, technology, fit, performance]
+    price_perception:
+      [expensive, fair_price, overpriced, discounts, value_for_money]
+    availability:
+      [difficult_to_find, stock_problems, sizing_availability, product_variety]
+    cultural_relevance:
+      [fashion, music, football, running, gym, streetwear, sneaker_culture]
+    consumer_intent:
+      [want_to_buy, considering, comparing, recommendation, regret,
+       repurchase, switch_brand]
+
+# ── ENRIQUECIMIENTO ─────────────────────────────────────────
+enrichment:
+  version: "1.0.0"
+  # Bandas de precio en ARS (país-dependiente)
+  price_bands:
+    AR:
+      entry:         [0,       90000]
+      mid:           [90000,   160000]
+      premium:       [160000,  260000]
+      super-premium: [260000,  99999999]
+    US:
+      entry:         [0,   90]
+      mid:           [90,  140]
+      premium:       [140, 200]
+      super-premium: [200, 99999]
+
+  lifecycle:
+    # Días desde launch_date
+    launch_max_days:  90
+    growth_max_days:  270
+    mature_max_days:  540
+    decline_max_days: 900
+    # más allá => clearance
+    # Un descuento sostenido alto fuerza clearance
+    clearance_discount_pct: 40.0
+
+# ── EMBEDDINGS / MODELOS LOCALES ────────────────────────────
+# Restricción dura: NADA de LLMs cloud. Sólo local o determinístico.
+embeddings:
+  text:
+    # 'sentence-transformers' si está instalado; si no, fallback TF-IDF (sklearn)
+    backend: auto            # auto | sentence_transformers | tfidf
+    model:   sentence-transformers/all-MiniLM-L6-v2
+  image:
+    backend: auto            # auto | clip | attribute_fallback
+    model:   openai/clip-vit-base-patch32
+  cache_dir: .cache/embeddings

@@ -11,3 +11,6 @@ __pycache__/
 .python-version
 
 .vercel
+.venv/
+backend/data/processed/
+backend/.cache/
