@@ -85,7 +85,14 @@ competitive_match:
     # realidad no hay evidencia visual: dos vocabularios de enrichment que
     # dicen "trainer" y "runner" sobre la misma silueta bastan para hundir el
     # match. Por debajo del umbral el factor se marca sin datos y se renormaliza.
-    min_evidence_weight: 0.40
+    #
+    # 0.35 = silhouette (0.20) + materials (0.15). Deja afuera la silueta sola
+    # (0.20), que era el problema real. OJO: estuvo en 0.40 y eso APAGÓ el
+    # factor en el 100% de los pares — sin CLIP el techo de evidencia es 0.35.
+    # Lo detectó `python -m app.calibration`; correrlo después de cambiar esto.
+    # Con imágenes reales el sub-peso `embedding` (0.50) entra en juego y este
+    # piso se puede subir.
+    min_evidence_weight: 0.35
 
   editorial:
     # Puntos por tipo de mención, saturados con log
