@@ -1,89 +1,256 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Nike Dashboard — Scrapers semanales
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  QUÉ HACE
+#    1. `preflight`  → verifica los secrets ANTES de gastar runner.
+#    2. Cada job de scraping clona DOS repos en el mismo workspace:
+#         · este repo (dashboard: db/load_csv.py, scraper/, .github/scripts/)
+#         · nicoacrespo04-wq/Nike_Scrapper_Final (privado: los codigo_*.py)
+#       …corre el scraper, verifica que el CSV exista y tenga filas, y recién
+#       ahí lo carga a la base.
+#    3. `notify`     → junta las métricas de todos los jobs y manda el email.
+#
+#  POR QUÉ DOS REPOS
+#    Los scrapers (`codigo_*.py`, `combine_outputs.py`) viven en un repo
+#    privado aparte; el cargador a Supabase y el dashboard viven acá. El
+#    workflow viejo asumía que ambos estaban en el mismo checkout
+#    (`working-directory: Nike_Scrapper_Final`, `python ../nike-dashboard/db/…`)
+#    y por eso fallaba entero en el primer paso. Ver docs/scrapers.md.
+#
+#  DÓNDE SE LIMPIAN LOS DATOS
+#    En `db/load_csv.py`, controlado por las env vars PRICE_* de abajo.
+# ═══════════════════════════════════════════════════════════════════════════
+
 name: Nike Dashboard — Weekly Scrapers
 
 on:
   schedule:
     - cron: '0 20 * * 1'   # Lunes 20:00 UTC (17:00 Argentina)
-  workflow_dispatch:        # También se puede disparar manual
+  workflow_dispatch:
+    inputs:
+      allow_stale_csv:
+        description: 'Cargar también CSVs preexistentes en el repo de scrapers (por defecto sólo los generados en esta corrida)'
+        type: boolean
+        default: false
+      scrapers_ref:
+        description: 'Branch/tag/SHA del repo de scrapers (vacío = rama por defecto)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read          # download-artifact@v4 en el job `notify`
+
+concurrency:
+  group: weekly-scrapers
+  cancel-in-progress: false
 
 env:
-  DATABASE_URL:    ${{ secrets.DATABASE_URL }}
-  OPENAI_API_KEY:  ${{ secrets.OPENAI_API_KEY }}
-  ALERT_EMAIL:     nicolas.crespo@southbay.com.ar
-  SMTP_USER:       ${{ secrets.SMTP_USER }}
-  SMTP_PASS:       ${{ secrets.SMTP_PASS }}
+  # ── Repo privado donde viven los scrapers ────────────────────────────────
+  SCRAPERS_REPO: nicoacrespo04-wq/Nike_Scrapper_Final
+  SCRAPERS_DIR:  Nike_Scrapper_Final        # carpeta destino dentro del workspace
+  SCRAPERS_REF:  ${{ inputs.scrapers_ref || '' }}
+
+  # ── Credenciales ─────────────────────────────────────────────────────────
+  DATABASE_URL:   ${{ secrets.DATABASE_URL }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  SMTP_USER:      ${{ secrets.SMTP_USER }}
+  SMTP_PASS:      ${{ secrets.SMTP_PASS }}
+  SMTP_HOST:      smtp.gmail.com
+  SMTP_PORT:      '587'
+  ALERT_EMAIL:    nicolas.crespo@southbay.com.ar
+
+  # ── Carga a la base ──────────────────────────────────────────────────────
+  TRUNCATE: 'false'      # nunca truncar en la corrida semanal: se acumula histórico
+
+  # ── SANEAMIENTO DE PRECIOS (db/load_csv.py) ──────────────────────────────
+  #  ACÁ SE LIMPIAN LOS DATOS. Los CSV llegan con dos tipos de basura:
+  #    · precios multiplicados por las cuotas (ej. 2.639.992 = 329.999 x 8)
+  #    · precios en 0, que no son "gratis" sino dato ausente
+  #  El loader los corrige/descarta y reporta cuántos; ese número viaja al
+  #  email de resumen. Valores explícitos (= los defaults del script) para
+  #  que se vean sin abrir el código.
+  PRICE_SANITIZE:           'true'      # 'false' desactiva todo el saneamiento
+  PRICE_MIN_ARS:            '1000'      # piso plausible de un precio en ARS
+  PRICE_MAX_ARS:            '2000000'   # techo plausible de un precio en ARS
+  PRICE_MAX_CUOTAS:         '24'        # máximo de cuotas que se acepta parsear
+  PRICE_INVALIDATE_DERIVED: 'true'      # anula gaps/BML/USD de filas con precio corregido
+
+  # ── Comportamiento de la carga ───────────────────────────────────────────
+  # Por defecto sólo se cargan CSVs generados EN ESTA corrida (evita recargar
+  # archivos viejos commiteados en el repo de scrapers).
+  ALLOW_STALE_CSV: ${{ inputs.allow_stale_csv || false }}
 
 jobs:
 
-  # ── Nike AR (scraping en vivo de nike.com.ar) ──────────────
+  # ── 0. Preflight: fallar rápido y claro si falta un secret ───────────────
+  preflight:
+    name: Preflight — secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar secrets requeridos
+        env:
+          SCRAPERS_REPO_TOKEN: ${{ secrets.SCRAPERS_REPO_TOKEN }}
+        run: bash .github/scripts/check_secrets.sh
+
+  # ── 1. Nike AR (scraping en vivo de nike.com.ar) ─────────────────────────
   nike-ar:
     name: Nike AR — nike.com.ar
+    needs: preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install deps
-        run: pip install requests psycopg2-binary curl-cffi openai
-        working-directory: Nike_Scrapper_Final
+
+      - name: Setup scrapers
+        uses: ./.github/actions/setup-scrapers
+        with:
+          token:      ${{ secrets.SCRAPERS_REPO_TOKEN }}
+          repository: ${{ env.SCRAPERS_REPO }}
+          path:       ${{ env.SCRAPERS_DIR }}
+          ref:        ${{ env.SCRAPERS_REF }}
+
+      - name: Marcar inicio de la corrida
+        run: echo "SCRAPE_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Run Nike AR scraper
+        id: scrape
+        continue-on-error: true      # se evalúa abajo; primero intentamos cargar lo que haya
+        working-directory: ${{ env.SCRAPERS_DIR }}
         run: python codigo_nike_ar_general.py
-        working-directory: Nike_Scrapper_Final
-      - name: Upload to DB
-        run: python ../nike-dashboard/db/load_csv.py Nike_AR_General_*.csv
-        working-directory: Nike_Scrapper_Final
-        env:
-          TRUNCATE: "false"
-      - uses: actions/upload-artifact@v4
+
+      - name: Verificar CSV y cargar a la DB
         if: always()
+        run: |
+          python .github/scripts/load_and_report.py \
+            --name nike-ar --job-id nike-ar --label "Nike AR" \
+            --scrape-outcome "${{ steps.scrape.outcome }}" \
+            --metrics-dir run-metrics \
+            --copy-to csv-artifacts \
+            --min-mtime "${SCRAPE_START:-0}" \
+            "$SCRAPERS_DIR/Nike_AR_General_*.csv"
+
+      - name: Subir CSVs
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: nike-ar-${{ github.run_id }}
-          path: Nike_Scrapper_Final/Nike_AR_General_*.csv
+          path: csv-artifacts/
+          if-no-files-found: warn
           retention-days: 30
 
-  # ── Competencia (Adidas + Puma) ────────────────────────────
+      - name: Subir métricas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-metrics-nike-ar
+          path: run-metrics/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fallar si el scraper falló
+        if: always() && steps.scrape.outcome != 'success'
+        run: |
+          echo "::error::El scraper Nike AR terminó con estado '${{ steps.scrape.outcome }}'."
+          exit 1
+
+  # ── 2. Competencia (Adidas + Puma → combine_outputs.py) ──────────────────
   competencia:
     name: Competencia — Adidas & Puma
+    needs: preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install deps
-        run: pip install requests psycopg2-binary curl-cffi openai playwright
-        working-directory: Nike_Scrapper_Final
-      - name: Install Playwright browsers
-        run: python -m playwright install chromium
+
+      - name: Setup scrapers
+        uses: ./.github/actions/setup-scrapers
+        with:
+          token:      ${{ secrets.SCRAPERS_REPO_TOKEN }}
+          repository: ${{ env.SCRAPERS_REPO }}
+          path:       ${{ env.SCRAPERS_DIR }}
+          ref:        ${{ env.SCRAPERS_REF }}
+          playwright: 'true'
+
+      - name: Marcar inicio de la corrida
+        run: echo "SCRAPE_START=$(date +%s)" >> "$GITHUB_ENV"
+
+      # Adidas y Puma son independientes: que uno falle no debe impedir el otro.
+      # El resultado de cada paso se evalúa al final del job.
       - name: Run Adidas scraper
+        id: adidas
+        continue-on-error: true
+        working-directory: ${{ env.SCRAPERS_DIR }}
         run: python codigo_adidas_7.py
-        working-directory: Nike_Scrapper_Final
-        continue-on-error: true
+
       - name: Run Puma scraper
+        id: puma
+        continue-on-error: true
+        working-directory: ${{ env.SCRAPERS_DIR }}
         run: python codigo_puma.py
-        working-directory: Nike_Scrapper_Final
-        continue-on-error: true
+
       - name: Combine outputs
-        run: python combine_outputs.py
-        working-directory: Nike_Scrapper_Final
+        id: combine
         continue-on-error: true
-      - name: Upload to DB
-        run: python ../nike-dashboard/db/load_csv.py pricing_combinado_*.csv
-        working-directory: Nike_Scrapper_Final
-        env:
-          TRUNCATE: "false"
-      - uses: actions/upload-artifact@v4
+        working-directory: ${{ env.SCRAPERS_DIR }}
+        run: python combine_outputs.py
+
+      - name: Verificar CSV combinado y cargar a la DB
         if: always()
+        run: |
+          python .github/scripts/load_and_report.py \
+            --name competencia --job-id competencia --label "Competencia (Adidas+Puma)" \
+            --scrape-outcome "${{ steps.combine.outcome }}" \
+            --metrics-dir run-metrics \
+            --copy-to csv-artifacts \
+            --min-mtime "${SCRAPE_START:-0}" \
+            "$SCRAPERS_DIR/pricing_combinado_*.csv"
+
+      # csv-artifacts/ trae el combinado (lo que efectivamente se cargó);
+      # los dos globs extra suben los parciales de cada scraper para debuggear.
+      - name: Subir CSVs
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: competencia-${{ github.run_id }}
           path: |
-            Nike_Scrapper_Final/adidas7_ar_vs_nike_*.csv
-            Nike_Scrapper_Final/puma_ar_assortment_*.csv
-            Nike_Scrapper_Final/pricing_combinado_*.csv
+            csv-artifacts/
+            ${{ env.SCRAPERS_DIR }}/adidas7_ar_vs_nike_*.csv
+            ${{ env.SCRAPERS_DIR }}/puma_ar_assortment_*.csv
+          if-no-files-found: warn
           retention-days: 30
 
-  # ── Retailers AR ───────────────────────────────────────────
+      - name: Subir métricas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-metrics-competencia
+          path: run-metrics/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fallar si algún scraper falló
+        if: always()
+        run: |
+          fallos=""
+          [ "${{ steps.adidas.outcome }}"  = "success" ] || fallos="$fallos adidas"
+          [ "${{ steps.puma.outcome }}"    = "success" ] || fallos="$fallos puma"
+          [ "${{ steps.combine.outcome }}" = "success" ] || fallos="$fallos combine_outputs"
+          if [ -n "$fallos" ]; then
+            echo "::error::Pasos fallidos en Competencia:$fallos"
+            exit 1
+          fi
+          echo "Adidas, Puma y combine_outputs terminaron OK."
+
+  # ── 3. Retailers AR (matriz, un job por retailer) ────────────────────────
   retailers-ar:
-    name: Retailers AR
+    name: Retailer — ${{ matrix.retailer.name }}
+    needs: preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -98,40 +265,96 @@ jobs:
           - { name: stockcenter,  script: codigo_stockcenter_v6.py }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install deps
-        run: pip install requests psycopg2-binary playwright curl-cffi openai pandas openpyxl
-      - name: Install Playwright
-        run: python -m playwright install chromium
+
+      - name: Setup scrapers
+        uses: ./.github/actions/setup-scrapers
+        with:
+          token:      ${{ secrets.SCRAPERS_REPO_TOKEN }}
+          repository: ${{ env.SCRAPERS_REPO }}
+          path:       ${{ env.SCRAPERS_DIR }}
+          ref:        ${{ env.SCRAPERS_REF }}
+          playwright: 'true'
+
+      - name: Marcar inicio de la corrida
+        run: echo "SCRAPE_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Run ${{ matrix.retailer.name }}
-        run: python ${{ matrix.retailer.script }}
-        working-directory: Nike_Scrapper_Final
+        id: scrape
         continue-on-error: true
-      - name: Upload to DB
-        run: |
-          for f in Nike_Scrapper_Final/${{ matrix.retailer.name }}*_vs_nike_*.csv; do
-            [ -f "$f" ] && python nike-dashboard/db/load_csv.py "$f" || true
-          done
-        env:
-          TRUNCATE: "false"
-      - uses: actions/upload-artifact@v4
+        working-directory: ${{ env.SCRAPERS_DIR }}
+        run: python ${{ matrix.retailer.script }}
+
+      # Los nombres de archivo de cada retailer no son uniformes, así que se
+      # prueban dos patrones (case-insensitive, resueltos en Python) y sólo se
+      # aceptan archivos generados en ESTA corrida.
+      - name: Verificar CSV y cargar a la DB
         if: always()
+        run: |
+          python .github/scripts/load_and_report.py \
+            --name "retailer-${{ matrix.retailer.name }}" \
+            --job-id retailers-ar \
+            --label "${{ matrix.retailer.name }}" \
+            --scrape-outcome "${{ steps.scrape.outcome }}" \
+            --metrics-dir run-metrics \
+            --copy-to csv-artifacts \
+            --min-mtime "${SCRAPE_START:-0}" \
+            "$SCRAPERS_DIR/*${{ matrix.retailer.name }}*_vs_nike_*.csv" \
+            "$SCRAPERS_DIR/*${{ matrix.retailer.name }}*.csv"
+
+      # Se sube lo que el script encontró de verdad (upload-artifact no matchea
+      # globs case-insensitive; ej. soloDeportes → solodeportes_*.csv).
+      - name: Subir CSVs
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.retailer.name }}-${{ github.run_id }}
-          path: Nike_Scrapper_Final/${{ matrix.retailer.name }}*_vs_nike_*.csv
+          path: csv-artifacts/
+          if-no-files-found: warn
           retention-days: 30
 
-  # ── Notificación final ─────────────────────────────────────
+      - name: Subir métricas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-metrics-retailer-${{ matrix.retailer.name }}
+          path: run-metrics/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fallar si el scraper falló
+        if: always() && steps.scrape.outcome != 'success'
+        run: |
+          echo "::error::El scraper ${{ matrix.retailer.name }} terminó con estado '${{ steps.scrape.outcome }}'."
+          exit 1
+
+  # ── 4. Notificación final (email real, no un echo) ───────────────────────
   notify:
     name: Notificación Final
     runs-on: ubuntu-latest
-    needs: [nike-ar, competencia, retailers-ar]
+    needs: [preflight, nike-ar, competencia, retailers-ar]
     if: always()
+    timeout-minutes: 10
     steps:
-      - name: Resumen de corrida
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Bajar métricas de todos los jobs
+        uses: actions/download-artifact@v4
+        continue-on-error: true      # si ningún job llegó a producir métricas, seguimos igual
+        with:
+          pattern: run-metrics-*
+          merge-multiple: true
+          path: run-metrics
+
+      - name: Enviar resumen por email
         run: |
-          echo "=== Nike Dashboard Weekly Run ==="
-          echo "Nike AR:     ${{ needs.nike-ar.result }}"
-          echo "Competencia: ${{ needs.competencia.result }}"
-          echo "Retailers:   ${{ needs.retailers-ar.result }}"
+          python .github/scripts/send_run_summary.py \
+            --metrics-dir run-metrics \
+            --job "preflight=${{ needs.preflight.result }}" \
+            --job "nike-ar=${{ needs.nike-ar.result }}" \
+            --job "competencia=${{ needs.competencia.result }}" \
+            --job "retailers-ar=${{ needs.retailers-ar.result }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -1,0 +1,103 @@
+name: Setup scrapers
+description: >
+  Deja el runner listo para correr los scrapers legacy: clona el repo privado
+  de scrapers al lado del checkout de este repo, instala Python y las
+  dependencias (y opcionalmente Chromium para Playwright).
+
+  PRECONDICIÓN: el caller ya hizo `actions/checkout@v4` de ESTE repo en la raíz
+  del workspace. Este action NO lo hace por vos.
+
+  Layout resultante en $GITHUB_WORKSPACE:
+      .github/            ← este repo (dashboard + db/load_csv.py)
+      db/load_csv.py
+      scraper/
+      <path>/             ← repo de scrapers (codigo_*.py, combine_outputs.py)
+
+inputs:
+  token:
+    description: 'PAT con permiso de lectura sobre el repo de scrapers (secrets.SCRAPERS_REPO_TOKEN)'
+    required: true
+  repository:
+    description: 'owner/repo del repositorio de scrapers'
+    required: true
+  path:
+    description: 'Carpeta destino del repo de scrapers, relativa al workspace'
+    required: false
+    default: Nike_Scrapper_Final
+  ref:
+    description: 'Branch/tag/SHA del repo de scrapers. Vacío = rama por defecto'
+    required: false
+    default: ''
+  python-version:
+    description: 'Versión de Python'
+    required: false
+    default: '3.11'
+  playwright:
+    description: '"true" para instalar Chromium + dependencias de sistema'
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repo de scrapers (privado)
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.repository }}
+        ref: ${{ inputs.ref }}
+        path: ${{ inputs.path }}
+        token: ${{ inputs.token }}
+        # No dejamos el PAT escrito en .git/config: los scrapers no usan git.
+        persist-credentials: false
+
+    - name: Setup Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: requirements.txt
+
+    - name: Instalar dependencias
+      shell: bash
+      run: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+
+        # 1) Dependencias de ESTE repo (requests, psycopg2, curl-cffi,
+        #    playwright, openai, pandas, openpyxl, python-dotenv).
+        echo "::group::pip install -r requirements.txt (dashboard)"
+        pip install -r "$GITHUB_WORKSPACE/requirements.txt"
+        echo "::endgroup::"
+
+        # 2) Dependencias propias del repo de scrapers, si las declara.
+        SCRAPERS_REQ="$GITHUB_WORKSPACE/${{ inputs.path }}/requirements.txt"
+        if [ -f "$SCRAPERS_REQ" ]; then
+          echo "::group::pip install -r requirements.txt (scrapers)"
+          pip install -r "$SCRAPERS_REQ"
+          echo "::endgroup::"
+        else
+          echo "El repo de scrapers no trae requirements.txt — se usan sólo las deps del dashboard."
+        fi
+
+    - name: Instalar Chromium (Playwright)
+      if: inputs.playwright == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        python -m playwright install --with-deps chromium
+
+    - name: Verificar layout
+      shell: bash
+      run: |
+        set -euo pipefail
+        SCRAPERS_PATH="$GITHUB_WORKSPACE/${{ inputs.path }}"
+        if [ ! -d "$SCRAPERS_PATH" ]; then
+          echo "::error::No existe $SCRAPERS_PATH — el checkout del repo de scrapers no funcionó."
+          exit 1
+        fi
+        if [ ! -f "$GITHUB_WORKSPACE/db/load_csv.py" ]; then
+          echo "::error::No existe db/load_csv.py — el checkout de este repo no funcionó."
+          exit 1
+        fi
+        echo "Scripts disponibles en ${{ inputs.path }}:"
+        ls -1 "$SCRAPERS_PATH" | head -40

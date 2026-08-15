@@ -13,7 +13,9 @@ from email.mime.text import MIMEText
 
 log = logging.getLogger("alert")
 
-ALERT_EMAIL = "nicolas.crespo@southbay.com.ar"
+# Destinatario por defecto pedido por el negocio. Se puede sobreescribir con
+# la env var ALERT_EMAIL (el workflow la setea).
+ALERT_EMAIL = os.getenv("ALERT_EMAIL", "nicolas.crespo@southbay.com.ar")
 SMTP_HOST   = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT   = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER   = os.getenv("SMTP_USER", "")
@@ -102,8 +104,25 @@ def send_scraper_alert(
         return False
 
 
-def send_run_summary(results: list[dict]):
-    """Envía resumen de la corrida semanal."""
+def send_run_summary(results: list[dict], totals: dict | None = None, run_url: str = "") -> bool:
+    """
+    Envía el resumen de la corrida semanal.
+
+    Args:
+        results: lista de dicts por scraper, con las claves
+                 `scraper`, `success`, `error`, `duration_s`, `rows`.
+        totals:  dict opcional con los agregados de la corrida
+                 (`rows_csv`, `rows_inserted`, `loader_errors`, `price_zero`,
+                 `price_cuotas`, `price_out_of_range`, `derived_invalidated`).
+                 Sirve para contar cuántos precios sucios descartó
+                 `db/load_csv.py`.
+        run_url: link a la corrida de GitHub Actions.
+
+    Returns:
+        True si el email salió; False si no había SMTP configurado o falló el
+        envío. Nunca lanza excepciones: notificar no puede romper el pipeline.
+    """
+    results = results or []
     success = [r for r in results if r.get("success")]
     failed  = [r for r in results if not r.get("success")]
 
@@ -111,16 +130,54 @@ def send_run_summary(results: list[dict]):
     for r in results:
         icon  = "✅" if r.get("success") else "❌"
         color = "#22c55e" if r.get("success") else "#ef4444"
+        detail = "OK" if r.get("success") else str(r.get("error") or "Error")[:80]
+        duration = r.get("duration_s") or 0
+        n_rows   = r.get("rows") or 0
         rows += f"""
         <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6">{icon} {r.get('scraper','?')}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:{color}">
-            {'OK' if r.get('success') else r.get('error','Error')[:60]}
+            {detail}
           </td>
           <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#9ca3af">
-            {r.get('duration_s', 0):.0f}s · {r.get('rows', 0):,} filas
+            {duration:.0f}s · {n_rows:,} filas
           </td>
         </tr>"""
+
+    totals_block = ""
+    if totals:
+        def _n(key: str) -> str:
+            return f"{int(totals.get(key, 0) or 0):,}"
+        totals_block = f"""
+        <h3 style="font-size:13px;color:#374151;margin:24px 0 8px">Datos cargados</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <tr><td style="padding:4px 12px;color:#6b7280">Filas en CSV</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('rows_csv')}</strong></td></tr>
+          <tr><td style="padding:4px 12px;color:#6b7280">Filas insertadas</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('rows_inserted')}</strong></td></tr>
+          <tr><td style="padding:4px 12px;color:#6b7280">Filas rechazadas por el loader</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('loader_errors')}</strong></td></tr>
+        </table>
+
+        <h3 style="font-size:13px;color:#374151;margin:20px 0 8px">
+          Saneamiento de precios <span style="color:#9ca3af;font-weight:400">(db/load_csv.py)</span>
+        </h3>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;background:#fffbeb;border-radius:8px">
+          <tr><td style="padding:4px 12px;color:#6b7280">Precios &lt;= 0 descartados</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('price_zero')}</strong></td></tr>
+          <tr><td style="padding:4px 12px;color:#6b7280">Precios fuera de rango descartados</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('price_out_of_range')}</strong></td></tr>
+          <tr><td style="padding:4px 12px;color:#6b7280">Precios corregidos dividiendo por cuotas</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('price_cuotas')}</strong></td></tr>
+          <tr><td style="padding:4px 12px;color:#6b7280">Filas con métricas derivadas anuladas</td>
+              <td style="padding:4px 12px;text-align:right"><strong>{_n('derived_invalidated')}</strong></td></tr>
+        </table>"""
+
+    run_link = (
+        f'<p style="margin:16px 0 0"><a href="{run_url}" style="color:#2563eb;font-size:12px">'
+        f'Ver la corrida completa en GitHub Actions</a></p>'
+        if run_url else ""
+    )
 
     subject = f"[Nike Dashboard] Resumen corrida semanal — {len(success)}/{len(results)} OK"
     html = f"""
@@ -147,21 +204,29 @@ def send_run_summary(results: list[dict]):
           </tr></thead>
           <tbody>{rows}</tbody>
         </table>
+        {totals_block}
+        {run_link}
         <p style="color:#9ca3af;font-size:11px;margin-top:20px">{datetime.now().strftime('%Y-%m-%d %H:%M')} · Nike Dashboard · Southbay</p>
       </div>
     </div>"""
 
-    if SMTP_USER and SMTP_PASS:
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"]    = SMTP_USER
-            msg["To"]      = ALERT_EMAIL
-            msg.attach(MIMEText(html, "html"))
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.send_message(msg)
-            log.info("📧 Resumen enviado a %s", ALERT_EMAIL)
-        except Exception as e:
-            log.error("Error enviando resumen: %s", e)
+    if not (SMTP_USER and SMTP_PASS):
+        log.warning("SMTP no configurado — resumen no enviado: %s", subject)
+        return False
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = SMTP_USER
+        msg["To"]      = ALERT_EMAIL
+        msg.attach(MIMEText(html, "html"))
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+        log.info("📧 Resumen enviado a %s", ALERT_EMAIL)
+        return True
+    except Exception as e:
+        log.error("Error enviando resumen: %s", e)
+        return False
