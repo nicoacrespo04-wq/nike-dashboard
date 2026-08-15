@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+html,
+body {
+  background-color: #f6f6f4;
+  color: #111111;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Trama para marcas sin datos: la ausencia de dato se ve, no se adivina. */
+.hatch-muted {
+  background-image: repeating-linear-gradient(
+    135deg,
+    #d8d8d2 0px,
+    #d8d8d2 2px,
+    #eeeeea 2px,
+    #eeeeea 6px
+  );
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d5d5cf;
+  border-radius: 999px;
+  border: 2px solid #f6f6f4;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bcbcb5;
+}
