@@ -21,6 +21,15 @@ Idempotencia:
     pisar lo que escribió `enrichment`, y las observaciones de las combinaciones
     ``(producto, retailer, fecha)`` que se vuelven a cargar se reemplazan.
     Correr dos veces la misma ingesta deja exactamente los mismos conteos.
+
+Modo de escritura de las observaciones (``observations=``):
+  * ``'replace'`` (default, carga full): la clave ``(producto, retailer, fecha)``
+    que se vuelve a cargar se borra y se reinserta. Es lo correcto cuando se
+    recarga un rango de fechas y la fuente puede haber corregido un precio.
+  * ``'append'``  (carga incremental semanal, ver `app.ingest.incremental`):
+    la clave que ya existe NO se toca — se saltea y se cuenta. El histórico de
+    precios y stock es inmutable, que es justo lo que alimenta tendencias y
+    momentum.
 """
 
 from __future__ import annotations
@@ -83,6 +92,11 @@ PRODUCT_COLUMNS: tuple[str, ...] = (
 #: Prioridad de la fuente de una observación: lo capturado directamente en el
 #: retailer (bloque competidor) manda sobre el bloque Nike de referencia.
 _SIDE_PRIORITY = {COMPETITOR: 2, NIKE: 1}
+
+#: Modos de escritura de observaciones (ver docstring del módulo).
+REPLACE = "replace"
+APPEND = "append"
+OBSERVATION_MODES = (REPLACE, APPEND)
 
 
 # ============================================================
@@ -315,14 +329,19 @@ def _db_product_key(row: dict[str, Any], brand_name: str) -> tuple[str, str, str
     return (brand_name.upper(), str(row.get("country_code") or "").upper(), code)
 
 
-def _write(acc: _Accumulator, db_path: Path | str, *, drop: bool) -> dict[str, int]:
+def _write(acc: _Accumulator, db_path: Path | str, *, drop: bool,
+           observations: str = REPLACE) -> dict[str, int]:
     """Persiste el acumulador. Devuelve conteos de escritura."""
+    if observations not in OBSERVATION_MODES:
+        raise ValueError(f"observations debe ser uno de {OBSERVATION_MODES}, no {observations!r}")
     counts = {
         "brands": 0, "countries": 0, "retailers": 0, "retailers_non_retail_d2c": 0,
         "products": 0, "products_inserted": 0, "products_updated": 0,
         "products_nike": 0, "products_competitor": 0,
         "price_observations": 0, "price_observations_replaced": 0,
+        "price_observations_skipped": 0,
         "stock_observations": 0, "stock_observations_replaced": 0,
+        "stock_observations_skipped": 0,
         "availability_pct_derived": 0,
     }
     counts["availability_pct_derived"] = acc.apply_size_grid()
@@ -412,16 +431,18 @@ def _write(acc: _Accumulator, db_path: Path | str, *, drop: bool) -> dict[str, i
                 counts["products_competitor"] += 1
         counts["products"] = len(product_ids)
 
-        # ── observaciones (reemplazo idempotente por clave) ──
-        counts["price_observations"], counts["price_observations_replaced"] = _write_observations(
+        # ── observaciones (reemplazo o append-only según el modo) ──
+        (counts["price_observations"], counts["price_observations_replaced"],
+         counts["price_observations_skipped"]) = _write_observations(
             conn, "price_observations",
             ("full_price", "current_price", "discount_pct", "currency"),
-            acc.prices.values(), product_ids, retailer_id_by_key,
+            acc.prices.values(), product_ids, retailer_id_by_key, mode=observations,
         )
-        counts["stock_observations"], counts["stock_observations_replaced"] = _write_observations(
+        (counts["stock_observations"], counts["stock_observations_replaced"],
+         counts["stock_observations_skipped"]) = _write_observations(
             conn, "stock_observations",
             ("in_stock", "availability_pct", "sizes_available", "sizes_total"),
-            acc.stocks.values(), product_ids, retailer_id_by_key,
+            acc.stocks.values(), product_ids, retailer_id_by_key, mode=observations,
         )
 
     return counts
@@ -430,8 +451,15 @@ def _write(acc: _Accumulator, db_path: Path | str, *, drop: bool) -> dict[str, i
 def _write_observations(conn, table: str, columns: tuple[str, ...],
                         records: Iterable[dict[str, Any]],
                         product_ids: dict[tuple, int],
-                        retailer_ids: dict[str, int]) -> tuple[int, int]:
-    """Borra las claves que se recargan y reinserta. Devuelve `(insertadas, borradas)`."""
+                        retailer_ids: dict[str, int],
+                        *, mode: str = REPLACE) -> tuple[int, int, int]:
+    """Escribe observaciones. Devuelve ``(insertadas, reemplazadas, salteadas)``.
+
+    * ``mode='replace'``: borra las claves ``(producto, retailer, fecha)`` que se
+      recargan y reinserta (lo que la fuente diga ahora manda).
+    * ``mode='append'``:  las claves que ya existen NO se tocan; sólo se insertan
+      las nuevas. El histórico queda intacto.
+    """
     rows: list[tuple] = []
     keys: list[tuple] = []
     for record in records:
@@ -444,7 +472,33 @@ def _write_observations(conn, table: str, columns: tuple[str, ...],
                      *(record.get(col) for col in columns)))
 
     if not rows:
-        return 0, 0
+        return 0, 0, 0
+
+    all_columns = ("product_id", "retailer_id", "observed_at", *columns)
+    columns_sql = ", ".join(all_columns)
+
+    if mode == APPEND:
+        # Append-only: se cargan a una temp con los MISMOS valores y se insertan
+        # sólo las claves que la base todavía no tiene. Un solo INSERT..SELECT,
+        # así el costo es una pasada por el índice (product_id, retailer_id) y no
+        # una consulta por fila.
+        conn.execute("DROP TABLE IF EXISTS temp._ingest_rows")
+        conn.execute(f"CREATE TEMP TABLE _ingest_rows ({columns_sql})")
+        conn.executemany(
+            f"INSERT INTO _ingest_rows ({columns_sql}) "
+            f"VALUES ({', '.join('?' for _ in all_columns)})",
+            rows,
+        )
+        inserted = conn.execute(
+            f"INSERT INTO {table} ({columns_sql}) "
+            f"SELECT {columns_sql} FROM _ingest_rows r WHERE NOT EXISTS ("
+            f"  SELECT 1 FROM {table} t"
+            "   WHERE t.product_id = r.product_id"
+            "     AND t.retailer_id = r.retailer_id"
+            "     AND t.observed_at = r.observed_at)"
+        ).rowcount or 0
+        conn.execute("DROP TABLE IF EXISTS temp._ingest_rows")
+        return int(inserted), 0, len(rows) - int(inserted)
 
     conn.execute("CREATE TEMP TABLE IF NOT EXISTS _ingest_keys "
                  "(product_id INTEGER, retailer_id INTEGER, observed_at TEXT)")
@@ -458,14 +512,13 @@ def _write_observations(conn, table: str, columns: tuple[str, ...],
         f"    AND k.observed_at = {table}.observed_at)"
     ).rowcount or 0
 
-    all_columns = ("product_id", "retailer_id", "observed_at", *columns)
     conn.executemany(
-        f"INSERT INTO {table} ({', '.join(all_columns)}) "
+        f"INSERT INTO {table} ({columns_sql}) "
         f"VALUES ({', '.join('?' for _ in all_columns)})",
         rows,
     )
     conn.execute("DELETE FROM _ingest_keys")
-    return len(rows), int(deleted)
+    return len(rows), int(deleted), 0
 
 
 # ============================================================
@@ -474,7 +527,7 @@ def _write_observations(conn, table: str, columns: tuple[str, ...],
 
 def ingest_rows(rows: Iterable[dict[str, Any]], db_path: Path | str = DB_PATH, *,
                 country: str | None = "AR", limit: int | None = None,
-                drop: bool = True) -> dict[str, int]:
+                drop: bool = True, observations: str = REPLACE) -> dict[str, int]:
     """Ingesta desde cualquier iterable de filas con columnas de `pricing_data`."""
     started = time.perf_counter()
     acc = _Accumulator(country)
@@ -484,7 +537,7 @@ def ingest_rows(rows: Iterable[dict[str, Any]], db_path: Path | str = DB_PATH, *
         acc.feed(row)
 
     summary = dict(acc.stats)
-    summary.update(_write(acc, db_path, drop=drop))
+    summary.update(_write(acc, db_path, drop=drop, observations=observations))
     summary["seconds"] = int(round(time.perf_counter() - started))
     log_summary(summary, country=country)
     return summary
@@ -493,7 +546,8 @@ def ingest_rows(rows: Iterable[dict[str, Any]], db_path: Path | str = DB_PATH, *
 def ingest_from_postgres(dsn: str, db_path: Path | str = DB_PATH, *, country: str = "AR",
                          limit: int | None = None, drop: bool = True,
                          since: str | None = None, until: str | None = None,
-                         batch_size: int = 5000) -> dict[str, int]:
+                         batch_size: int = 5000,
+                         observations: str = REPLACE) -> dict[str, int]:
     """Lee `pricing_data` de Postgres (Supabase) y la carga normalizada.
 
     Args:
@@ -504,10 +558,13 @@ def ingest_from_postgres(dsn: str, db_path: Path | str = DB_PATH, *, country: st
         drop: ``True`` recrea la base; ``False`` hace upsert idempotente.
         since / until: rango de `fecha_corrida` (ISO), para cargas parciales.
         batch_size: tamaño del cursor server-side.
+        observations: ``'replace'`` (default) o ``'append'`` (append-only, ver
+            `app.ingest.incremental`).
     """
     rows = _iter_postgres(dsn, country=country, limit=limit, since=since,
                           until=until, batch_size=batch_size)
-    return ingest_rows(rows, db_path, country=country, drop=drop)
+    return ingest_rows(rows, db_path, country=country, drop=drop,
+                       observations=observations)
 
 
 def ingest_from_csv(csv_path: str | Path, db_path: Path | str = DB_PATH,
@@ -630,14 +687,18 @@ def log_summary(summary: dict[str, int], *, country: str | None = None) -> None:
              f"{summary.get('products_updated', 0):,}")
     log.info("    · Nike / competencia       : %s / %s",
              f"{summary.get('products_nike', 0):,}", f"{summary.get('products_competitor', 0):,}")
-    log.info("  Observaciones de precio      : %s  (deduplicadas %s, reemplazadas %s)",
+    log.info("  Observaciones de precio      : %s  (deduplicadas %s, reemplazadas %s, "
+             "ya existentes %s)",
              f"{summary.get('price_observations', 0):,}",
              f"{summary.get('price_observations_deduplicated', 0):,}",
-             f"{summary.get('price_observations_replaced', 0):,}")
-    log.info("  Observaciones de stock       : %s  (deduplicadas %s, reemplazadas %s)",
+             f"{summary.get('price_observations_replaced', 0):,}",
+             f"{summary.get('price_observations_skipped', 0):,}")
+    log.info("  Observaciones de stock       : %s  (deduplicadas %s, reemplazadas %s, "
+             "ya existentes %s)",
              f"{summary.get('stock_observations', 0):,}",
              f"{summary.get('stock_observations_deduplicated', 0):,}",
-             f"{summary.get('stock_observations_replaced', 0):,}")
+             f"{summary.get('stock_observations_replaced', 0):,}",
+             f"{summary.get('stock_observations_skipped', 0):,}")
     log.info("    · availability_pct derivada: %s",
              f"{summary.get('availability_pct_derived', 0):,}")
     log.info("  ── Saneamiento de precios (rango [%s, %s] ARS, cuotas máx %s) ──",
