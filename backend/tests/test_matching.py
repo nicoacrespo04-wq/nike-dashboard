@@ -541,3 +541,264 @@ def test_feature_importance_breakdown(db, monkeypatch, use_embeddings):
     for f in result.drivers:
         print(f"  {f['factor']:<18} raw={f['raw_score']:.3f} weight={f['weight']:.2f} "
               f"contribution={f['contribution']:.1f}%")
+
+
+# ── 7. rendimiento: el atajo textual y los índices no mueven un score ──
+#
+# Estos tests son la red que protege las optimizaciones de rendimiento (ver
+# backend/docs/matching.md § rendimiento). La regla es simple: acelerar no puede
+# cambiar ni un decimal. Por eso se compara SIEMPRE contra el camino lento, no
+# contra una expectativa escrita a mano.
+
+
+def _golden_db(db) -> None:
+    """Catálogo chico pero con las siete señales prendidas."""
+    with get_conn(db) as conn:
+        _insert(conn, "products", [
+            product(1, 1, "Nike Pegasus 41", franchise="Pegasus", msrp=159999.0,
+                    description="Zapatilla de running para entrenamiento diario "
+                                "con amortiguacion reactiva."),
+            product(2, 2, "Adidas Adizero SL", franchise="Adizero", msrp=149999.0,
+                    description="Zapatilla liviana de entrenamiento rapido con "
+                                "espuma Lightstrike."),
+            product(3, 3, "Asics Novablast 5", franchise="Novablast", msrp=169999.0,
+                    price_band="premium",
+                    description="Zapatilla neutra de entrenamiento diario con espuma FF Blast."),
+            product(4, 2, "Adidas Terrex Agravic", category="trail", sport="trail",
+                    use_case="trail running", msrp=189999.0,
+                    description="Zapatilla de trail con placa de roca y agarre Continental."),
+        ])
+        _insert(conn, "price_observations", [
+            {"product_id": p, "retailer_id": r, "observed_at": days_ago(3),
+             "current_price": 150000.0 - 1000 * p - 500 * r}
+            for p in (1, 2, 3, 4) for r in (1, 2)
+        ])
+        _insert(conn, "reviews", [
+            {"product_id": p, "rating": 4.0 + p / 10, "review_count": 3,
+             "observed_at": days_ago(10),
+             "review_text": "Comoda y liviana, buena amortiguacion y calce justo."}
+            for p in (1, 2, 3, 4)
+        ])
+        _insert(conn, "editorial_mentions", [
+            {"source_name": "Blog", "title": "Pegasus vs Adizero",
+             "published_at": days_ago(30), "mention_type": "versus",
+             "product_a_id": 1, "product_b_id": 2, "country_code": "AR"},
+        ])
+        _insert(conn, "social_mention_aggregates", [
+            {"period_start": days_ago(60), "period_end": days_ago(2), "country_code": "AR",
+             "product_id": 1, "co_product_id": 3, "source_type": "forum",
+             "mention_count": 100, "comention_count": 12},
+        ])
+
+
+# score crudo, score ajustado, cobertura y confianza de Pegasus 41 contra cada
+# competidor, con el fixture `no_embeddings` activo (fallback determinístico:
+# no dependen de la versión de sklearn). Son los valores que producía el motor
+# ANTES de las optimizaciones de rendimiento — la comparación par a par sobre el
+# catálogo entero está en tools/profile_matching.py --compare.
+GOLDEN_SCORES = {
+    2: (82.7721, 70.8291, 0.75, "HIGH"),
+    3: (84.1142, 69.3799, 0.70, "HIGH"),
+    4: (61.8964, 51.1378, 0.60, "MEDIUM"),
+}
+
+
+def test_scores_no_cambian_con_las_optimizaciones(db):
+    """Regresión numérica: los scores son los de siempre, al cuarto decimal."""
+    _golden_db(db)
+    ctx = build_context(db)
+    for comp_id, (raw, adjusted, coverage, confidence) in GOLDEN_SCORES.items():
+        result = compute_match(ctx.products[1], ctx.products[comp_id], ctx)
+        assert round(result.score, 4) == raw
+        assert round(matching.evidence_adjusted(result.score, result.coverage), 4) == adjusted
+        assert round(result.coverage, 4) == coverage
+        assert result.confidence == confidence
+
+
+def test_el_contexto_memoiza_por_producto_sin_cambiar_resultados(db):
+    """Los memos por producto devuelven lo mismo que el cálculo directo."""
+    _golden_db(db)
+    ctx = build_context(db)
+
+    # precio promedio: mismo número que el cálculo ingenuo sobre latest_price
+    for pid in ctx.products:
+        prices = [float(obs["current_price"])
+                  for (p, _r), obs in ctx.latest_price.items()
+                  if p == pid and obs.get("current_price") is not None]
+        expected = sum(prices) / len(prices) if prices else None
+        assert ctx.avg_current_price(pid) == expected
+
+    # señales de reviews: mismo volumen/atributos/rating que las funciones puras
+    for pid in ctx.products:
+        rows = ctx.reviews.get(pid, [])
+        volume, attrs, rating = ctx.review_signals(pid)
+        assert volume == matching._review_volume(rows)
+        assert set(attrs) == matching._review_attributes(rows)
+        assert rating == matching._avg_rating(rows)
+
+    # y el memo no se "gasta": pedirlo dos veces da lo mismo
+    assert ctx.review_signals(1) == ctx.review_signals(1)
+    assert ctx.attr_tokens(1, matching._COLOR_ATTRS) == ctx.attr_tokens(1, matching._COLOR_ATTRS)
+
+
+def test_el_atajo_textual_reproduce_a_sklearn():
+    """El TF-IDF analítico da lo mismo que ajustar el vectorizador por par.
+
+    Si este test falla, `embeddings` cambió de fórmula y el atajo tiene que
+    apagarse solo (lo hace `verify_text_fast_path`).
+    """
+    embeddings = pytest.importorskip("app.services.embeddings")
+    if embeddings.backend_name() != "tfidf":
+        pytest.skip("el backend activo no es TF-IDF")
+
+    matching.reset_embeddings_cache()
+    engine = matching._text_similarity_engine(embeddings)
+    assert engine is not None and engine.available
+
+    textos = [
+        "Zapatilla de running para entrenamiento diario con amortiguacion reactiva.",
+        "Zapatilla liviana de entrenamiento rapido con espuma Lightstrike.",
+        "Zapatilla neutra de entrenamiento diario con espuma FF Blast.",
+        "Botines de futbol para cancha de pasto natural con tapones FG.",
+        "Remera de entrenamiento con tecnologia de secado rapido.",
+        "",
+        "zapatilla",
+    ]
+    comparados = 0
+    for i, a in enumerate(textos):
+        for b in textos[i + 1:]:
+            lento = embeddings.text_similarity(a, b)
+            rapido = matching.text_similarity(a, b, embeddings)
+            assert (lento is None) == (rapido is None)
+            if lento is not None:
+                # La diferencia admisible es el redondeo float32 de sklearn:
+                # tres órdenes por debajo de los 4 decimales que se persisten.
+                assert abs(lento - rapido) <= matching._FAST_TEXT_TOLERANCE
+                comparados += 1
+    assert comparados >= 10
+    matching.reset_embeddings_cache()
+
+
+def test_el_score_completo_es_igual_con_y_sin_atajo_textual(db, monkeypatch):
+    """El par completo (los 7 factores) puntúa igual por los dos caminos."""
+    embeddings = pytest.importorskip("app.services.embeddings")
+    if embeddings.backend_name() != "tfidf":
+        pytest.skip("el backend activo no es TF-IDF")
+    _golden_db(db)
+    monkeypatch.setattr(matching, "_embeddings_module", embeddings, raising=False)
+
+    matching.reset_embeddings_cache()
+    monkeypatch.setattr(matching, "_embeddings_module", embeddings, raising=False)
+    ctx = build_context(db)
+    rapido = {cid: compute_match(ctx.products[1], ctx.products[cid], ctx).score
+              for cid in (2, 3, 4)}
+
+    # Camino lento: el mismo que corría antes de la optimización.
+    monkeypatch.setattr(matching, "text_similarity",
+                        lambda a, b, module: module.text_similarity(a, b))
+    embeddings.reset_cache()
+    ctx = build_context(db)
+    lento = {cid: compute_match(ctx.products[1], ctx.products[cid], ctx).score
+             for cid in (2, 3, 4)}
+
+    for cid in rapido:
+        assert round(rapido[cid], 4) == round(lento[cid], 4)
+    matching.reset_embeddings_cache()
+
+
+def test_el_atajo_textual_se_apaga_si_embeddings_cambia(monkeypatch):
+    """Un módulo de embeddings que no expone sus internos usa el camino lento."""
+    llamadas = []
+
+    def slow(a, b):
+        llamadas.append((a, b))
+        return 0.42
+
+    stub = SimpleNamespace(backend_name=lambda: "tfidf", text_similarity=slow)
+    matching.reset_embeddings_cache()
+    assert matching.text_similarity("una cosa", "otra cosa", stub) == 0.42
+    assert llamadas == [("una cosa", "otra cosa")]
+    assert matching._text_fast_path.available is False
+    assert "no expone" in matching._text_fast_path.reason
+    matching.reset_embeddings_cache()
+
+
+# ── 8. candidate generation (prefiltro) ─────────────────────
+
+
+def test_el_prefiltro_no_pierde_matches_en_un_catalogo_chico(db):
+    """Red de seguridad: con pocos competidores no se descarta nada.
+
+    Un catálogo chico llena su cupo de top-N con pares de otra categoría; si el
+    prefiltro los sacara, el resultado cambiaría. Por eso, cuando el bloque
+    queda por debajo de `min_candidates_per_product`, ese producto Nike vuelve
+    al barrido completo.
+    """
+    _golden_db(db)
+    with config_override(min_score_to_persist=0.0, top_n_per_product=10):
+        con_filtro = run_matching(db)
+        with get_conn(db) as conn:
+            filtrados = {(r["nike_product_id"], r["competitor_product_id"], r["match_score"])
+                         for r in conn.execute("SELECT * FROM competitive_matches")}
+
+        cfg = get_config()["competitive_match"]
+        cfg["candidate_filter"] = {"enabled": False}
+        completo = run_matching(db)
+        with get_conn(db) as conn:
+            todos = {(r["nike_product_id"], r["competitor_product_id"], r["match_score"])
+                     for r in conn.execute("SELECT * FROM competitive_matches")}
+
+    assert con_filtro["pairs_skipped_by_filter"] == 0
+    assert con_filtro["products_without_filter"] == con_filtro["nike_products"]
+    assert filtrados == todos
+    assert con_filtro["pairs_evaluated"] == completo["pairs_evaluated"]
+
+
+def test_el_prefiltro_descarta_categorias_distintas_cuando_el_bloque_alcanza(db):
+    """Con bloque suficiente, un par de otra categoría no se puntúa."""
+    _golden_db(db)
+    ctx = build_context(db)
+    nike, trail = ctx.products[1], ctx.products[4]
+
+    with config_override(candidate_filter={"enabled": True, "same_category": True,
+                                           "min_candidates_per_product": 1}):
+        ctx = build_context(db)
+        assert matching.is_candidate(nike, ctx.products[2], ctx) is True     # misma categoría
+        assert matching.is_candidate(nike, trail, ctx) is False              # running vs trail
+        bloque, descartados = matching.candidates_for(nike, ctx)
+        assert descartados == 1
+        assert trail["id"] not in {p["id"] for p in bloque}
+
+    with config_override(candidate_filter={"enabled": False}):
+        ctx = build_context(db)
+        bloque, descartados = matching.candidates_for(nike, ctx)
+        assert descartados == 0
+        assert trail["id"] in {p["id"] for p in bloque}
+
+
+def test_el_prefiltro_nunca_descarta_una_rivalidad_documentada(db):
+    """Si el mercado ya los compara, la taxonomía no manda.
+
+    Es el caso que el brief pide proteger: dos productos pueden verse distintos
+    (otra categoría) y competir igual. Una mención editorial del par, una
+    co-mención social o una lista compartida lo rescatan del prefiltro.
+    """
+    _golden_db(db)
+    with get_conn(db) as conn:
+        _insert(conn, "editorial_mentions", [
+            {"source_name": "Guia", "title": "Pegasus vs Terrex para correr en cerro",
+             "published_at": days_ago(20), "mention_type": "alternative",
+             "product_a_id": 1, "product_b_id": 4, "country_code": "AR"},
+        ])
+
+    with config_override(candidate_filter={"enabled": True, "same_category": True,
+                                           "keep_documented_pairs": True,
+                                           "min_candidates_per_product": 1}):
+        ctx = build_context(db)
+        assert matching.is_candidate(ctx.products[1], ctx.products[4], ctx) is True
+
+    with config_override(candidate_filter={"enabled": True, "same_category": True,
+                                           "keep_documented_pairs": False,
+                                           "min_candidates_per_product": 1}):
+        ctx = build_context(db)
+        assert matching.is_candidate(ctx.products[1], ctx.products[4], ctx) is False

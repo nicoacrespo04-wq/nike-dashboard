@@ -326,13 +326,36 @@ def test_suggested_yaml_es_yaml_valido(demo_db, temp_config):
     assert "# " in text  # cada sugerencia lleva su motivo como comentario
 
 
-def test_sugerencia_de_conteo_queda_entera(demo_db, temp_config):
-    """Un umbral que cuenta cosas no puede quedar en 5.5."""
-    temp_config(**{"opportunities.promotional_pressure.min_competitors_on_markdown": 1})
-    suggestions = calibration.suggest_thresholds(demo_db)
-    info = suggestions.get("opportunities.promotional_pressure.min_competitors_on_markdown")
-    assert info is not None
-    assert float(info["sugerido"]) == int(info["sugerido"])
+def test_sugerencia_de_conteo_queda_entera():
+    """Un umbral que cuenta cosas no puede quedar en 5.5.
+
+    Se prueba `_round_like` directamente en vez de esperar que el dataset
+    produzca una sugerencia de conteo: cuáles umbrales resultan triviales o
+    inalcanzables depende de la calibración vigente, y hoy —justamente porque
+    la config está sana— el harness no sugiere ninguno de conteo. Atar el
+    invariante a eso hacía que el test se rompiera cada vez que se corregía un
+    umbral aguas arriba, que es exactamente al revés de lo que uno quiere.
+    """
+    conteo = calibration.Metric(
+        key="competidores_en_markdown", label="Competidores en markdown",
+        values=[2.0, 3.0, 4.0, 6.0, 8.0], unit="conteo")
+    # Dirección "min": redondea hacia arriba, o sea sin agrandar el conjunto
+    # que pasa el filtro.
+    assert calibration._round_like(5.5, 2, conteo, "min") == 6.0
+    assert calibration._round_like(5.5, 2, conteo, "max") == 5.0
+
+    # Una métrica continua conserva los decimales: un porcentaje de descuento
+    # sí puede ser 23.78.
+    continua = calibration.Metric(
+        key="nike_discount_pct", label="Descuento Nike", unit="pct",
+        values=[11.99, 18.4, 23.78, 31.2])
+    assert calibration._round_like(23.784, 10.0, continua, "min") == 23.78
+
+    # Y una métrica sin unidad declarada pero con valores enteros también se
+    # trata como discreta: es el caso de los umbrales que cuentan retailers.
+    sin_unidad = calibration.Metric(
+        key="retailers", label="Retailers", values=[1.0, 2.0, 3.0, 5.0])
+    assert calibration._round_like(2.4, 2, sin_unidad, "min") == 3.0
 
 
 # ── 6. rendimiento por regla ────────────────────────────────

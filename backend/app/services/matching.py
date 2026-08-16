@@ -17,11 +17,13 @@ Principios (ver backend/CONTRACTS.md):
 
 from __future__ import annotations
 
+import math
 import re
 import sqlite3
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -64,8 +66,9 @@ def _embeddings() -> Any | None:
 
 def reset_embeddings_cache() -> None:
     """Olvida el resultado del import opcional (útil en tests)."""
-    global _embeddings_module
+    global _embeddings_module, _text_fast_path
     _embeddings_module = _EMBEDDINGS_SENTINEL
+    _text_fast_path = None
 
 
 # ── normalización de texto ──────────────────────────────────
@@ -73,17 +76,32 @@ def reset_embeddings_cache() -> None:
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
+@lru_cache(maxsize=100_000)
+def _norm_str(text: str) -> str:
+    """Núcleo cacheado de `_norm` (la normalización Unicode es cara y se repite
+    sobre los MISMOS valores en cada par: nombres de atributo, taxonomía,
+    etiquetas de lifecycle...)."""
+    normalized = unicodedata.normalize("NFKD", text)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return " ".join(normalized.lower().split())
+
+
 def _norm(value: Any) -> str:
     """Minúsculas, sin acentos, sin espacios de más."""
     if value is None:
         return ""
-    text = unicodedata.normalize("NFKD", str(value))
-    text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    return " ".join(text.lower().split())
+    return _norm_str(value if type(value) is str else str(value))
+
+
+@lru_cache(maxsize=100_000)
+def _tokens_str(text: str) -> frozenset[str]:
+    return frozenset(_TOKEN_RE.findall(text))
 
 
 def _tokens(value: Any) -> set[str]:
-    return set(_TOKEN_RE.findall(_norm(value)))
+    # El resultado es inmutable y compartido: los llamadores sólo lo leen o lo
+    # combinan con `|` (que ya devuelve un objeto nuevo).
+    return _tokens_str(_norm(value))  # type: ignore[return-value]
 
 
 def _field_similarity(a: Any, b: Any) -> float | None:
@@ -103,6 +121,240 @@ def _field_similarity(a: Any, b: Any) -> float | None:
 def _pair_key(a: int, b: int) -> tuple[int, int]:
     """Clave de par ordenada y normalizada (simétrica)."""
     return (a, b) if a <= b else (b, a)
+
+
+# ── similitud textual: el mismo número, sin un TF-IDF por par ──
+#
+# `embeddings.text_similarity(a, b)` ajusta DOS `TfidfVectorizer` sobre un lote
+# de dos documentos y devuelve el coseno de las filas. Como el vocabulario se
+# ajusta AL PAR, no hay vector reutilizable entre pares: en una corrida de N
+# pares se pagan N ajustes de sklearn (~4 ms cada uno = el 91% del motor).
+#
+# Pero con n=2 documentos el resultado tiene forma cerrada. Con `smooth_idf`:
+#
+#     idf(t) = ln((1 + 2) / (1 + df(t))) + 1
+#            = 1.0                 si t aparece en los dos documentos
+#            = 1 + ln(3/2) = K     si aparece en uno solo
+#
+# En el coseno sólo sobreviven los términos COMPARTIDOS (los demás multiplican
+# por cero del otro lado) y ahí el idf vale exactamente 1. Por lo tanto:
+#
+#     cos = Σ_{t∈a∩b} tf_a(t)·tf_b(t) / (‖a‖·‖b‖)
+#     ‖a‖² = Σ_{t∈a} (tf_a(t)·idf(t))² = K²·S_a − (K²−1)·Q_a
+#
+# con S_a = Σ_{t∈a} tf_a(t)² y Q_a = Σ_{t∈a∩b} tf_a(t)². Es decir: alcanza con
+# los CONTEOS POR DOCUMENTO —que se calculan una sola vez por descripción— y
+# una intersección por par. Los dos bloques (word y char_wb) salen ya
+# L2-normalizados de sklearn, así que la concatenación normalizada de
+# `embeddings.text_vectors` da  score = Σ_bloques cos_b / √(n_a·n_b),  donde
+# n_d es la cantidad de bloques en los que el documento d no es el vector nulo.
+#
+# El camino rápido se AUTOVERIFICA contra `embeddings.text_similarity` la
+# primera vez que se usa (ver `_TextFastPath.verify`): si el módulo de
+# embeddings cambia de backend, de n-gramas o de parámetros, el atajo se apaga
+# solo y el motor vuelve al camino lento —lento pero correcto—.
+
+_IDF_UNIQUE = 1.0 + math.log(1.5)      # idf de un término presente en un solo doc
+
+# Tolerancia de la autoverificación. No es "casi igual": es el ruido de que
+# sklearn hace toda la cuenta en float32 (eps ≈ 1.2e-7) y el atajo la hace en
+# float64. Medido sobre el catálogo demo la diferencia máxima es ~4e-8, que
+# sobre el score final (0..100) son ~2e-7 puntos — tres órdenes de magnitud por
+# debajo de la precisión con la que el score se persiste (4 decimales = 1e-4).
+# Cualquier diferencia MAYOR ya no es redondeo sino otra fórmula: ahí el atajo
+# se apaga solo.
+_FAST_TEXT_TOLERANCE = 1e-6
+_FAST_TEXT_SAMPLES = 12                # pares de muestra para la autoverificación
+
+_text_fast_path: Any = None
+
+
+class _TextFastPath:
+    """Similitud TF-IDF por par en O(términos) en lugar de un fit de sklearn."""
+
+    def __init__(self, module: Any) -> None:
+        self.module = module
+        self.reason: str | None = None
+        self.verified = False
+        self.blocks: list[tuple[Any, int]] = []          # (analyzer, max_features)
+        self._docs: dict[str, list[tuple[dict[str, float], float]]] = {}
+        self.available = self._prepare()
+
+    # -- preparación ---------------------------------------------------------
+
+    def _prepare(self) -> bool:
+        module = self.module
+        needed = ("_normalize_text", "_WORD_NGRAMS", "_CHAR_NGRAMS",
+                  "_WORD_MAX_FEATURES", "_CHAR_MAX_FEATURES", "text_similarity")
+        missing = [name for name in needed if not hasattr(module, name)]
+        if missing:
+            self.reason = f"el módulo de embeddings no expone {', '.join(missing)}"
+            return False
+        try:
+            if module.backend_name() != "tfidf":
+                self.reason = f"backend de texto = {module.backend_name()} (no TF-IDF)"
+                return False
+        except Exception as exc:  # noqa: BLE001 - dependencia opcional
+            self.reason = f"backend_name() falló: {exc.__class__.__name__}"
+            return False
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+        except ImportError:
+            self.reason = "sklearn no disponible"
+            return False
+
+        # Los analizadores salen del PROPIO sklearn con los mismos parámetros que
+        # usa `embeddings._tfidf_matrix`: acá no se reimplementa la tokenización.
+        for analyzer, ngram_range, max_features in (
+            ("word", module._WORD_NGRAMS, module._WORD_MAX_FEATURES),
+            ("char_wb", module._CHAR_NGRAMS, module._CHAR_MAX_FEATURES),
+        ):
+            vectorizer = TfidfVectorizer(
+                analyzer=analyzer, ngram_range=ngram_range, max_features=max_features,
+                sublinear_tf=True, lowercase=False,
+            )
+            self.blocks.append((vectorizer.build_analyzer(), int(max_features)))
+        return True
+
+    # -- documentos ----------------------------------------------------------
+
+    def _document(self, text: str) -> list[tuple[dict[str, float], float]]:
+        """``[(tf por término, Σ tf²)]`` por bloque. Se calcula una vez por texto."""
+        cached = self._docs.get(text)
+        if cached is not None:
+            return cached
+        blocks: list[tuple[dict[str, float], float]] = []
+        for analyze, _max_features in self.blocks:
+            counts: dict[str, float] = {}
+            for term in analyze(text):
+                counts[term] = counts.get(term, 0.0) + 1.0
+            tf = {term: 1.0 + math.log(count) for term, count in counts.items()}
+            blocks.append((tf, sum(v * v for v in tf.values())))
+        self._docs[text] = blocks
+        return blocks
+
+    # -- similitud -----------------------------------------------------------
+
+    def similarity(self, norm_a: str, norm_b: str) -> float | None:
+        """Coseno equivalente al de ``embeddings.text_similarity`` (textos ya
+        normalizados y distintos). ``None`` = sin vocabulario; ``NotImplemented``
+        = este par no se puede resolver por el atajo (usar el camino lento)."""
+        doc_a, doc_b = self._document(norm_a), self._document(norm_b)
+        total = 0.0
+        n_a = n_b = 0
+        for (tf_a, s_a), (tf_b, s_b), (_analyze, max_features) in zip(doc_a, doc_b, self.blocks):
+            if not tf_a and not tf_b:
+                continue                       # bloque ausente: vocabulario vacío
+            # `max_features` recortaría el vocabulario y cambiaría las normas:
+            # ese par se resuelve por el camino lento.
+            if len(tf_a) + len(tf_b) > max_features and len(set(tf_a) | set(tf_b)) > max_features:
+                return NotImplemented
+            n_a += 1 if tf_a else 0
+            n_b += 1 if tf_b else 0
+            if not tf_a or not tf_b:
+                continue                       # una fila nula: coseno 0 en el bloque
+            # La intersección de claves la hace C; el bucle en Python recorre
+            # sólo los términos compartidos, que son los únicos que aportan.
+            dot = q_a = q_b = 0.0
+            for term in tf_a.keys() & tf_b.keys():
+                value_a, value_b = tf_a[term], tf_b[term]
+                dot += value_a * value_b
+                q_a += value_a * value_a
+                q_b += value_b * value_b
+            if dot <= 0.0:
+                continue
+            k2 = _IDF_UNIQUE * _IDF_UNIQUE
+            norm_sq_a = k2 * s_a - (k2 - 1.0) * q_a
+            norm_sq_b = k2 * s_b - (k2 - 1.0) * q_b
+            if norm_sq_a <= 0.0 or norm_sq_b <= 0.0:
+                continue
+            total += dot / math.sqrt(norm_sq_a * norm_sq_b)
+
+        if not n_a or not n_b:
+            return None                        # vector nulo: `text_similarity` da None
+        score = total / math.sqrt(n_a * n_b)
+        return clamp(score) if math.isfinite(score) else None
+
+    # -- autoverificación ----------------------------------------------------
+
+    def verify(self, samples: list[tuple[str, str]]) -> bool:
+        """Compara el atajo contra `embeddings.text_similarity` en pares reales.
+
+        Si algo no coincide (otro backend, otros n-gramas, otra normalización)
+        el atajo se apaga para toda la corrida.
+        """
+        self.verified = True
+        for raw_a, raw_b in samples[:_FAST_TEXT_SAMPLES]:
+            slow = self.module.text_similarity(raw_a, raw_b)
+            fast = self.fast(raw_a, raw_b)
+            if fast is NotImplemented:
+                continue
+            if (slow is None) != (fast is None):
+                self.available = False
+                self.reason = "autoverificación: disponibilidad distinta al camino lento"
+                return False
+            if slow is not None and abs(float(slow) - float(fast)) > _FAST_TEXT_TOLERANCE:
+                self.available = False
+                self.reason = (f"autoverificación: Δ={abs(float(slow) - float(fast)):.2e} "
+                               f"> {_FAST_TEXT_TOLERANCE:.0e}")
+                return False
+        return True
+
+    def fast(self, a: Any, b: Any) -> Any:
+        """Igual que ``embeddings.text_similarity`` pero por el atajo analítico."""
+        if a is None or b is None:
+            return None
+        norm_a = self.module._normalize_text(a)
+        norm_b = self.module._normalize_text(b)
+        if not norm_a or not norm_b:
+            return None
+        if norm_a == norm_b:
+            return 1.0
+        return self.similarity(norm_a, norm_b)
+
+
+def verify_text_fast_path(products: dict[int, dict]) -> dict[str, Any]:
+    """Autoverifica el atajo textual con descripciones REALES del catálogo.
+
+    Se corre una vez por `build_context`: si el atajo no reproduce exactamente
+    lo que devuelve `embeddings.text_similarity`, queda desactivado y la corrida
+    entera usa sklearn.
+    """
+    module = _embeddings()
+    if module is None or not hasattr(module, "text_similarity"):
+        return {"enabled": False, "reason": "sin módulo de embeddings"}
+    engine = _text_similarity_engine(module)
+    if engine is None:
+        return {"enabled": False, "reason": (_text_fast_path.reason if _text_fast_path else None)}
+
+    descriptions = [p.get("description") for p in products.values() if p.get("description")]
+    samples = [(descriptions[i], descriptions[i + 1])
+               for i in range(0, min(len(descriptions) - 1, 2 * _FAST_TEXT_SAMPLES), 2)]
+    ok = engine.verify(samples) if samples else True
+    return {"enabled": bool(ok and engine.available), "samples": len(samples),
+            "reason": engine.reason}
+
+
+def _text_similarity_engine(module: Any) -> _TextFastPath | None:
+    """Camino rápido de similitud textual para el módulo de embeddings activo."""
+    global _text_fast_path
+    if _text_fast_path is None or _text_fast_path.module is not module:
+        _text_fast_path = _TextFastPath(module)
+    return _text_fast_path if _text_fast_path.available else None
+
+
+def text_similarity(a: Any, b: Any, module: Any) -> float | None:
+    """Similitud textual del par: atajo analítico si aplica, sklearn si no."""
+    engine = _text_similarity_engine(module)
+    if engine is not None:
+        if not engine.verified:
+            engine.verify([(a, b)])
+            engine = _text_similarity_engine(module)
+        if engine is not None:
+            value = engine.fast(a, b)
+            if value is not NotImplemented:
+                return value
+    return module.text_similarity(a, b)
 
 
 # ── vigencia de generación (franquicia · modelo · versión) ──
@@ -283,6 +535,86 @@ def _blend(parts: dict[str, float | None], sub_weights: dict[str, float]) -> flo
 # ── contexto precargado ─────────────────────────────────────
 
 
+@dataclass(frozen=True)
+class MatchParams:
+    """Fotografía de ``weights.yaml`` para UNA corrida.
+
+    Los pesos siguen viniendo enteros de la config (cero hardcodeo): lo único
+    que cambia es CUÁNDO se leen. Antes cada factor resolvía sus claves por par
+    —``weights()`` reconstruye un dict en cada llamada—, así que un catálogo de
+    1.000 productos releía la misma configuración doscientas mil veces. Ahora se
+    resuelve una vez por `build_context`, que es exactamente el alcance de una
+    corrida: `run_matching` la reconstruye siempre, y los barridos de
+    `calibration` también (cambian la config y vuelven a construir contexto).
+    """
+
+    factor_weights: dict[str, float]
+    confidence_thresholds: dict[str, float] | None
+    visual_sub_weights: dict[str, float]
+    visual_total_weight: float
+    visual_min_evidence: float
+    semantic_field_weights: dict[str, float]
+    semantic_penalty: float
+    generation_enabled: bool
+    generation_stale_penalty: float
+    price_sub_weights: dict[str, float]
+    price_tolerance: float
+    price_band_order: dict[Any, list[str]]
+    editorial_type_scores: dict[str, float]
+    editorial_same_list_score: float
+    editorial_k: float
+    editorial_half_life: float
+    social_k: float
+    social_half_life: float
+    social_min_comentions: float
+    reviews_min: float
+    reviews_rating_weight: float
+    candidate_filter: dict[str, Any]
+
+    @classmethod
+    def load(cls, countries: set[Any] | None = None) -> "MatchParams":
+        visual = weights("competitive_match", "visual", "sub_weights")
+        generation = section("competitive_match", "generation", default={}) or {}
+        editorial = weights("competitive_match", "editorial", "mention_type_scores")
+        bands: dict[Any, list[str]] = {}
+        for country in (countries or set()) | {None}:
+            raw = section("enrichment", "price_bands", country, default=None) or {}
+            bands[country] = [_norm(k) for k in raw]
+        return cls(
+            factor_weights=weights("competitive_match", "weights"),
+            confidence_thresholds=section("competitive_match", "confidence_thresholds"),
+            visual_sub_weights=visual,
+            visual_total_weight=sum(visual.values()) or 1.0,
+            visual_min_evidence=float(section("competitive_match", "visual",
+                                              "min_evidence_weight", default=0.0)),
+            semantic_field_weights=weights("competitive_match", "semantic", "field_weights"),
+            semantic_penalty=float(section("competitive_match", "semantic",
+                                           "hard_mismatch_penalty", default=1.0)),
+            generation_enabled=bool(generation.get("enabled", True)),
+            generation_stale_penalty=float(generation.get("stale_penalty", 0.85)),
+            price_sub_weights=weights("competitive_match", "price", "sub_weights"),
+            price_tolerance=float(section("competitive_match", "price",
+                                          "gap_tolerance_pct", default=0.0)),
+            price_band_order=bands,
+            editorial_type_scores=editorial,
+            editorial_same_list_score=float(editorial.get("same_list", 0.0)),
+            editorial_k=float(section("competitive_match", "editorial",
+                                      "saturation_k", default=1.0)),
+            editorial_half_life=float(section("competitive_match", "editorial",
+                                              "recency_half_life_days", default=0.0)),
+            social_k=float(section("competitive_match", "social", "saturation_k", default=1.0)),
+            social_half_life=float(section("competitive_match", "social",
+                                           "recency_half_life_days", default=0.0)),
+            social_min_comentions=float(section("competitive_match", "social",
+                                                "min_comentions", default=0)),
+            reviews_min=float(section("competitive_match", "reviews",
+                                      "min_reviews_for_signal", default=0)),
+            reviews_rating_weight=float(section("competitive_match", "reviews",
+                                                "rating_weight", default=0.0)),
+            candidate_filter=candidate_filter_config(),
+        )
+
+
 @dataclass
 class MatchContext:
     """Todo lo que el scoring necesita, precargado en memoria.
@@ -303,13 +635,48 @@ class MatchContext:
     editorial_list_dates: dict[str, list[str | None]] = field(default_factory=dict)
     # Vigencia de generación por producto (ver `generation_map`).
     generations: dict[int, Generation] = field(default_factory=dict)
-    # Memo interno: promedio de precio actual por producto.
+    # Listas editoriales POR PRODUCTO (en el orden en que aparecen en
+    # `editorial_lists`, para que los puntos se sumen en el mismo orden):
+    # intersectar por par cuesta O(listas del producto) en vez de O(listas del
+    # corpus).
+    lists_by_product: dict[int, tuple[str, ...]] = field(default_factory=dict)
+    list_sets: dict[int, frozenset[str]] = field(default_factory=dict)
+    # Recencia media ya ponderada de cada lista editorial (constante en la corrida).
+    list_recency: dict[str, float] = field(default_factory=dict)
+    # Fotografía de la config (ver `MatchParams`).
+    params: MatchParams | None = None
+    # Memos internos por PRODUCTO (no por par): el scoring de un par no los recalcula.
     _avg_price_cache: dict[int, float | None] = field(default_factory=dict, repr=False)
+    _attr_token_cache: dict[tuple, frozenset[str]] = field(default_factory=dict, repr=False)
+    _review_cache: dict[int, tuple[float, frozenset[str], float | None]] = field(
+        default_factory=dict, repr=False)
 
     # -- accesos convenientes ------------------------------------------------
 
+    @property
+    def p(self) -> MatchParams:
+        """Parámetros de la corrida (se resuelven al vuelo si el contexto se
+        construyó a mano, p. ej. en un test)."""
+        if self.params is None:
+            self.params = MatchParams.load({p.get("country_code") for p in self.products.values()})
+        return self.params
+
     def generation(self, product_id: int) -> Generation | None:
         return self.generations.get(product_id)
+
+    def review_signals(self, product_id: int) -> tuple[float, frozenset[str], float | None]:
+        """``(volumen, atributos valorados, rating promedio)`` del producto.
+
+        Depende de UN producto, no del par: se calcula una vez y se reusa en
+        todos los pares que lo involucran (antes se re-extraía el léxico de
+        todas sus reviews en cada par).
+        """
+        cached = self._review_cache.get(product_id)
+        if cached is None:
+            rows = self.reviews.get(product_id, [])
+            cached = (_review_volume(rows), frozenset(_review_attributes(rows)), _avg_rating(rows))
+            self._review_cache[product_id] = cached
+        return cached
 
     def attrs(self, product_id: int) -> dict[str, Any]:
         return self.attributes.get(product_id, {})
@@ -323,28 +690,36 @@ class MatchContext:
                 return value
         return None
 
-    def attr_tokens(self, product_id: int, names: tuple[str, ...], contains: tuple[str, ...] = ()) -> set[str]:
-        """Tokens de todos los atributos que matcheen por nombre exacto o por substring."""
-        bag = self.attributes.get(product_id, {})
+    def attr_tokens(self, product_id: int, names: tuple[str, ...],
+                    contains: tuple[str, ...] = ()) -> frozenset[str]:
+        """Tokens de todos los atributos que matcheen por nombre exacto o por substring.
+
+        Memoizado por (producto, grupo de atributos): el resultado no depende
+        del par y los grupos son tres constantes del módulo.
+        """
+        cache_key = (product_id, names, contains)
+        cached = self._attr_token_cache.get(cache_key)
+        if cached is not None:
+            return cached
         out: set[str] = set()
-        for key, value in bag.items():
+        for key, value in self.attributes.get(product_id, {}).items():
             nkey = _norm(key)
             if nkey in names or any(part in nkey for part in contains):
                 out |= _tokens(value)
-        return out
+        frozen = frozenset(out)
+        self._attr_token_cache[cache_key] = frozen
+        return frozen
 
     def avg_current_price(self, product_id: int) -> float | None:
-        """Promedio del último precio observado en cada retailer (memoizado)."""
-        if product_id in self._avg_price_cache:
-            return self._avg_price_cache[product_id]
-        prices = [
-            float(obs["current_price"])
-            for (pid, _rid), obs in self.latest_price.items()
-            if pid == product_id and obs.get("current_price") is not None
-        ]
-        value = sum(prices) / len(prices) if prices else None
-        self._avg_price_cache[product_id] = value
-        return value
+        """Promedio del último precio observado en cada retailer.
+
+        Se precalcula para TODOS los productos en `build_context` (una pasada
+        sobre las observaciones). Antes cada producto barría el índice completo
+        de precios la primera vez que aparecía en un par: con 27.000
+        observaciones y 600 competidores eso son 16 millones de comparaciones
+        que no dependen del par.
+        """
+        return self._avg_price_cache.get(product_id)
 
 
 def _rows(conn: sqlite3.Connection, sql: str) -> list[dict]:
@@ -409,6 +784,37 @@ def build_context(db_path: Path | str = DB_PATH) -> MatchContext:
             if a is not None and b is not None and a != b:
                 social[_pair_key(a, b)].append(r)
 
+    # El atajo de similitud textual se valida contra el camino lento con
+    # descripciones de ESTE catálogo antes de usarlo (ver `verify_text_fast_path`).
+    verify_text_fast_path(products)
+
+    params = MatchParams.load({p.get("country_code") for p in products.values()})
+
+    # -- índices derivados: todo lo que depende de UN producto, no del par ----
+    # Promedio de precio actual. Se recorre `latest_price` UNA vez y en su mismo
+    # orden de inserción, así el promedio se suma en el mismo orden que antes y
+    # da el mismo float bit a bit.
+    prices_by_product: dict[int, list[float]] = defaultdict(list)
+    for (pid, _rid), obs in latest_price.items():
+        if obs.get("current_price") is not None:
+            prices_by_product[pid].append(float(obs["current_price"]))
+    avg_price = {pid: (sum(values) / len(values) if values else None)
+                 for pid, values in prices_by_product.items()}
+    for pid in products:
+        avg_price.setdefault(pid, None)
+
+    # Listas editoriales por producto + recencia media de cada lista.
+    lists_by_product: dict[int, list[str]] = defaultdict(list)
+    for list_key, pids in editorial_lists.items():
+        for pid in pids:
+            lists_by_product[pid].append(list_key)
+    list_recency = {
+        list_key: (sum(recency_weight(d, params.editorial_half_life)
+                       for d in (editorial_list_dates.get(list_key) or [None]))
+                   / len(editorial_list_dates.get(list_key) or [None]))
+        for list_key in editorial_lists
+    }
+
     return MatchContext(
         generations=generation_map(products),
         products=products,
@@ -421,7 +827,149 @@ def build_context(db_path: Path | str = DB_PATH) -> MatchContext:
         editorial_lists=dict(editorial_lists),
         social=dict(social),
         editorial_list_dates=dict(editorial_list_dates),
+        lists_by_product={pid: tuple(keys) for pid, keys in lists_by_product.items()},
+        list_sets={pid: frozenset(keys) for pid, keys in lists_by_product.items()},
+        list_recency=list_recency,
+        params=params,
+        _avg_price_cache=avg_price,
     )
+
+
+# ── candidate generation (bloqueo) ──────────────────────────
+#
+# El motor es O(nike × competidores). Bajar la constante no cambia el orden: con
+# 5.000 productos son 6 millones de pares y cada uno cuesta lo que cuesta. El
+# bloqueo ataca el otro lado: no puntuar los pares que no pueden ganar.
+#
+# CUIDADO — el brief del producto dice explícitamente que dos productos pueden
+# verse distintos y competir igual, así que el prefiltro NO puede ser una
+# heurística de parecido. Acá sólo se usan vetos que el scoring YA trata como
+# incompatibilidad dura (`hard_mismatch`) y, sobre todo, hay una red de
+# seguridad: si el bloque de un producto Nike queda con menos candidatos que los
+# que va a persistir, ese producto vuelve al barrido completo. Un catálogo chico
+# o disperso (la demo: 30 competidores, casi ninguno de la misma categoría)
+# llena su cupo de top-N con pares de otra categoría, y perderlos sería cambiar
+# el resultado, no acelerarlo.
+#
+# Todo es configurable bajo `competitive_match.candidate_filter` (ver
+# backend/docs/matching.md). La clave no existe en weights.yaml: los defaults
+# viven acá y se leen con `section(..., default=...)`.
+
+_CANDIDATE_FILTER_DEFAULTS: dict[str, Any] = {
+    # Interruptor general: false => barrido completo, como antes del cambio.
+    "enabled": True,
+    # Distinta `category` (categoría deportiva) y las dos presentes => no compiten.
+    # Es el mismo criterio que `_score_semantic` ya castiga como hard_mismatch.
+    "same_category": True,
+    # Distinta `division` (FW/AP/EQ). APAGADO por defecto: hoy `division` no
+    # pesa en el score (no está en `_SEMANTIC_FIELDS`), así que filtrar por ella
+    # SÍ pierde pares persistibles — medido sobre el catálogo sintético: 36 de
+    # 80 matches. Se prende cuando la división entre en el scoring.
+    "same_division": False,
+    # Conflicto duro de género (men vs women). APAGADO por defecto por lo mismo:
+    # el scoring lo atenúa, no lo veta, y hay matches persistidos que lo cruzan.
+    "gender_conflict": False,
+    # Compartir al menos UN campo de uso (`use_case` | `sport` | `subcategory`).
+    # Es el bloqueo que prototipó `tools/bench_scale.py`. Se pide uno solo para
+    # que un producto sin `use_case` siga bloqueando por `sport`. APAGADO por
+    # defecto: sobre un corpus CON las siete señales prendidas descarta mucho
+    # más (90% de la grilla) pero cambia más el margen del top-N que
+    # `same_category` sola. Ver docs/matching.md § prefiltro.
+    "shared_use_field": False,
+    # Red de seguridad: mínimo de candidatos por producto Nike antes de aceptar
+    # el bloqueo. `null` => 3 × top_n_per_product.
+    "min_candidates_per_product": None,
+    # Rescate: un par con rivalidad DOCUMENTADA (mención editorial, co-mención
+    # social o la misma lista de "mejores X") nunca se descarta por taxonomía.
+    # Si el mercado los trata como alternativas, eso manda sobre la etiqueta de
+    # categoría — es justo el caso del brief: "dos productos pueden verse
+    # distintos y competir igual".
+    "keep_documented_pairs": True,
+}
+
+
+def candidate_filter_config() -> dict[str, Any]:
+    """Configuración del prefiltro, con defaults del módulo."""
+    cfg = dict(_CANDIDATE_FILTER_DEFAULTS)
+    cfg.update(section("competitive_match", "candidate_filter", default=None) or {})
+    if cfg.get("min_candidates_per_product") is None:
+        top_n = int((section("competitive_match", default={}) or {}).get("top_n_per_product", 10) or 10)
+        cfg["min_candidates_per_product"] = 3 * top_n
+    return cfg
+
+
+#: Campos "de uso" del producto: los que el scoring semántico pondera más
+#: fuerte (use_case 0.30, sport 0.10, subcategory 0.05 de `field_weights`).
+_USE_FIELDS: tuple[str, ...] = ("use_case", "sport", "subcategory")
+
+
+def _use_keys(product: dict) -> frozenset[tuple[str, str]]:
+    """Claves de uso del producto: las que definen su bloque."""
+    return frozenset((field, _norm(product.get(field))) for field in _USE_FIELDS
+                     if _norm(product.get(field)))
+
+
+def _has_documented_rivalry(nike_id: int, comp_id: int, ctx: MatchContext) -> bool:
+    """¿Hay evidencia externa de que el mercado compara estos dos productos?
+
+    Menciones editoriales del par, co-menciones sociales o una lista editorial
+    compartida. Son tres lookups de diccionario sobre índices ya precargados.
+    """
+    key = _pair_key(nike_id, comp_id)
+    if ctx.editorial.get(key) or ctx.social.get(key):
+        return True
+    return bool(ctx.list_sets.get(nike_id, frozenset()) & ctx.list_sets.get(comp_id, frozenset()))
+
+
+def is_candidate(nike: dict, comp: dict, ctx: MatchContext | None = None) -> bool:
+    """¿Este par merece que se lo puntúe? (sin la red de seguridad por producto).
+
+    Sólo mira campos declarados del catálogo: es aritmética de diccionario,
+    ~1 µs contra los ~250 µs que cuesta `compute_match`.
+    """
+    cfg = ctx.p.candidate_filter if ctx is not None else candidate_filter_config()
+    if not cfg.get("enabled", True):
+        return True
+    if ctx is not None and cfg.get("keep_documented_pairs", True) and _has_documented_rivalry(
+            nike["id"], comp["id"], ctx):
+        return True
+    if cfg.get("same_category", True):
+        a, b = _norm(nike.get("category")), _norm(comp.get("category"))
+        if a and b and a != b:
+            return False
+    if cfg.get("same_division", False):
+        a, b = _norm(nike.get("division")), _norm(comp.get("division"))
+        if a and b and a != b:
+            return False
+    if cfg.get("gender_conflict", False) and _gender_conflict(nike.get("gender"), comp.get("gender")):
+        return False
+    if cfg.get("shared_use_field", False) and not (_use_keys(nike) & _use_keys(comp)):
+        return False
+    return True
+
+
+def candidates_for(nike: dict, ctx: MatchContext) -> tuple[list[dict], int]:
+    """Competidores a puntuar para un producto Nike y cuántos se descartaron.
+
+    Devuelve los productos en el MISMO orden en que aparecen en `ctx.products`:
+    el desempate del top-N es un `sort` estable, así que conservar el orden
+    conserva el resultado.
+    """
+    full = [
+        comp for comp in ctx.products.values()
+        if comp["brand_id"] != nike["brand_id"]
+        and comp.get("country_code") == nike.get("country_code")
+    ]
+    cfg = ctx.p.candidate_filter
+    if not cfg.get("enabled", True):
+        return full, 0
+
+    kept = [comp for comp in full if is_candidate(nike, comp, ctx)]
+    # Red de seguridad: un bloque más chico que el cupo de persistencia se
+    # descarta y ese producto Nike vuelve al barrido completo.
+    if len(kept) < int(cfg.get("min_candidates_per_product") or 0):
+        return full, 0
+    return kept, len(full) - len(kept)
 
 
 # ── FACTOR 1: visual ────────────────────────────────────────
@@ -433,7 +981,7 @@ _MATERIAL_ATTRS = ("materials", "material", "materiales", "upper_material", "mid
 
 def _score_visual(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """Similitud visual: embedding (CLIP, opcional) + silueta + colores + materiales."""
-    sub_weights = weights("competitive_match", "visual", "sub_weights")
+    sub_weights = ctx.p.visual_sub_weights
     detail: dict[str, Any] = {}
     parts: dict[str, float | None] = {}
 
@@ -480,9 +1028,9 @@ def _score_visual(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | No
     # un 0.0 rotundo sobre dos zapatillas que son el mismo tipo de producto.
     # Exigimos una fracción mínima del peso visual con datos reales; por debajo,
     # el factor se declara sin datos y `combine()` lo renormaliza.
-    total_weight = sum(sub_weights.values()) or 1.0
+    total_weight = ctx.p.visual_total_weight
     evidence = sum(sub_weights.get(k, 0.0) for k, v in parts.items() if v is not None)
-    min_evidence = float(section("competitive_match", "visual", "min_evidence_weight", default=0.0))
+    min_evidence = ctx.p.visual_min_evidence
     detail["evidence_weight"] = round(evidence / total_weight, 4)
     if evidence / total_weight < min_evidence:
         detail["reason"] = (
@@ -533,8 +1081,8 @@ def _gender_conflict(a: Any, b: Any) -> bool:
 
 def _score_semantic(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """Similitud de propósito: taxonomía ponderada + similitud textual de descripciones."""
-    field_weights = weights("competitive_match", "semantic", "field_weights")
-    penalty = float(section("competitive_match", "semantic", "hard_mismatch_penalty", default=1.0))
+    field_weights = ctx.p.semantic_field_weights
+    penalty = ctx.p.semantic_penalty
 
     parts: dict[str, float | None] = {}
     detail: dict[str, Any] = {"fields": {}}
@@ -556,7 +1104,7 @@ def _score_semantic(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | 
     module = _embeddings()
     if module is not None and hasattr(module, "text_similarity"):
         try:
-            text_sim = module.text_similarity(nike.get("description"), comp.get("description"))
+            text_sim = text_similarity(nike.get("description"), comp.get("description"), module)
             detail["text_similarity_backend"] = (
                 module.backend_name() if hasattr(module, "backend_name") else "embeddings"
             )
@@ -612,21 +1160,20 @@ def _apply_generation_penalty(score: float, nike: dict, comp: dict,
     vez por lado marcado ``stale``: dos generaciones viejas comparadas entre sí
     pesan aún menos que una sola.
     """
-    cfg = section("competitive_match", "generation", default={}) or {}
+    gen_nike, gen_comp = ctx.generation(nike["id"]), ctx.generation(comp["id"])
     detail: dict[str, Any] = {
-        "nike": (ctx.generation(nike["id"]).as_dict() if ctx.generation(nike["id"]) else None),
-        "competitor": (ctx.generation(comp["id"]).as_dict() if ctx.generation(comp["id"]) else None),
+        "nike": (gen_nike.as_dict() if gen_nike else None),
+        "competitor": (gen_comp.as_dict() if gen_comp else None),
     }
-    if not bool(cfg.get("enabled", True)):
+    if not ctx.p.generation_enabled:
         detail["penalty"] = None
         detail["reason"] = "competitive_match.generation.enabled = false"
         return score, detail
 
-    penalty = float(cfg.get("stale_penalty", 0.85))
+    penalty = ctx.p.generation_stale_penalty
     stale_sides = [
-        side for side, product in (("nike", nike), ("competitor", comp))
-        if (ctx.generation(product["id"]) or None) is not None
-        and ctx.generation(product["id"]).stale
+        side for side, gen in (("nike", gen_nike), ("competitor", gen_comp))
+        if gen is not None and gen.stale
     ]
     detail["stale_sides"] = stale_sides
     detail["stale_penalty"] = penalty
@@ -642,7 +1189,7 @@ def _apply_generation_penalty(score: float, nike: dict, comp: dict,
 # ── FACTOR 3: price ─────────────────────────────────────────
 
 
-def _price_band_similarity(nike: dict, comp: dict) -> float | None:
+def _price_band_similarity(nike: dict, comp: dict, params: MatchParams | None = None) -> float | None:
     """1.0 si comparten banda; si no, decae según la distancia ordinal entre bandas."""
     a, b = _norm(nike.get("price_band")), _norm(comp.get("price_band"))
     if not a or not b:
@@ -650,8 +1197,11 @@ def _price_band_similarity(nike: dict, comp: dict) -> float | None:
     if a == b:
         return 1.0
     country = nike.get("country_code") or comp.get("country_code")
-    bands = section("enrichment", "price_bands", country, default=None) or {}
-    order = [_norm(k) for k in bands]
+    if params is not None and country in params.price_band_order:
+        order = params.price_band_order[country]
+    else:
+        bands = section("enrichment", "price_bands", country, default=None) or {}
+        order = [_norm(k) for k in bands]
     if a in order and b in order and len(order) > 1:
         return clamp(1.0 - abs(order.index(a) - order.index(b)) / (len(order) - 1))
     return 0.0
@@ -659,8 +1209,8 @@ def _price_band_similarity(nike: dict, comp: dict) -> float | None:
 
 def _score_price(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """Cercanía de posicionamiento de precio: MSRP + precio actual + banda."""
-    sub_weights = weights("competitive_match", "price", "sub_weights")
-    tolerance = float(section("competitive_match", "price", "gap_tolerance_pct", default=0.0))
+    sub_weights = ctx.p.price_sub_weights
+    tolerance = ctx.p.price_tolerance
 
     msrp_a, msrp_b = nike.get("msrp"), comp.get("msrp")
     cur_a = ctx.avg_current_price(nike["id"])
@@ -669,7 +1219,7 @@ def _score_price(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | Non
     parts: dict[str, float | None] = {
         "msrp": gap_similarity(msrp_a, msrp_b, tolerance),
         "current_price": gap_similarity(cur_a, cur_b, tolerance),
-        "price_band": _price_band_similarity(nike, comp),
+        "price_band": _price_band_similarity(nike, comp, ctx.p),
     }
 
     detail: dict[str, Any] = {
@@ -718,15 +1268,15 @@ def _score_retailer_overlap(nike: dict, comp: dict, ctx: MatchContext) -> tuple[
 
 def _score_editorial(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """Cuántas veces el mercado (medios) trata a estos productos como alternativas."""
-    type_scores = weights("competitive_match", "editorial", "mention_type_scores")
-    k = float(section("competitive_match", "editorial", "saturation_k", default=1.0))
-    half_life = float(section("competitive_match", "editorial", "recency_half_life_days", default=0.0))
+    type_scores = ctx.p.editorial_type_scores
+    k = ctx.p.editorial_k
+    half_life = ctx.p.editorial_half_life
 
     key = _pair_key(nike["id"], comp["id"])
     points = 0.0
     mentions: list[dict] = []
 
-    for row in ctx.editorial.get(key, []):
+    for row in ctx.editorial.get(key, ()):
         mtype = _norm(row.get("mention_type"))
         base = float(type_scores.get(mtype, 0.0))
         rw = recency_weight(row.get("published_at"), half_life)
@@ -743,19 +1293,25 @@ def _score_editorial(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float |
         })
 
     # Co-apariciones en la misma lista editorial (tipo same_list).
-    same_list_base = float(type_scores.get("same_list", 0.0))
+    # Se intersecan las listas de los dos productos (índice `lists_by_product`)
+    # en vez de recorrer TODAS las listas del corpus en cada par.
+    same_list_base = ctx.p.editorial_same_list_score
     shared_lists: list[dict] = []
-    for list_key, pids in ctx.editorial_lists.items():
-        if nike["id"] in pids and comp["id"] in pids:
+    comp_lists = ctx.list_sets.get(comp["id"], frozenset())
+    for list_key in ctx.lists_by_product.get(nike["id"], ()):
+        if list_key not in comp_lists:
+            continue
+        rw = ctx.list_recency.get(list_key)
+        if rw is None:
             dates = ctx.editorial_list_dates.get(list_key) or [None]
             rw = sum(recency_weight(d, half_life) for d in dates) / len(dates)
-            contrib = same_list_base * rw
-            points += contrib
-            shared_lists.append({
-                "list_key": list_key,
-                "recency": round(rw, 4),
-                "points": round(contrib, 4),
-            })
+        contrib = same_list_base * rw
+        points += contrib
+        shared_lists.append({
+            "list_key": list_key,
+            "recency": round(rw, 4),
+            "points": round(contrib, 4),
+        })
 
     detail: dict[str, Any] = {
         "mentions": mentions,
@@ -781,11 +1337,11 @@ def _score_editorial(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float |
 
 def _score_social(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """Co-menciones del par en conversación pública. SIEMPRE agregado, nunca individuo."""
-    k = float(section("competitive_match", "social", "saturation_k", default=1.0))
-    half_life = float(section("competitive_match", "social", "recency_half_life_days", default=0.0))
-    min_comentions = float(section("competitive_match", "social", "min_comentions", default=0))
+    k = ctx.p.social_k
+    half_life = ctx.p.social_half_life
+    min_comentions = ctx.p.social_min_comentions
 
-    rows = ctx.social.get(_pair_key(nike["id"], comp["id"]), [])
+    rows = ctx.social.get(_pair_key(nike["id"], comp["id"]), ())
     raw_comentions = 0.0
     weighted = 0.0
     periods: list[dict] = []
@@ -884,12 +1440,13 @@ def _avg_rating(rows: list[dict]) -> float | None:
 
 def _score_reviews(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | None, dict]:
     """¿Los consumidores valoran los mismos atributos y con qué satisfacción?"""
-    min_reviews = float(section("competitive_match", "reviews", "min_reviews_for_signal", default=0))
-    rating_weight = float(section("competitive_match", "reviews", "rating_weight", default=0.0))
+    min_reviews = ctx.p.reviews_min
+    rating_weight = ctx.p.reviews_rating_weight
 
-    rows_a = ctx.reviews.get(nike["id"], [])
-    rows_b = ctx.reviews.get(comp["id"], [])
-    vol_a, vol_b = _review_volume(rows_a), _review_volume(rows_b)
+    # Volumen, atributos y rating dependen de UN producto: se memoizan por
+    # producto en el contexto (ver `MatchContext.review_signals`).
+    vol_a, attrs_a, rating_a = ctx.review_signals(nike["id"])
+    vol_b, attrs_b, rating_b = ctx.review_signals(comp["id"])
 
     detail: dict[str, Any] = {
         "nike_review_volume": vol_a,
@@ -902,10 +1459,8 @@ def _score_reviews(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | N
         detail["reason"] = "volumen de reviews por debajo de min_reviews_for_signal"
         return None, detail
 
-    attrs_a, attrs_b = _review_attributes(rows_a), _review_attributes(rows_b)
     attr_sim = jaccard(attrs_a, attrs_b)
 
-    rating_a, rating_b = _avg_rating(rows_a), _avg_rating(rows_b)
     rating_sim = None
     if rating_a is not None and rating_b is not None:
         rating_sim = clamp(1.0 - abs(rating_a - rating_b) / _RATING_SCALE)
@@ -951,12 +1506,12 @@ def compute_match(nike: dict, competitor: dict, ctx: MatchContext) -> CompositeS
     renormaliza el peso: nunca penalizan. ``contribution`` (suma 100 entre los
     disponibles) es la feature importance que consume el frontend.
     """
-    w = weights("competitive_match", "weights")
+    w = ctx.p.factor_weights
     factors: list[Factor] = []
     for name, func in FACTOR_FUNCS.items():
         score, detail = func(nike, competitor, ctx)
-        factors.append(Factor(name=name, raw_score=score, weight=float(w.get(name, 0.0)), detail=detail))
-    return combine(factors, section("competitive_match", "confidence_thresholds"))
+        factors.append(Factor(name=name, raw_score=score, weight=w.get(name, 0.0), detail=detail))
+    return combine(factors, ctx.p.confidence_thresholds)
 
 
 # ── persistencia ────────────────────────────────────────────
@@ -1002,6 +1557,8 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
 
     nike_products = [p for p in ctx.products.values() if p.get("brand_is_focus")]
     pairs_evaluated = 0
+    pairs_skipped = 0
+    products_unfiltered = 0
     stale_pairs = 0
     kept: list[tuple[dict, dict, CompositeScore]] = []
 
@@ -1011,11 +1568,10 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
 
     for nike in nike_products:
         candidates: list[tuple[dict, CompositeScore]] = []
-        for comp in ctx.products.values():
-            if comp["brand_id"] == nike["brand_id"]:
-                continue
-            if comp.get("country_code") != nike.get("country_code"):
-                continue
+        block, skipped = candidates_for(nike, ctx)
+        pairs_skipped += skipped
+        products_unfiltered += 1 if skipped == 0 else 0
+        for comp in block:
             pairs_evaluated += 1
             result = compute_match(nike, comp, ctx)
             if _is_stale(nike["id"]) or _is_stale(comp["id"]):
@@ -1079,6 +1635,10 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
     return {
         "nike_products": len(nike_products),
         "pairs_evaluated": pairs_evaluated,
+        # Candidate generation: pares que el prefiltro evitó puntuar y productos
+        # Nike que igual barrieron el catálogo entero (red de seguridad).
+        "pairs_skipped_by_filter": pairs_skipped,
+        "products_without_filter": products_unfiltered,
         "matches": len(match_rows),
         "factors": len(factor_rows),
         # Diagnóstico de vigencia: cuántos pares involucraban una generación

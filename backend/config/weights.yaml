@@ -39,8 +39,17 @@ competitive_match:
     enabled: true
     prior: 0.35
 
-  # Umbral de score para persistir un match (evita explosión combinatoria)
-  min_score_to_persist: 35.0
+  # Umbral de score para persistir un match (evita explosión combinatoria).
+  #
+  # TIENE QUE ESTAR POR ENCIMA de `evidence_shrinkage.prior * 100`. Estuvo en
+  # 35.0, exactamente igual al prior: un par SIN NINGUNA evidencia puntúa 35.0
+  # por definición, así que el umbral no filtraba nada y el top-N se decidía por
+  # décimas de ruido (28 de 140 matches quedaban pegados al piso de ignorancia).
+  # 40 = el prior más 5 puntos: exige que lo medido haya movido la aguja por
+  # encima de "no sabemos nada". Como efecto secundario el prefiltro de
+  # candidatos pasa a ser EXACTO — sin esta separación descartaba un 0.7% de
+  # matches legítimos al ordenar pares empatados en el piso.
+  min_score_to_persist: 40.0
   # Top-N competidores a guardar por producto Nike
   top_n_per_product: 10
 
