@@ -144,15 +144,26 @@ def test_regla_apagada_por_umbral_se_reporta_como_rota(demo_db, data, temp_confi
     assert "inalcanzable" in premium["diagnosis"]
 
 
-def test_severidad_historica_no_discrimina_y_se_propone_reparto(demo_db, temp_config):
-    """Con 78/60/40 todo cae en MEDIUM/LOW; la sugerencia devuelve masa a cada banda."""
-    temp_config(**{"business_importance.severity_thresholds": {"critical": 78.0, "high": 60.0,
-                                                              "medium": 40.0}})
+def test_severidad_sin_masa_arriba_se_propone_reparto(demo_db, temp_config):
+    """Con las bandas altas vacías, la sugerencia devuelve masa a cada banda.
+
+    Los cortes se DERIVAN del máximo observado en vez de fijar 78/60/40: esos
+    números reproducían el incidente sólo mientras el gate multiplicativo le
+    ponía techo a la escala (importancia máxima ~56). Arreglado el gate, 78/60
+    son alcanzables y ya no arman el escenario; lo que se prueba acá es el
+    MECANISMO —bandas superiores sin un solo registro => propuesta de reparto—
+    no unos números que envejecen con la escala.
+    """
+    bi_max = calibration.score_distributions(demo_db)["business_importance"]["max"]
+    dead_critical, dead_high = bi_max + 10.0, bi_max + 5.0
+    temp_config(**{"business_importance.severity_thresholds": {"critical": dead_critical,
+                                                               "high": dead_high,
+                                                               "medium": 40.0}})
     suggestions = calibration.suggest_thresholds(demo_db)
     critical = suggestions["business_importance.severity_thresholds.critical"]
 
-    assert critical["actual"] == 78.0
-    assert critical["sugerido"] < 78.0
+    assert critical["actual"] == dead_critical
+    assert critical["sugerido"] < dead_critical
     assert critical["distribucion_actual"].get("CRITICAL", 0) == 0
     assert critical["distribucion_actual"].get("HIGH", 0) == 0
     # Cada banda con masa después del cambio.
@@ -302,12 +313,16 @@ def test_suggest_thresholds_no_escribe_el_yaml(demo_db):
 
 
 def test_suggested_yaml_es_yaml_valido(demo_db, temp_config):
-    temp_config(**{"business_importance.severity_thresholds": {"critical": 78.0, "high": 60.0,
-                                                              "medium": 40.0}})
+    # Igual que arriba: el escenario "banda vacía" se deriva del dato vigente.
+    bi_max = calibration.score_distributions(demo_db)["business_importance"]["max"]
+    dead_critical = bi_max + 10.0
+    temp_config(**{"business_importance.severity_thresholds": {"critical": dead_critical,
+                                                               "high": bi_max + 5.0,
+                                                               "medium": 40.0}})
     text = calibration.suggested_yaml(demo_db)
     parsed = yaml.safe_load(text)
 
-    assert parsed["business_importance"]["severity_thresholds"]["critical"] < 78.0
+    assert parsed["business_importance"]["severity_thresholds"]["critical"] < dead_critical
     assert "# " in text  # cada sugerencia lleva su motivo como comentario
 
 

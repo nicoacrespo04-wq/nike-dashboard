@@ -132,22 +132,47 @@ business_importance:
     share_of_shelf:         0.04
     promo_intensity:        0.03
 
-  # Multiplicador que apaga oportunidades sin relevancia competitiva.
-  # gate = clamp(competitive_relevance, gate_floor, 1.0)
+  # ── Gate de relevancia competitiva ──────────────────────
+  # gate = clamp(competitive_relevance / gate_full_relevance, gate_floor, 1.0)
+  #
+  # El gate apaga lo que no tiene competencia real: un gap de precio contra
+  # nadie no es una oportunidad. Es un VETO de la cola baja, no un impuesto
+  # permanente.
+  #
+  # Antes era `clamp(competitive_relevance, gate_floor, 1.0)`, es decir una
+  # multiplicación que NUNCA llegaba a 1: como `competitive_relevance =
+  # match_score/100` y el mejor match del corpus es 75, la importancia tenía un
+  # techo estructural de ~82 con los 11 factores en 1.0 — y el máximo observado
+  # era 56. CRITICAL (62) era inalcanzable por construcción, no por falta de
+  # casos graves. Además contaba la relevancia dos veces: `competitive_relevance`
+  # ya es uno de los 11 factores ponderados (w=0.20).
+  #
+  # `gate_full_relevance` = relevancia a partir de la cual el competidor se
+  # considera real y el gate deja de atenuar. 0.60 no es un percentil: es el
+  # mismo match_score que el motor ya usa como "comparable suficiente para
+  # actuar" en `opportunities.premiumization_opportunity.min_match_score`.
+  # Poner 0 (o borrar la clave) restaura el multiplicador puro histórico.
   gate_floor: 0.35
+  gate_full_relevance: 0.60
 
-  # Calibrados contra el techo REAL de la escala, no contra 100.
-  # El gate es multiplicativo y `competitive_relevance = match_score/100`, así
-  # que la importancia queda acotada por el mejor match observado (~0.69 con el
-  # dataset demo). Con umbrales de 78/60, CRITICAL y HIGH eran inalcanzables por
-  # construcción y TODO caía en MEDIUM/LOW: la severidad dejaba de discriminar,
-  # que es justo para lo que existe.
-  # Reajustar cuando cambie la escala de match (más evidencia => matches más
-  # altos => este techo sube).
+  # Cortes de severidad sobre la escala 0..100 de business_importance, leída
+  # como "qué fracción de la relevancia de negocio expresable alcanza este
+  # caso". NO son percentiles del dataset: una severidad definida como "el top
+  # 10%" no informa nada, sólo re-etiqueta un ranking y siempre tiene la misma
+  # forma pase lo que pase en el mercado. Son fracciones de la escala:
+  #     CRITICAL >= 78  ~ casi todo el peso de negocio alineado
+  #     HIGH     >= 60  ~ más de la mitad
+  #     MEDIUM   >= 40  ~ un tercio largo
+  # Son los mismos cortes que `common.severity_from_score` trae por defecto:
+  # es el diseño original del score. Se habían bajado a 62/50/35 para compensar
+  # una escala que el gate multiplicativo topeaba en ~56 observado; arreglado el
+  # gate (ver gate_full_relevance), la escala vuelve a usarse entera y los
+  # cortes de diseño vuelven a tener masa en las cuatro bandas.
+  # Verificar siempre con `python -m app.calibration` (sección 2).
   severity_thresholds:
-    critical: 62.0
-    high:     50.0
-    medium:   35.0
+    critical: 78.0
+    high:     60.0
+    medium:   40.0
     # por debajo => LOW
 
   # Importancia por franquicia (0..1). Default para las no listadas.
@@ -270,10 +295,51 @@ brand_intelligence:
       acceleration: 0.30
     spike_threshold: 0.50    # variación que marca un pico
 
+    # ── escala del factor `volume` (ver backend/docs/signals.md) ──
+    # El volumen se mide en LOG contra la MEDIANA del cohorte:
+    #     volume = 0.5 + 0.5 * log10(actual / mediana) / log10(volume_decade_ratio)
+    # 0.5 = la mediana del cohorte · 1.0 = `volume_decade_ratio` veces la
+    # mediana · 0.0 = esa misma proporción por debajo.
+    # Antes se normalizaba contra el MÁXIMO del cohorte y eso garantizaba que la
+    # entidad más grande valiera SIEMPRE 1.0; con cohortes discretas (una nota
+    # editorial por producto => máximo 1) valían 1.0 TODAS, y el panel de
+    # momentum mostraba 6 filas empatadas en 100. La mediana no la fija ningún
+    # dato en particular y deja recorrido hacia arriba.
+    # 10 = una década: en el corpus AR la conversación social por marca abarca
+    # ~1,4 décadas (265..6031 menciones), así que una década arriba/abajo de la
+    # mediana cubre la dispersión real sin saturar en los extremos.
+    volume_decade_ratio: 10.0
+
+    # Volumen mínimo en la ventana de COMPARACIÓN para que una variación
+    # relativa sea una medición y no ruido amplificado. Con 1 mención previa,
+    # (835-1)/1 = +83.400% no dice nada sobre el mercado: dice que la base era
+    # 1. Por debajo de este piso el factor `trend` (y la aceleración, que es su
+    # derivada) se marcan NO DISPONIBLES y el momentum se renormaliza sobre los
+    # factores que sí se pudieron medir — nunca se rellenan con el máximo.
+    # 25 = el mismo orden de magnitud que el piso de emisión de insights: por
+    # debajo de eso el motor ya considera que no hay conversación suficiente
+    # para afirmar nada.
+    min_base_volume: 25
+
   confidence:
-    # Confianza del insight según volumen de señal
-    high_min_volume:   80
-    medium_min_volume: 25
+    # ── Confianza de un agregado según su VOLUMEN DE SEÑAL ──
+    # Los cortes son de precisión estadística, no percentiles del dataset: el
+    # margen de error de una proporción al 95% es ~0.98/sqrt(n).
+    #     n >= 1000  =>  ±3,1 pp   -> HIGH
+    #     n >=  250  =>  ±6,2 pp   -> MEDIUM
+    #     n <   250  =>  peor      -> LOW
+    # Estaban en 80/25, por debajo del volumen típico de un insight (mínimo
+    # observado 123): los 13 insights salían HIGH y la etiqueta no informaba.
+    high_min_volume:   1000
+    medium_min_volume: 250
+
+    # Piso ANTI-INVENCIÓN: volumen mínimo para que un insight exista.
+    # Es una regla de producto ("no se concluye nada sobre tres comentarios"),
+    # NO una afirmación de precisión, y por eso tiene su propia clave: mientras
+    # estuvo acoplado a `medium_min_volume`, subir el corte de MEDIUM para que
+    # la confianza discriminara borraba insights reales del tablero.
+    # Si se borra esta clave, el módulo vuelve a usar `medium_min_volume`.
+    min_volume_to_emit: 25
 
   # Taxonomía de insights. Cada dimensión con sus tópicos.
   taxonomy:

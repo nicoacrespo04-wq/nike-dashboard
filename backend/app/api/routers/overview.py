@@ -15,6 +15,7 @@ from fastapi import APIRouter, Query
 
 from app.api.serializers import (count, expand_opportunities, expand_retail_media,
                                  product_card, products_by_id, table_exists)
+from app.auth import security_status
 from app.db import query
 from app.services.common import from_json
 
@@ -157,7 +158,13 @@ def overview(country: str = "AR", limit: int = Query(6, ge=1, le=25)) -> dict[st
 
 @router.get("/health")
 def health() -> dict[str, Any]:
-    """Estado del pipeline: qué tablas tienen datos y cuáles faltan."""
+    """Estado del pipeline: qué tablas tienen datos y cuáles faltan.
+
+    Endpoint público: nunca pide API key (lo consulta la cinta de estado del
+    dashboard para saber si el motor está vivo). Publica además cómo quedó
+    configurada la seguridad — sin filtrar la key — para poder verificar de un
+    vistazo que un deploy quedó cerrado.
+    """
     tables = ["brands", "countries", "retailers", "products", "product_attributes",
               "price_observations", "stock_observations", "reviews", "editorial_mentions",
               "social_mention_aggregates", "competitive_matches", "competitive_match_factors",
@@ -168,4 +175,5 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "tables": counts,
         "empty_tables": [t for t, n in counts.items() if n == 0],
+        "security": security_status(),
     }

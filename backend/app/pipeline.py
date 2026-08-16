@@ -3,11 +3,26 @@
 Orden de ejecución (cada etapa depende de las anteriores):
 
     init_db -> seed -> enrichment -> matching -> brand_intelligence
-            -> opportunities -> retail_media
+            -> opportunities -> retail_media -> snapshot
 
 Cada etapa se importa de forma perezosa y tolerante: si un módulo todavía no
 existe o falla, se registra el error y el pipeline continúa. Así una pieza rota
 nunca deja la demo sin datos.
+
+Historial
+---------
+El pipeline recalcula todo desde cero, así que por sí solo no puede responder
+"¿esto viene subiendo?". Alrededor de las etapas hay tres ganchos de
+`app.services.history` (ver ese módulo para el contrato de `entity_key`):
+
+  1. antes del reset, `capture()` guarda el historial y el triaje; después de
+     `init_db(drop=True)`, `restore()` los devuelve a la base nueva;
+  2. `start_run()` abre la corrida en `pipeline_runs`;
+  3. al final, `snapshot()` copia el estado calculado al historial y
+     `finish_run()` cierra la corrida con el reporte.
+
+Los ganchos son de sólo lectura sobre las tablas de scoring y están envueltos
+en try/except: si el historial falla, el pipeline sigue produciendo datos.
 
 Uso:
     python -m app.pipeline            # reconstruye todo desde cero
@@ -38,6 +53,18 @@ STAGES: list[tuple[str, str, str]] = [
 ]
 
 
+def _history() -> Any | None:
+    """`app.services.history`, o ``None`` si no está disponible.
+
+    Mismo criterio de tolerancia que las etapas: el historial es valor agregado,
+    nunca un motivo para que el pipeline no produzca datos.
+    """
+    try:
+        return importlib.import_module("app.services.history")
+    except ImportError:
+        return None
+
+
 def _resolve(module_name: str, func_name: str) -> Callable[..., Any] | None:
     try:
         module = importlib.import_module(module_name)
@@ -47,14 +74,42 @@ def _resolve(module_name: str, func_name: str) -> Callable[..., Any] | None:
 
 
 def run_all(db_path: Path | str = DB_PATH, *, reset: bool = True,
-            stages: list[str] | None = None) -> dict[str, dict[str, Any]]:
+            stages: list[str] | None = None, source: str = "demo",
+            history: bool = True) -> dict[str, dict[str, Any]]:
     """Ejecuta el pipeline completo y devuelve un reporte por etapa."""
     report: dict[str, dict[str, Any]] = {}
+    hist = _history() if history else None
+    run_id: int | None = None
 
     if reset:
         started = time.perf_counter()
+        # El reset borra el archivo entero: el historial y el triaje se rescatan
+        # antes y se reinsertan con sus ids, para que las FKs sigan válidas.
+        carried: dict[str, Any] = {}
+        if hist is not None:
+            try:
+                carried = hist.capture(db_path)
+            except Exception as exc:  # noqa: BLE001 - nunca frenar por el historial
+                report["history_carry"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
         init_db(db_path, drop=True)
+        if hist is not None and carried:
+            try:
+                restored = hist.restore(carried, db_path)
+                report["history_carry"] = {"status": "ok", "counts": restored}
+            except Exception as exc:  # noqa: BLE001
+                report["history_carry"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
         report["init_db"] = {"status": "ok", "seconds": round(time.perf_counter() - started, 3)}
+
+    guard: dict[str, Any] = {}
+    if hist is not None:
+        try:
+            run_id = hist.start_run(db_path, source=source)
+            # Red de seguridad: cualquier etapa puede hacer `init_db(drop=True)`
+            # (`seed` lo hace sin `reset`) y llevarse el historial y el triaje.
+            # Se re-insertan después de las etapas, antes del snapshot.
+            guard = hist.capture(db_path)
+        except Exception as exc:  # noqa: BLE001
+            report["history_run"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
 
     for name, module_name, func_name in STAGES:
         if stages and name not in stages:
@@ -68,6 +123,8 @@ def run_all(db_path: Path | str = DB_PATH, *, reset: bool = True,
         started = time.perf_counter()
         try:
             # `seed` ya crea el esquema; si reseteamos acá, no lo dupliques.
+            # Ojo: sin `reset`, `seed` usa su `drop=True` y BORRA EL ARCHIVO
+            # entero — por eso el historial se protege con `guard` más abajo.
             counts = func(db_path=db_path, drop=False) if name == "seed" and reset else func(db_path=db_path)
             report[name] = {
                 "status": "ok",
@@ -85,6 +142,28 @@ def run_all(db_path: Path | str = DB_PATH, *, reset: bool = True,
         except Exception as exc:  # noqa: BLE001
             report[name] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
 
+    if hist is not None and guard:
+        try:
+            hist.restore(guard, db_path)
+        except Exception as exc:  # noqa: BLE001
+            report["history_carry"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
+    # El snapshot corre al final y sólo LEE lo que quedó persistido: ningún
+    # servicio de scoring se entera de que existe el historial.
+    if hist is not None and run_id is not None:
+        started = time.perf_counter()
+        try:
+            counts = hist.snapshot(run_id, db_path)
+            report["snapshot"] = {"status": "ok", "counts": counts,
+                                  "seconds": round(time.perf_counter() - started, 3)}
+        except Exception as exc:  # noqa: BLE001
+            report["snapshot"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+        try:
+            hist.finish_run(run_id, db_path,
+                            status=hist.run_status_from_report(report), counts=report)
+        except Exception as exc:  # noqa: BLE001
+            report["history_run"] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
     return report
 
 
@@ -93,9 +172,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--keep", action="store_true", help="No resetear la base")
     parser.add_argument("--db", default=str(DB_PATH), help="Ruta del archivo SQLite")
     parser.add_argument("--stage", action="append", help="Ejecutar sólo estas etapas")
+    parser.add_argument("--source", default="demo", help="Origen de los datos: demo | ingest")
+    parser.add_argument("--no-history", action="store_true",
+                        help="No registrar la corrida ni tomar snapshot")
     args = parser.parse_args(argv)
 
-    report = run_all(args.db, reset=not args.keep, stages=args.stage)
+    report = run_all(args.db, reset=not args.keep, stages=args.stage,
+                     source=args.source, history=not args.no_history)
 
     failed = 0
     for stage, info in report.items():

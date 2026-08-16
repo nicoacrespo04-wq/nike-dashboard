@@ -36,6 +36,13 @@ PRIOR_END = "2025-04-30"
 
 MEDIUM_MIN = int(section("brand_intelligence", "confidence", "medium_min_volume"))
 HIGH_MIN = int(section("brand_intelligence", "confidence", "high_min_volume"))
+# Piso de EMISIÓN (anti-invención). Es una clave propia y no el corte de
+# confianza MEDIUM: son dos decisiones distintas ("¿existe el insight?" vs
+# "¿con cuánta precisión se afirma?") y acoplarlas obligaba a elegir entre una
+# confianza que no discrimina o un tablero al que le faltan insights reales.
+EMIT_MIN = int(section("brand_intelligence", "confidence", "min_volume_to_emit"))
+# Base mínima en la ventana anterior para que una variación relativa se publique.
+MIN_BASE = float(section("brand_intelligence", "momentum", "min_base_volume"))
 
 
 # ── helpers ─────────────────────────────────────────────────
@@ -288,7 +295,7 @@ def test_low_volume_signal_is_not_emitted(rich_db):
     insights = generate_insights(ctx)
     assert insights, "el fixture debe producir insights"
     assert all(i["topic"] != "sneaker_culture" for i in insights)
-    assert all(i["signal_volume"] >= MEDIUM_MIN for i in insights)
+    assert all(i["signal_volume"] >= EMIT_MIN for i in insights)
 
 
 def test_every_insight_has_evidence_and_coherent_confidence(rich_db):
@@ -408,7 +415,7 @@ def test_detect_trends_finds_acceleration_and_competitor(rich_db):
     assert "emerging_competitor" in types
     for trend in trends:
         assert trend["period_end"] == TODAY
-        assert trend["volume"] >= MEDIUM_MIN
+        assert trend["volume"] >= EMIT_MIN
 
 
 def test_detect_trends_flags_emerging_topic(tmp_path):
@@ -441,8 +448,14 @@ def test_social_competition_signals(rich_db):
     assert set(by_key) == {(1, 2), (1, 3)}
 
     top = by_key[(1, 2)]
+    # `intensity` sigue siendo el share contra el par MÁS co-mencionado (máximo):
+    # es un peso 0..1 que consume el matching engine, no una lectura de momentum.
     assert top["intensity"] == 1.0                      # par más co-mencionado
-    assert top["trend"] == pytest.approx(200.0)         # (60-20)/20
+    # La ventana anterior tiene 20 co-menciones, por debajo de `min_base_volume`:
+    # (60-20)/20 = +200% sería ruido amplificado, así que la variación no se
+    # publica. La dirección sí, que es un hecho observado y no un cociente.
+    assert 20 < MIN_BASE
+    assert top["trend"] is None
     assert top["direction"] == "up"
     assert top["brand_name"] == "Nike" and top["co_brand_name"] == "Adidas"
     assert top["evidence"]["examples"]
@@ -476,8 +489,8 @@ def test_run_persists_signals_and_insights(rich_db):
     assert len(rows) == counts["brand_insights"]
     for row in rows:
         assert row["country_code"] == "AR"
-        assert row["signal_volume"] >= MEDIUM_MIN
-        assert row["confidence"] in ("MEDIUM", "HIGH")
+        assert row["signal_volume"] >= EMIT_MIN
+        assert row["confidence"] in ("LOW", "MEDIUM", "HIGH")
         evidence = json.loads(row["evidence"])
         assert evidence["examples"] and evidence["sources"]
         assert row["period_start"] and row["period_end"]

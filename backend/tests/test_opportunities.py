@@ -12,7 +12,7 @@ import pytest
 
 from app.config import section
 from app.db import get_conn, init_db, query
-from app.services import opportunities
+from app.services import opportunities, scoring
 from app.services.common import from_json
 
 TODAY = date.today()
@@ -340,7 +340,12 @@ def test_el_gate_se_refleja_en_los_drivers(db):
     row = _by_type(db)["price_competitiveness_risk"][0]
     relevance = next(d for d in from_json(row["drivers"], [])
                      if d["name"] == "competitive_relevance")
-    assert relevance["detail"]["gate"] == pytest.approx(0.88)   # match_score 88 -> gate 0.88
+    # El gate se DERIVA de la relevancia observada con la fórmula de config, no
+    # es un número fijo: `relevance_gate` es una rampa que satura en 1.0 a
+    # partir de `business_importance.gate_full_relevance` (antes era el propio
+    # valor de la relevancia, y eso le ponía techo a toda la escala).
+    assert relevance["detail"]["gate"] == pytest.approx(
+        scoring.relevance_gate(relevance["value"]))
 
 
 def test_es_idempotente(db):

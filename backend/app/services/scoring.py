@@ -8,8 +8,11 @@ Separa "hay una diferencia" de "esta diferencia IMPORTA".
   NINGUNO está hardcodeado acá: se recorre el bloque de config tal cual está.
 * Cada componente se normaliza a 0..1. Si falta el dato, el factor queda
   ``raw_score=None`` -> se excluye y se renormaliza (nunca se asume 0).
-* ``gate = clamp(competitive_relevance, gate_floor, 1.0)``: una diferencia sin
-  competencia real no puede generar una oportunidad importante. Si no hay
+* ``gate = clamp(competitive_relevance / gate_full_relevance, gate_floor, 1.0)``:
+  una diferencia sin competencia real no puede generar una oportunidad
+  importante. Es un VETO de la cola baja, no un impuesto: a partir de
+  ``gate_full_relevance`` el competidor ya es real y el gate deja de atenuar,
+  así la escala 0..100 se puede usar entera (ver ``relevance_gate``). Si no hay
   relevancia competitiva medible se usa el piso (``gate_floor``), no 1.0.
 * ``lifecycle_multiplier`` pondera según la etapa del producto Nike.
 
@@ -63,6 +66,41 @@ def lifecycle_multiplier(stage: str | None) -> float:
 
 def gate_floor() -> float:
     return float(section("business_importance", "gate_floor", default=0.0) or 0.0)
+
+
+def gate_full_relevance() -> float:
+    """Relevancia competitiva a partir de la cual el gate deja de atenuar.
+
+    Si es 0 (o falta) el gate vuelve a ser el multiplicador puro histórico.
+    """
+    return float(section("business_importance", "gate_full_relevance", default=0.0) or 0.0)
+
+
+def relevance_gate(relevance: float | None) -> float:
+    """Gate de relevancia competitiva: **veto**, no impuesto permanente.
+
+        gate = clamp(relevance / gate_full_relevance, gate_floor, 1.0)
+
+    Sin relevancia medible se aplica el piso (``gate_floor``), nunca 1.0.
+
+    Por qué una rampa que satura y no ``clamp(relevance, floor, 1)``:
+    el gate existe para APAGAR lo que no tiene competencia real ("un gap de
+    precio contra nadie no importa"). Multiplicar SIEMPRE por la relevancia
+    hacía otra cosa: (a) le ponía a la escala un techo igual al mejor match del
+    corpus —con ``match_score`` máximo 75.2, la importancia no podía pasar de
+    ~82 aunque los 11 factores dieran 1.0, y ``CRITICAL`` era inalcanzable por
+    construcción, no por falta de casos graves—, y (b) contaba la relevancia
+    dos veces, porque ``competitive_relevance`` ya es uno de los 11 factores
+    ponderados (w=0.20). Con la rampa, por encima de ``gate_full_relevance``
+    el competidor ya es "real" y la escala se usa entera; por debajo, la
+    atenuación sigue existiendo y llega hasta el piso.
+    """
+    floor = gate_floor()
+    if relevance is None:
+        return clamp(floor, 0.0, 1.0)
+    full = gate_full_relevance()
+    ratio = (relevance / full) if full > 0 else relevance
+    return clamp(ratio, floor, 1.0)
 
 
 def severity(score: float) -> str:
@@ -220,7 +258,7 @@ def business_importance(subject: dict[str, Any], ctx: Any = None) -> CompositeSc
     floor = gate_floor()
     relevance = values.get("competitive_relevance")
     # Sin relevancia competitiva medible se aplica el piso: nunca se asume 1.0.
-    gate = clamp(relevance if relevance is not None else floor, floor, 1.0)
+    gate = relevance_gate(relevance)
     stage = subject.get("lifecycle_stage")
     multiplier = lifecycle_multiplier(stage)
 
@@ -230,6 +268,7 @@ def business_importance(subject: dict[str, Any], ctx: Any = None) -> CompositeSc
         "base_score": round(base.score, 2),
         "gate": round(gate, 4),
         "gate_floor": floor,
+        "gate_full_relevance": gate_full_relevance(),
         "gate_source": "competitive_relevance" if relevance is not None else "gate_floor",
         "lifecycle_stage": stage,
         "lifecycle_multiplier": multiplier,

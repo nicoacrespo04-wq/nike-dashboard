@@ -16,6 +16,7 @@ from app.services import opportunities, scoring
 
 W = weights("business_importance", "weights")
 GATE_FLOOR = float(section("business_importance", "gate_floor"))
+GATE_FULL = float(section("business_importance", "gate_full_relevance"))
 THRESHOLDS = section("business_importance", "severity_thresholds")
 
 
@@ -114,7 +115,50 @@ def test_match_score_alimenta_la_relevancia_competitiva():
     subject["match_score"] = 80.0
     result = scoring.business_importance(subject)
     assert _factor(result, "competitive_relevance")["raw_score"] == pytest.approx(0.80)
-    assert _factor(result, "competitive_relevance")["detail"]["gate"] == pytest.approx(0.80)
+    assert _factor(result, "competitive_relevance")["detail"]["gate"] == pytest.approx(
+        scoring.relevance_gate(0.80))
+
+
+# ── forma del gate: veto de la cola baja, no impuesto permanente ──
+
+
+def test_gate_deja_de_atenuar_con_un_competidor_real():
+    """Por encima de `gate_full_relevance` la escala se usa entera.
+
+    Es el defecto que hacía inalcanzable a CRITICAL: multiplicar SIEMPRE por la
+    relevancia le ponía a la importancia un techo igual al mejor match del
+    corpus, sin importar cuán grave fuera el caso.
+    """
+    assert scoring.relevance_gate(GATE_FULL) == pytest.approx(1.0)
+    assert scoring.relevance_gate(GATE_FULL + 0.1) == pytest.approx(1.0)
+
+    subject = _strong_subject(competitive_relevance=GATE_FULL)
+    result = scoring.business_importance(subject)
+    detalle = _factor(result, "competitive_relevance")["detail"]
+    assert result.score == pytest.approx(detalle["base_score"], abs=0.05)
+
+
+def test_gate_atenua_de_forma_monotona_por_debajo_del_umbral():
+    """Debajo del umbral el veto sigue existiendo y llega hasta el piso."""
+    gates = [scoring.relevance_gate(r) for r in (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, GATE_FULL)]
+    assert gates == sorted(gates)
+    assert gates[0] == pytest.approx(GATE_FLOOR)
+    assert gates[-1] == pytest.approx(1.0)
+    medio = scoring.relevance_gate(GATE_FULL / 2.0)
+    assert GATE_FLOOR <= medio < 1.0
+    assert medio == pytest.approx(max(0.5, GATE_FLOOR))
+
+
+def test_la_escala_de_importancia_llega_a_la_banda_critica():
+    """Con todos los factores altos y un competidor real, CRITICAL es alcanzable.
+
+    Sin esta propiedad la banda superior es decorativa: no informa "esto es
+    grave", informa "el modelo no puede decir que algo sea grave".
+    """
+    subject = _strong_subject(competitive_relevance=0.95, lifecycle_stage="growth")
+    result = scoring.business_importance(subject)
+    assert scoring.severity(result.score) == "CRITICAL"
+    assert result.score >= float(THRESHOLDS["critical"])
 
 
 # ── lifecycle y franquicia ──────────────────────────────────

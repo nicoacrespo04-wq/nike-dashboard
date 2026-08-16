@@ -263,7 +263,14 @@ def decide(signals: dict[str, Any]) -> tuple[str, str]:
 
 
 def drivers_from(signals: dict[str, Any], score: CompositeScore, rationale: str) -> list[dict]:
-    """Explicabilidad persistida: valores disparadores + contribución de factores."""
+    """Explicabilidad persistida: valores disparadores + contribución de factores.
+
+    Formato de PERSISTENCIA (un sobre con el contexto del caso). La API lo
+    publica en la forma canónica `drivers` + `signals` — ver
+    `app.api.serializers.canonical_drivers`. Cada factor viaja con su peso y su
+    detalle (por ejemplo, sobre qué precios se calculó el gap) para que esa
+    traducción no pierda nada.
+    """
     return [{
         "rationale": rationale,
         "nike_stock_pct": signals.get("nike_stock_pct"),
@@ -277,7 +284,8 @@ def drivers_from(signals: dict[str, Any], score: CompositeScore, rationale: str)
         "nike_discount_pct": signals.get("nike_discount_pct"),
         "coverage": round(score.coverage, 4),
         "factors": [
-            {"name": f["factor"], "value": f["raw_score"], "contribution": f["contribution"]}
+            {"name": f["factor"], "value": f["raw_score"], "contribution": f["contribution"],
+             "weight": f["weight"], "available": f["available"], "detail": f["detail"]}
             for f in score.factors
         ],
     }]

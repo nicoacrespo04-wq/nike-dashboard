@@ -36,9 +36,10 @@ Todo score compuesto pasa por ``common.combine`` (explicabilidad uniforme).
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -329,6 +330,29 @@ def _accumulate(entries: Iterable[dict[str, Any]],
     return out
 
 
+def _median(values: Sequence[float]) -> float:
+    ordered = sorted(values)
+    if not ordered:
+        return 0.0
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[mid])
+    return (float(ordered[mid - 1]) + float(ordered[mid])) / 2.0
+
+
+def cohort_reference(cohort: Iterable[Bucket]) -> float:
+    """Referencia de volumen de un cohorte: la MEDIANA de los que tienen señal.
+
+    Antes se usaba el máximo, y eso garantizaba que la entidad más grande
+    valiera siempre 1.0 (y con cohortes discretas y chicas —una nota editorial
+    por producto— que TODAS valieran 1.0). La mediana es el centro de masa de
+    la distribución: no la fija ningún dato en particular, es robusta a un
+    outlier (la marca foco) y deja la escala con recorrido hacia arriba.
+    Se ignoran las entidades sin volumen actual: son ceros, no "el cohorte".
+    """
+    return _median([b.current for b in cohort if b.current > 0])
+
+
 # ── contexto ────────────────────────────────────────────────
 
 
@@ -354,8 +378,11 @@ class BrandContext:
     pair_entries: list[dict[str, Any]]     # co-menciones producto ↔ co_producto
     momentum_weights: dict[str, float]
     spike_threshold: float
+    volume_decade_ratio: float
+    min_base_volume: float
     high_min_volume: int
     medium_min_volume: int
+    min_volume_to_emit: int
 
     # ── ventanas ──
     @property
@@ -368,8 +395,16 @@ class BrandContext:
 
     @property
     def min_volume(self) -> int:
-        """Volumen mínimo para emitir un insight (= umbral de confianza media)."""
-        return self.medium_min_volume
+        """Volumen mínimo de señal para que un insight EXISTA.
+
+        Es una regla anti-invención ("no se concluye nada sobre tres
+        comentarios"), no una afirmación de precisión: por eso vive en su
+        propia clave (``confidence.min_volume_to_emit``) y NO en el corte de
+        confianza MEDIUM. Mientras estuvieron acoplados, subir el corte de
+        MEDIUM para que la etiqueta discriminara borraba insights reales, y
+        bajarlo para no perderlos dejaba las tres bandas en HIGH.
+        """
+        return self.min_volume_to_emit
 
     @property
     def has_data(self) -> bool:
@@ -398,6 +433,13 @@ class BrandContext:
         return str(product["product_name"]) if product else "producto desconocido"
 
     def confidence_for_volume(self, volume: float) -> str:
+        """Confianza de una métrica agregada según su volumen de señal.
+
+        Los cortes son de precisión estadística, no percentiles del dataset:
+        el margen de error de una proporción al 95% es ~0.98/sqrt(n), así que
+        n>=1000 => ±3 pp (HIGH) y n>=250 => ±6 pp (MEDIUM). Ver
+        ``brand_intelligence.confidence`` en weights.yaml.
+        """
         if volume >= self.high_min_volume:
             return "HIGH"
         if volume >= self.medium_min_volume:
@@ -421,10 +463,18 @@ def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
     }
     spike_threshold = float(section("brand_intelligence", "momentum", "spike_threshold",
                                     default=0.5) or 0.5)
+    volume_decade_ratio = float(section("brand_intelligence", "momentum",
+                                        "volume_decade_ratio", default=10.0) or 10.0)
+    min_base_volume = float(section("brand_intelligence", "momentum", "min_base_volume",
+                                    default=0.0) or 0.0)
     high_min_volume = int(section("brand_intelligence", "confidence", "high_min_volume",
                                   default=0) or 0)
     medium_min_volume = int(section("brand_intelligence", "confidence", "medium_min_volume",
                                     default=0) or 0)
+    # El piso de emisión es independiente del corte de confianza MEDIUM: si no
+    # está configurado se cae al comportamiento histórico (= MEDIUM).
+    min_volume_to_emit = int(section("brand_intelligence", "confidence", "min_volume_to_emit",
+                                     default=medium_min_volume) or medium_min_volume)
     current_days = int(section("brand_intelligence", "current_window_days", default=30) or 30)
     previous_days = int(section("brand_intelligence", "previous_window_days", default=30) or 30)
 
@@ -487,8 +537,11 @@ def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
         pair_entries=[],
         momentum_weights=momentum_weights,
         spike_threshold=spike_threshold,
+        volume_decade_ratio=volume_decade_ratio,
+        min_base_volume=min_base_volume,
         high_min_volume=high_min_volume,
         medium_min_volume=medium_min_volume,
+        min_volume_to_emit=min_volume_to_emit,
     )
 
     ctx.entries = _build_entries(ctx, social_rows, review_rows, editorial_rows)
@@ -718,36 +771,61 @@ def _direction(current: float, previous: float) -> str:
     return "flat"
 
 
+def _volume_score(current: float, reference: float | None,
+                  decade_ratio: float) -> float | None:
+    """Volumen 0..1 en escala LOG anclada a la mediana del cohorte.
+
+    ``0.5`` = la mediana del cohorte; ``1.0`` = ``decade_ratio`` veces la
+    mediana; ``0.0`` = ``decade_ratio`` veces por debajo. Sin cohorte con señal
+    el factor queda no disponible (``None``), nunca 0.
+
+    Por qué log y no un cociente lineal: los volúmenes de conversación son
+    log-normales (una marca foco concentra un orden de magnitud más que la
+    cola). Un cociente lineal contra el máximo aplasta toda la cola contra 0 y
+    fija el tope en 1.0; el log reparte masa a lo largo del rango y hace la
+    escala independiente de la unidad de cada fuente (menciones, reviews,
+    notas), que es lo que permite comparar los tres tipos de señal.
+    """
+    if reference is None or reference <= 0:
+        return None
+    if current <= 0:
+        return 0.0
+    span = math.log10(max(decade_ratio, 1.0000001))
+    return clamp(0.5 + 0.5 * math.log10(current / float(reference)) / span)
+
+
 def _momentum_from_bucket(ctx: BrandContext, bucket: Bucket,
                           reference: float | None = None) -> dict[str, Any]:
     """Momentum 0..100 a partir de volumen, tendencia y aceleración.
 
-    * ``volume``       — volumen del período actual normalizado contra el máximo
-      del cohorte analizado (sin constantes mágicas).
+    * ``volume``       — volumen del período actual en escala log contra la
+      MEDIANA del cohorte (``cohort_reference``). Ver ``_volume_score``.
     * ``trend``        — variación vs período anterior, escalada con
       ``momentum.spike_threshold`` (±threshold ⇒ 1.0 / 0.0, sin cambio ⇒ 0.5).
+      Requiere una base de comparación medible (``momentum.min_base_volume``):
+      sobre 0 ó 2 menciones la variación relativa no es una medición, es ruido
+      amplificado, y el factor se marca NO DISPONIBLE en vez de saturar.
     * ``acceleration`` — derivada segunda: tendencia actual menos la anterior;
-      requiere tres ventanas, si no hay datos el factor se marca no disponible.
+      requiere tres ventanas con base suficiente, si no el factor no está.
+
+    Regla de oro del módulo: un factor que no se puede medir se excluye y se
+    renormaliza (baja la ``coverage``), NUNCA se rellena con el máximo. Rellenar
+    con 1.0 era la causa de que todo el panel empatara en 100.
     """
     current, previous, prior = bucket.current, bucket.previous, bucket.prior
-    trend_ratio = _ratio(current, previous)
-    # La aceleración es una derivada segunda: con bases minúsculas el cociente
-    # explota, así que sólo se calcula si las dos ventanas viejas tienen señal
-    # suficiente (mismo mínimo configurado que habilita un insight).
-    reliable_base = previous >= ctx.min_volume and prior >= ctx.min_volume
-    prev_trend_ratio = _ratio(previous, prior) if reliable_base else None
+    # Con bases minúsculas el cociente explota (se vieron +75.670%): la
+    # variación relativa sólo se publica si hay con qué compararla.
+    min_base = ctx.min_base_volume
+    trend_ratio = _ratio(current, previous) if previous >= min_base else None
+    reliable_prior = previous >= min_base and prior >= min_base
+    prev_trend_ratio = _ratio(previous, prior) if reliable_prior else None
     threshold = ctx.spike_threshold or 1.0
 
-    volume_score: float | None = None
-    if reference and reference > 0:
-        volume_score = clamp(current / float(reference))
+    volume_score = _volume_score(current, reference, ctx.volume_decade_ratio)
 
+    trend_score: float | None = None
     if trend_ratio is not None:
-        trend_score: float | None = clamp(0.5 + 0.5 * clamp(trend_ratio / threshold, -1.0, 1.0))
-    elif current > 0:
-        trend_score = 1.0          # aparición nueva: crecimiento máximo de la escala
-    else:
-        trend_score = None
+        trend_score = clamp(0.5 + 0.5 * clamp(trend_ratio / threshold, -1.0, 1.0))
 
     acceleration: float | None = None
     if trend_ratio is not None and prev_trend_ratio is not None:
@@ -758,9 +836,11 @@ def _momentum_from_bucket(ctx: BrandContext, bucket: Bucket,
     weights_cfg = ctx.momentum_weights
     composite = combine([
         Factor("volume", volume_score, weights_cfg.get("volume", 0.0),
-               {"current": current, "reference": reference}),
+               {"current": current, "reference": reference,
+                "reference_kind": "mediana del cohorte",
+                "decade_ratio": ctx.volume_decade_ratio}),
         Factor("trend", trend_score, weights_cfg.get("trend", 0.0),
-               {"previous": previous, "ratio": trend_ratio}),
+               {"previous": previous, "ratio": trend_ratio, "min_base_volume": min_base}),
         Factor("acceleration", accel_score, weights_cfg.get("acceleration", 0.0),
                {"prior": prior, "previous_ratio": prev_trend_ratio}),
     ])
@@ -795,7 +875,7 @@ def _momentum_from_bucket(ctx: BrandContext, bucket: Bucket,
 def brand_momentum(brand_id: int, ctx: BrandContext) -> dict[str, Any]:
     """Brand Momentum Score (0..100) de una marca en el país configurado."""
     cohort = _accumulate(ctx.entries, lambda e: e.get("brand_id"))
-    reference = max((b.current for b in cohort.values()), default=0.0)
+    reference = cohort_reference(cohort.values())
     bucket = cohort.get(brand_id, Bucket())
     result = _momentum_from_bucket(ctx, bucket, reference)
     result.update({
@@ -818,7 +898,7 @@ def conversation_momentum(topic: str, ctx: BrandContext) -> dict[str, Any]:
     else:
         cohort = _accumulate(ctx.entries, lambda e: e.get("franchise"))
         entity_type, label, dimension = "franchise", topic, None
-    reference = max((b.current for b in cohort.values()), default=0.0)
+    reference = cohort_reference(cohort.values())
     bucket = cohort.get(topic, Bucket())
     result = _momentum_from_bucket(ctx, bucket, reference)
     result.update({
@@ -1266,7 +1346,7 @@ def _insight_competitor_momentum(ctx: BrandContext) -> list[dict[str, Any]]:
 def _insight_franchise_momentum(ctx: BrandContext) -> list[dict[str, Any]]:
     """Pico de conversación sobre una franquicia (Pegasus, Air Max, ...)."""
     cohort = _accumulate(ctx.entries, lambda e: e.get("franchise"))
-    reference = max((b.current for b in cohort.values()), default=0.0)
+    reference = cohort_reference(cohort.values())
     out: list[dict[str, Any]] = []
     for franchise, bucket in sorted(cohort.items(), key=lambda kv: (-kv[1].current, str(kv[0]))):
         if not franchise or bucket.current < ctx.min_volume:
@@ -1369,7 +1449,7 @@ def detect_trends(ctx: BrandContext) -> list[dict[str, Any]]:
 
     # 1-2. Tópicos: aceleración, picos y emergentes.
     topic_cohort = _accumulate(ctx.records, lambda r: (r["dimension"], r["topic"]))
-    topic_reference = max((b.current for b in topic_cohort.values()), default=0.0)
+    topic_reference = cohort_reference(topic_cohort.values())
     for (dimension, topic), bucket in sorted(topic_cohort.items(),
                                              key=lambda kv: (-kv[1].current, kv[0])):
         if bucket.current < ctx.min_volume:
@@ -1390,7 +1470,7 @@ def detect_trends(ctx: BrandContext) -> list[dict[str, Any]]:
 
     # 3. Competidor emergente.
     brand_cohort = _accumulate(ctx.entries, lambda e: e.get("brand_id"))
-    brand_reference = max((b.current for b in brand_cohort.values()), default=0.0)
+    brand_reference = cohort_reference(brand_cohort.values())
     focus_bucket = brand_cohort.get(ctx.focus_brand_id, Bucket())
     focus_trend = _ratio(focus_bucket.current, focus_bucket.previous)
     for brand_id, bucket in sorted(brand_cohort.items(), key=lambda kv: (-kv[1].current,
@@ -1407,7 +1487,7 @@ def detect_trends(ctx: BrandContext) -> list[dict[str, Any]]:
 
     # 4. Momentum de franquicia.
     franchise_cohort = _accumulate(ctx.entries, lambda e: e.get("franchise"))
-    franchise_reference = max((b.current for b in franchise_cohort.values()), default=0.0)
+    franchise_reference = cohort_reference(franchise_cohort.values())
     for franchise, bucket in sorted(franchise_cohort.items(),
                                     key=lambda kv: (-kv[1].current, str(kv[0]))):
         if not franchise or bucket.current < ctx.min_volume:
@@ -1434,7 +1514,12 @@ def social_competition_signals(ctx: BrandContext) -> list[dict[str, Any]]:
     pairs = _accumulate(ctx.pair_entries, lambda e: e["key"])
     if not pairs:
         return []
-    reference = max((b.current for b in pairs.values()), default=0.0)
+    # Dos referencias distintas a propósito:
+    #  * `intensity` es un peso 0..1 que consume el matching engine y tiene que
+    #    seguir siendo "share contra el par más co-mencionado" => máximo.
+    #  * el momentum del par se lee como el resto de las señales => mediana.
+    intensity_reference = max((b.current for b in pairs.values()), default=0.0)
+    reference = cohort_reference(pairs.values())
     out: list[dict[str, Any]] = []
     for (product_id, co_product_id), bucket in pairs.items():
         if bucket.total <= 0:
@@ -1456,7 +1541,8 @@ def social_competition_signals(ctx: BrandContext) -> list[dict[str, Any]]:
             "comentions_previous": bucket.previous,
             "comentions_prior": bucket.prior,
             # Intensidad normalizada contra el par más co-mencionado del período.
-            "intensity": round(clamp(bucket.current / reference) if reference > 0 else 0.0, 4),
+            "intensity": round(clamp(bucket.current / intensity_reference)
+                               if intensity_reference > 0 else 0.0, 4),
             "trend": momentum["trend"],
             "direction": momentum["direction"],
             "acceleration": momentum["acceleration"],
@@ -1497,7 +1583,7 @@ def build_market_signals(ctx: BrandContext) -> list[dict[str, Any]]:
             continue
         for entity_type, keyfn in entity_keys:
             cohort = _accumulate(source_entries, keyfn)
-            reference = max((b.current for b in cohort.values()), default=0.0)
+            reference = cohort_reference(cohort.values())
             for entity_id, bucket in sorted(cohort.items(), key=lambda kv: str(kv[0])):
                 if entity_id is None or bucket.total <= 0:
                     continue
@@ -1508,7 +1594,17 @@ def build_market_signals(ctx: BrandContext) -> list[dict[str, Any]]:
                     "entity_id": str(entity_id),
                     "country_code": ctx.country,
                     "value": momentum["score"],
-                    "delta": momentum["trend"],
+                    # `delta` y `acceleration` de una fila de momentum van en la
+                    # MISMA unidad: RATIO (0.62 = +62%), no porcentaje. La
+                    # aceleración siempre fue un ratio y los consumidores tratan
+                    # a `delta` como su reemplazo cuando falta la tercera
+                    # ventana (opportunities.IntelContext.momentum). Mientras
+                    # acá se escribió el porcentaje, ese fallback comparaba 61.54
+                    # contra `min_acceleration: 0.35` y el motor publicaba
+                    # "acelera 6154%". La unidad legible (%) se calcula al
+                    # mostrar, no se persiste.
+                    "delta": (round(momentum["trend_ratio"], 4)
+                              if momentum["trend_ratio"] is not None else None),
                     "acceleration": momentum["acceleration"],
                     "period_start": ctx.period_start,
                     "period_end": ctx.period_end,
