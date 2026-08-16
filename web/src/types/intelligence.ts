@@ -41,6 +41,56 @@ export type BrandDimension =
   | "cultural_relevance"
   | "consumer_intent";
 
+/**
+ * Unidad declarada por el backend para cada número que publica.
+ *
+ * Existe porque en una misma pantalla conviven magnitudes que NO son
+ * comparables: un `ratio` (0,62 = +62%) y unos `pp` (puntos porcentuales) se
+ * ven iguales si no se declara cuál es cuál. Se tipa abierto (`| string`)
+ * porque el vocabulario lo define el backend y puede crecer.
+ */
+export type Unit =
+  | "score_0_1"
+  | "score_0_100"
+  | "pct"
+  | "pp"
+  | "ratio"
+  | "count"
+  | "score_-1_1"
+  | string;
+
+// ── Glosario de factores ────────────────────────────────────────────
+/**
+ * Qué mide cada variable del motor (`backend/app/api/glossary.py`).
+ * Viaja adjunto a las respuestas que publican contribuciones al score:
+ * `/matches/{id}`, `/products/{id}/matches` y `/retail-media`.
+ */
+export interface GlossaryTerm {
+  name: string;
+  label: string;
+  definition: string;
+  data: string;
+  /** Cómo leer un valor alto. */
+  high: string;
+  /** Cómo leer un valor bajo. */
+  low: string;
+  /** Peso configurado en `weights.yaml`, si la familia lo tiene. */
+  weight?: number | null;
+  /** `false` si el backend publica el término sin definición cargada. */
+  defined?: boolean;
+}
+
+export interface GlossaryGroup {
+  label: string;
+  description: string;
+  terms: GlossaryTerm[];
+}
+
+export type GlossaryGroupName = "competitive_match" | "business_importance" | "retail_media";
+
+/** Grupos que devuelve cada endpoint. Todos opcionales: depende del endpoint. */
+export type Glossary = Partial<Record<GlossaryGroupName, GlossaryGroup>>;
+
 // ── Catálogo ────────────────────────────────────────────────────────
 export interface ProductCard {
   id: number;
@@ -196,6 +246,7 @@ export interface MatchRow {
 export interface ProductMatchesResponse {
   product: ProductCard | null;
   matches: MatchRow[];
+  glossary?: Glossary;
 }
 
 export interface MatchDetail {
@@ -207,6 +258,8 @@ export interface MatchDetail {
   competitor_product: ProductCard | null;
   factors: Factor[];
   configured_weights: Record<string, number>;
+  /** Qué mide cada uno de los 7 factores. Sin esto la explicabilidad no explica. */
+  glossary?: Glossary;
   computed_at?: string | null;
 }
 
@@ -224,15 +277,47 @@ export interface MatchListResponse {
 }
 
 // ── Decisión ────────────────────────────────────────────────────────
+/**
+ * Factor ponderado que empujó un score. `contribution` es el porcentaje del
+ * score que aportó, y la suma de los `contribution` de un caso da 100.
+ *
+ * OJO con la diferencia entre `drivers` y `signals`: un driver es una VARIABLE
+ * DEL MODELO (0..1, con peso y contribución); una señal es una MÉTRICA OBSERVADA
+ * del caso (90% de stock, -0,1% de gap de precio). Antes viajaban mezcladas en
+ * el mismo sobre y la UI tenía que adivinar cuál era cuál.
+ */
 export interface Driver {
   name: string;
+  /** Nombre de negocio ya traducido por el backend. */
+  label?: string | null;
   value: number | null;
+  unit?: Unit | null;
   contribution: number | null;
+  /** Sub-señales que produjeron el valor (peso, referencia, combinación…). */
+  detail?: Record<string, unknown>;
 }
 
 /**
- * Retail media envuelve sus drivers en un objeto de contexto con el racional,
- * las métricas crudas del caso y la lista real de factores adentro.
+ * Métrica observada del caso: campo hermano de `drivers`, con su unidad.
+ * (`signals` en `/api/retail-media` y `/api/opportunities`.)
+ */
+export interface SignalValue {
+  name: string;
+  label: string | null;
+  value: number | null;
+  unit: Unit | null;
+}
+
+/**
+ * Forma vieja de retail media: un único objeto de contexto con el racional, las
+ * métricas crudas y los factores adentro.
+ *
+ * El backend ya no la emite —`rationale` es un campo propio del ítem, las
+ * métricas están en `signals` y `drivers` es la lista de factores—, pero el
+ * normalizador la sigue aceptando para que una base servida por un motor viejo
+ * no rompa la pantalla.
+ *
+ * @deprecated Contrato anterior a "retail media agrupado por producto × retailer".
  */
 export interface DriverEnvelope {
   rationale?: string;
@@ -262,6 +347,8 @@ export interface Opportunity {
   confidence: Confidence | null;
   country_code: string | null;
   drivers: DriversPayload;
+  /** Métricas observadas del caso, con unidad. Hermano de `drivers`. */
+  signals?: SignalValue[];
   nike_product: ProductCard | null;
   competitor_product: ProductCard | null;
   retailer: Retailer | null;
@@ -294,14 +381,54 @@ export interface OpportunityListResponse {
   offset?: number;
 }
 
+/**
+ * Un competidor dentro del cuadro (producto Nike × retailer).
+ *
+ * El motor ya no genera una fila por rival: agrupa por cuadro y adjunta el SET
+ * competidor completo, porque la decisión de invertir en visibilidad se toma
+ * mirando el conjunto y no un rival aislado. Las banderas dicen qué papel jugó
+ * cada uno en el score: `is_leader` es el más relevante, `is_price_reference` el
+ * peor caso de precio y `is_momentum_reference` el que traccionó el momentum.
+ */
+export interface RetailMediaCompetitor {
+  competitor_product_id: number;
+  match_score: number | null;
+  /** Peso del competidor al combinar las señales del set (0..1). */
+  relevance_weight: number | null;
+  stock_pct: number | null;
+  price_gap_pct: number | null;
+  nike_price: number | null;
+  competitor_price: number | null;
+  price_basis: string | null;
+  momentum: number | null;
+  present_at_retailer: boolean;
+  is_leader: boolean;
+  is_price_reference: boolean;
+  is_momentum_reference: boolean;
+  product: ProductCard | null;
+}
+
 export interface RetailMedia {
   id: number;
   score: number | null;
   recommendation: RetailMediaRecommendation | string | null;
   confidence: Confidence | null;
+  /** Racional en prosa. Campo propio del ítem (antes venía dentro de `drivers`). */
+  rationale: string | null;
+  /** Factores ponderados del score: `contribution` suma 100. */
   drivers: DriversPayload;
+  /** Métricas observadas del cuadro, cada una con su unidad. */
+  signals: SignalValue[];
   nike_product: ProductCard | null;
+  /** Competidor de referencia (el líder del set). El set completo va en `competitors`. */
   competitor_product: ProductCard | null;
+  /**
+   * Set competidor del cuadro, ordenado por relevancia.
+   * Opcional porque `/api/overview` publica la versión corta del ítem (sin el
+   * set): es una tira de resumen, no la pantalla de decisión.
+   */
+  competitors?: RetailMediaCompetitor[];
+  competitor_count?: number;
   retailer: Retailer | null;
   country_code: string | null;
   computed_at?: string | null;
@@ -319,19 +446,73 @@ export interface RetailMediaResponse {
   facets: { by_recommendation?: RetailMediaFacet[] };
   configured_weights?: Record<string, number>;
   thresholds?: Record<string, number>;
+  /** Qué mide cada factor de retail media y de business importance. */
+  glossary?: Glossary;
   limit?: number;
   offset?: number;
 }
 
 // ── Brand / Consumer Intelligence ───────────────────────────────────
+
+/**
+ * Ventana de comparación (`?window=month|quarter|year`).
+ *
+ * `available: false` no es un error: significa que el histórico cargado no
+ * alcanza para la ventana pedida. En ese caso el backend NO publica variaciones
+ * inventadas y explica el motivo en `reason` — y la UI tiene que mostrarlo, no
+ * dejar la pantalla vacía sin decir por qué.
+ */
+export type WindowKey = "month" | "quarter" | "year";
+
+export interface ComparisonWindow {
+  window: WindowKey | string;
+  /** "mes anterior" / "trimestre anterior" / "año anterior". */
+  label: string;
+  window_days: number;
+  compare_days: number;
+  required_days: number;
+  /** `[desde, hasta]` del período actual. */
+  current: [string, string] | string[];
+  previous: [string, string] | string[];
+  prior: [string, string] | string[];
+  data_start: string | null;
+  data_end: string | null;
+  history_days: number | null;
+  available: boolean;
+  comparison_available: boolean;
+  acceleration_available: boolean;
+  reason: string | null;
+}
+
+/**
+ * Un ejemplo de evidencia con su procedencia.
+ *
+ * `url` es el link al comentario / review / nota original. Cuando es `null`
+ * viene `url_status` + `url_reason`: por qué no hay link (privacidad de la señal
+ * social agregada, la tabla de reviews no guarda permalink, la mención
+ * editorial se guardó sin URL…). La evidencia se muestra IGUAL con el motivo a
+ * la vista: "no hay link" y "no hay evidencia" son cosas distintas y el usuario
+ * tiene que poder distinguirlas.
+ */
 export interface EvidenceItem {
   source?: string;
-  url?: string;
+  source_name?: string;
+  source_label?: string;
+  type?: string;
+  type_label?: string;
+  url?: string | null;
+  url_available?: boolean;
+  url_status?: string | null;
+  url_reason?: string | null;
+  source_policy?: string | null;
   excerpt?: string;
   text?: string;
   quote?: string;
   observed_at?: string;
   date?: string;
+  date_field?: string;
+  period_start?: string;
+  period_end?: string;
   mentions?: number;
   sentiment?: number;
   [key: string]: unknown;
@@ -341,7 +522,23 @@ export interface EvidenceEnvelope {
   insight_type?: string;
   sources?: string[];
   examples?: EvidenceItem[];
+  evidence_count?: number;
+  /** Cuántos ejemplos tienen URL navegable y cuántos no. */
+  linked_count?: number;
+  unlinked_count?: number;
   [key: string]: unknown;
+}
+
+/** Ficha de una fuente de datos declarada por el backend (`sources` de brand). */
+export interface SourceInfo {
+  collector: string;
+  source_name: string;
+  homepage: string | null;
+  access: string | null;
+  terms: string | null;
+  stores: string | null;
+  enabled: boolean;
+  table: string | null;
 }
 
 export interface BrandInsight {
@@ -372,8 +569,26 @@ export interface BrandInsightsResponse {
   total: number;
   items: BrandInsight[];
   taxonomy: Record<string, string[]>;
+  window?: ComparisonWindow;
+  /** `true` si la ventana pedida se recalculó en memoria (no es la persistida). */
+  recomputed?: boolean;
+  sources?: SourceInfo[];
+  /** Diccionario `url_status` → explicación de por qué no hay link. */
+  url_reasons?: Record<string, string>;
 }
 
+/**
+ * Fila de `market_signals` con TODO lo necesario para leerla sin adivinar.
+ *
+ * Las dos familias que conviven acá no son comparables: `momentum` publica un
+ * score 0..100 con delta en RATIO (0,62 = +62%) y `shelf` publica un share en %
+ * con delta en PUNTOS PORCENTUALES. Mezclarlas en una grilla sin declarar la
+ * unidad era el motivo de que la tabla no se entendiera; por eso cada número
+ * viene con la suya y las familias se muestran por separado.
+ *
+ * Los campos enriquecidos son opcionales porque `/api/overview` devuelve la
+ * misma entidad con menos columnas (ahí sí viaja `entity_label`).
+ */
 export interface MarketSignal {
   id: number;
   signal_type: string;
@@ -386,10 +601,75 @@ export interface MarketSignal {
   period_start: string | null;
   period_end: string | null;
   computed_at?: string | null;
+
+  /** Nombre real de la entidad ("Open Sports"), no "Retailer #5". */
+  entity_label?: string | null;
+  entity_label_resolved?: boolean;
+  entity_type_label?: string | null;
+
+  signal_label?: string | null;
+  /** `momentum` | `shelf` | `other`. Separa lo que no se puede comparar. */
+  signal_family?: string | null;
+  signal_description?: string | null;
+
+  value_unit?: Unit | null;
+  value_unit_label?: string | null;
+  value_label?: string | null;
+
+  delta_unit?: Unit | null;
+  delta_unit_label?: string | null;
+  delta_label?: string | null;
+  delta_available?: boolean;
+  delta_reason?: string | null;
+  /** El delta expresado en %, cuando `delta_unit` es un ratio. */
+  delta_pct?: number | null;
+
+  acceleration_unit?: Unit | null;
+  acceleration_unit_label?: string | null;
+  acceleration_available?: boolean;
+  acceleration_reason?: string | null;
+  acceleration_pct?: number | null;
+
+  /** Volumen absoluto del período (menciones, notas, reviews). */
+  volume?: number | null;
+  volume_previous?: number | null;
+  volume_unit?: string | null;
+  volume_available?: boolean;
+  volume_reason?: string | null;
+
+  direction?: "up" | "down" | "flat" | string | null;
+  confidence?: Confidence | null;
+  coverage?: number | null;
+  sources?: string[];
+  /** `false` cuando la señal no depende de la ventana elegida (ej. share of shelf). */
+  window_applies?: boolean;
+  window?: ComparisonWindow | null;
+}
+
+export interface SignalTypeFacet {
+  signal_type: string;
+  count: number;
+  label: string | null;
+  family: string | null;
+  value_unit: Unit | null;
+  delta_unit: Unit | null;
+}
+
+export interface EntityTypeFacet {
+  entity_type: string;
+  count: number;
+  label: string | null;
 }
 
 export interface MomentumResponse {
+  total?: number;
   items: MarketSignal[];
+  signal_types?: SignalTypeFacet[];
+  entity_types?: EntityTypeFacet[];
+  /** Vocabulario de unidades: `{score_0_100: "score 0..100", …}`. */
+  units?: Record<string, string>;
+  window?: ComparisonWindow;
+  recomputed?: boolean;
 }
 
 export interface Topic {
@@ -397,13 +677,29 @@ export interface Topic {
   intent: string | null;
   brand: string | null;
   mentions: number | null;
+  mentions_unit?: string | null;
+  mentions_previous?: number | null;
+  delta?: number | null;
+  delta_unit?: Unit | null;
+  delta_pct?: number | null;
+  delta_available?: boolean;
+  delta_reason?: string | null;
   sentiment: number | null;
+  sentiment_unit?: Unit | null;
+  source_types?: string[];
+  evidence?: EvidenceItem[] | EvidenceEnvelope | string | null;
   period_start: string | null;
   period_end: string | null;
+  window?: ComparisonWindow | null;
 }
 
 export interface TopicsResponse {
+  total?: number;
   items: Topic[];
+  window?: ComparisonWindow;
+  recomputed?: boolean;
+  sources?: SourceInfo[];
+  url_reasons?: Record<string, string>;
 }
 
 // ── Overview / sistema ──────────────────────────────────────────────

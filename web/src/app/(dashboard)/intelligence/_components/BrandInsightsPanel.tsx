@@ -5,17 +5,14 @@ import type { BrandInsight, BrandInsightsResponse } from '@/types/intelligence'
 import { getBrandInsights } from '@/lib/intelligence/api'
 import { depsKeyOf } from '@/lib/intelligence/depsKey'
 import { useApi } from '@/lib/intelligence/useApi'
-import {
-  evidenceOf,
-  evidenceSource,
-  evidenceText,
-  hasEvidence,
-} from '@/lib/intelligence/insights'
-import { dec, num, pct, period, text, truncateText } from '@/lib/format'
+import { evidenceOf, hasEvidence } from '@/lib/intelligence/insights'
+import { dec, num, pct, period, text } from '@/lib/format'
 import { dimensionLabel, humanize } from '@/components/charts/palette'
 import { Card, EmptyState, ErrorState, KPICard, SectionHeader } from '@/components/ui'
 import { ConfidenceBadge, Tag } from '@/components/intelligence/badges'
+import { EvidenceList } from '@/components/intelligence/EvidenceList'
 import { CommandHint } from '@/components/intelligence/hints'
+import WindowNote from './WindowNote'
 import {
   BRAND_INSIGHTS_BATCH,
   type BrandState,
@@ -84,6 +81,24 @@ export default function BrandInsightsPanel({
           <InsightGridSkeleton />
         </Card>
       </>
+    )
+  }
+
+  // Una ventana sin historia suficiente NO devuelve insights: un insight es una
+  // conclusión y una conclusión contra una ventana vacía sería inventada. Eso no
+  // es "no hay datos", así que se explica antes de mostrar cualquier vacío.
+  if (data.window && data.window.available === false) {
+    return (
+      <Card>
+        <div className="space-y-3">
+          <WindowNote window={data.window} recomputed={data.recomputed} />
+          <EmptyState
+            title={`No hay insights comparables contra el ${data.window.label}`}
+            description="El motor no publica conclusiones sobre una ventana que el histórico no cubre. Elegí una ventana más corta o cargá más historia con el pipeline."
+            action={<CommandHint />}
+          />
+        </div>
+      </Card>
     )
   }
 
@@ -182,6 +197,10 @@ export default function BrandInsightsPanel({
           }
           className="mb-4"
         />
+
+        <div className="mb-3">
+          <WindowNote window={data.window} recomputed={data.recomputed} />
+        </div>
 
         {withEvidence.length === 0 ? (
           <EmptyState
@@ -307,19 +326,10 @@ function InsightCard({ insight }: { insight: BrandInsight }) {
         </div>
       </div>
 
-      {/* Evidencia — sin esto el insight no existe */}
+      {/* Evidencia — sin esto el insight no existe. Con URL se puede ir al
+          comentario original; sin ella se dice por qué, pero no se esconde. */}
       <div className="mt-3">
-        <p className="label-caps mb-1.5">Evidencia ({evidence.length})</p>
-        <ul className="space-y-1.5">
-          {evidence.slice(0, 3).map((e, i) => (
-            <li key={i} className="border-l-2 border-surface-border pl-2.5">
-              <p className="text-2xs leading-relaxed text-nike-ink-soft">
-                “{truncateText(evidenceText(e), 160)}”
-              </p>
-              <p className="text-[10px] text-nike-muted">{evidenceSource(e)}</p>
-            </li>
-          ))}
-        </ul>
+        <EvidenceList items={evidence} max={3} />
       </div>
 
       <p className="mt-2.5 text-[10px] text-nike-muted">

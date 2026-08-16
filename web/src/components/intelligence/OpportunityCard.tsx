@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { Opportunity } from '@/types/intelligence'
 import { score, text } from '@/lib/format'
+import type { GlossaryTerms } from '@/lib/intelligence/glossary'
 import { humanize, severityStyle } from '@/components/charts/palette'
 import { MeterBar } from '@/components/ui'
 import { ConfidenceBadge, FamilyBadge, SeverityBadge } from './badges'
@@ -46,9 +47,12 @@ export function OpportunityCard({
   showTriage,
   updatedBy,
   onTriageChange,
+  terms,
 }: {
   opportunity: TriagedOpportunity
   compact?: boolean
+  /** Glosario de los drivers (`termIndex`): qué mide cada componente del score. */
+  terms?: GlossaryTerms
   /**
    * Controles de triaje. Por defecto siguen a `compact`: en el resumen del
    * overview la tarjeta muestra el estado pero no se opera desde ahí — el lugar
@@ -150,7 +154,7 @@ export function OpportunityCard({
           {/* POR QUÉ */}
           <div className="border-t border-surface-border px-4 py-3">
             <p className="label-caps mb-2">Por qué — drivers del score</p>
-            <DriverList drivers={opportunity.drivers} color={sev.color} />
+            <DriverList drivers={opportunity.drivers} color={sev.color} terms={terms} />
           </div>
         </>
       )}

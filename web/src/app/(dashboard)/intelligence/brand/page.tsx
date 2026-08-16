@@ -2,13 +2,16 @@ import { Suspense } from 'react'
 import { fetchBrandInsights, fetchBrandMomentum, fetchBrandTopics } from '@/lib/intelligence/server'
 import { Card, EmptyState, PageIntro, SectionHeader } from '@/components/ui'
 import BrandInsightsPanel from '../_components/BrandInsightsPanel'
-import MomentumTable from '../_components/MomentumTable'
+import MomentumTable, { MomentumFooter } from '../_components/MomentumTable'
 import ServerError from '../_components/ServerError'
 import TopicsChart from '../_components/TopicsChart'
+import WindowNote from '../_components/WindowNote'
+import WindowSelector from '../_components/WindowSelector'
 import {
   BRAND_COUNTRY,
   BRAND_MOMENTUM_LIMIT,
   BRAND_TOPICS_LIMIT,
+  type BrandState,
   brandInsightsQueryFrom,
   brandStateFromParams,
 } from '../_components/brandParams'
@@ -26,6 +29,10 @@ import {
  * control que el usuario pueda tocar, así que antes costaban dos requests por
  * visita para pintar siempre lo mismo.
  *
+ * La ventana de comparación (`?win=`) es la excepción: es un control de página,
+ * no de panel, y navega — así los tres bloques se rearman contra el mismo
+ * período en vez de quedar comparando cosas distintas entre sí.
+ *
  * Los tres bloques tienen su propio `Suspense`: el panel de insights no espera
  * a que el backend conteste los tópicos, ni al revés.
  */
@@ -36,6 +43,8 @@ export default function ConsumerBrandPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>
 }) {
+  const state = brandStateFromParams(searchParams)
+
   return (
     <div>
       <PageIntro
@@ -43,9 +52,13 @@ export default function ConsumerBrandPage({
         description="Percepción de marca, tópicos en tendencia, quejas, drivers positivos y momentum, siempre a partir de señal pública agregada. Regla dura del producto: un insight sin evidencia no se muestra."
       />
 
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <WindowSelector value={state.window} />
+      </div>
+
       <div className="space-y-5">
-        <Suspense fallback={<BrandInsightsSkeleton />}>
-          <InsightsSection searchParams={searchParams} />
+        <Suspense key={`insights-${state.window}`} fallback={<BrandInsightsSkeleton />}>
+          <InsightsSection state={state} />
         </Suspense>
 
         <div className="grid gap-gutter xl:grid-cols-2">
@@ -53,11 +66,12 @@ export default function ConsumerBrandPage({
             <SectionHeader
               eyebrow="Momentum"
               title="Marcas y franquicias que aceleran"
-              subtitle="Volumen normalizado, variación vs. período anterior y aceleración."
+              subtitle="Separado por familia de señal: el momentum de conversación y la presencia en góndola no comparten unidad ni escala."
+              hint="Cada bloque declara la unidad de su valor y de su variación. Un delta en ratio (0,62 = +62%) y uno en puntos porcentuales no se pueden leer con el mismo criterio."
               className="mb-3"
             />
-            <Suspense fallback={<MomentumTableSkeleton />}>
-              <MomentumSection />
+            <Suspense key={`momentum-${state.window}`} fallback={<MomentumTableSkeleton />}>
+              <MomentumSection state={state} />
             </Suspense>
           </Card>
 
@@ -68,8 +82,8 @@ export default function ConsumerBrandPage({
               subtitle="Volumen de menciones agregadas por tópico e intención, con sentimiento medio."
               className="mb-3"
             />
-            <Suspense fallback={<BarChartSkeleton />}>
-              <TopicsSection />
+            <Suspense key={`topics-${state.window}`} fallback={<BarChartSkeleton />}>
+              <TopicsSection state={state} />
             </Suspense>
           </Card>
         </div>
@@ -78,12 +92,7 @@ export default function ConsumerBrandPage({
   )
 }
 
-async function InsightsSection({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>
-}) {
-  const state = brandStateFromParams(searchParams)
+async function InsightsSection({ state }: { state: BrandState }) {
   const insights = await fetchBrandInsights(brandInsightsQueryFrom(state))
   return (
     <BrandInsightsPanel
@@ -94,30 +103,49 @@ async function InsightsSection({
   )
 }
 
-async function MomentumSection() {
+async function MomentumSection({ state }: { state: BrandState }) {
   const momentum = await fetchBrandMomentum({
     country: BRAND_COUNTRY,
+    window: state.window,
     limit: BRAND_MOMENTUM_LIMIT,
   })
   if (!momentum.ok) {
     return <ServerError description={momentum.error} title="Sin momentum" size="sm" />
   }
-  return <MomentumTable items={momentum.data.items} />
+  return (
+    <div className="space-y-3">
+      <WindowNote window={momentum.data.window} recomputed={momentum.data.recomputed} />
+      <MomentumTable data={momentum.data} />
+      <MomentumFooter items={momentum.data.items} />
+    </div>
+  )
 }
 
-async function TopicsSection() {
-  const topics = await fetchBrandTopics({ country: BRAND_COUNTRY, limit: BRAND_TOPICS_LIMIT })
+async function TopicsSection({ state }: { state: BrandState }) {
+  const topics = await fetchBrandTopics({
+    country: BRAND_COUNTRY,
+    window: state.window,
+    limit: BRAND_TOPICS_LIMIT,
+  })
   if (!topics.ok) {
     return <ServerError description={topics.error} title="Sin tópicos" size="sm" />
   }
   if (topics.data.items.length === 0) {
     return (
-      <EmptyState
-        title="Sin tópicos de conversación"
-        description="La tabla social_mention_aggregates está vacía. Sin señal social no hay tópicos que reportar."
-        size="sm"
-      />
+      <div className="space-y-3">
+        <WindowNote window={topics.data.window} recomputed={topics.data.recomputed} />
+        <EmptyState
+          title="Sin tópicos de conversación"
+          description="No hay menciones agregadas en el período elegido. Sin señal social no hay tópicos que reportar."
+          size="sm"
+        />
+      </div>
     )
   }
-  return <TopicsChart items={topics.data.items} />
+  return (
+    <div className="space-y-3">
+      <WindowNote window={topics.data.window} recomputed={topics.data.recomputed} />
+      <TopicsChart items={topics.data.items} />
+    </div>
+  )
 }

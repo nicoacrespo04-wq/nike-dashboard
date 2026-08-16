@@ -1,19 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { RetailMedia, RetailMediaResponse } from '@/types/intelligence'
+import type {
+  RetailMedia,
+  RetailMediaCompetitor,
+  RetailMediaResponse,
+  SignalValue,
+} from '@/types/intelligence'
 import { getRetailMedia } from '@/lib/intelligence/api'
 import { depsKeyOf } from '@/lib/intelligence/depsKey'
 import { useApi, useDebounced } from '@/lib/intelligence/useApi'
-import {
-  driverMetrics,
-  driverValue,
-  driversRationale,
-  normalizeDrivers,
-} from '@/lib/intelligence/drivers'
-import { dec, money, num, pct, score } from '@/lib/format'
+import { driverValue, driversRationale, normalizeDrivers, signalIndex } from '@/lib/intelligence/drivers'
+import { type GlossaryTerms, glossaryGroup, termIndex } from '@/lib/intelligence/glossary'
+import { formatMagnitude } from '@/lib/intelligence/units'
+import { dec, money, num, pct, score, text } from '@/lib/format'
 import { recommendationStyle } from '@/components/charts/palette'
-import { Card, EmptyState, ErrorState, MeterBar } from '@/components/ui'
+import { Card, EmptyState, ErrorState, InfoTip, MeterBar } from '@/components/ui'
 import { ConfidenceBadge } from '@/components/intelligence/badges'
 import { DriverList } from '@/components/intelligence/DriverList'
 import { CommandHint } from '@/components/intelligence/hints'
@@ -40,8 +42,15 @@ export interface RetailMediaBoardProps {
  *
  * Cliente por los dos filtros (recomendación y score mínimo), que el backend
  * resuelve con `recommendation` y `min_score`. La paginación también es del
- * backend: cada fila trae producto Nike, competidor, retailer y siete drivers,
- * así que traer más de una página es caro y no se usa.
+ * backend: cada fila trae producto Nike, el set competidor, retailer y siete
+ * drivers, así que traer más de una página es caro y no se usa.
+ *
+ * Contrato: el motor agrupa por CUADRO (producto Nike × retailer) con varios
+ * competidores adentro, no una fila por rival. Cada ítem trae `rationale` como
+ * campo propio, `drivers` (los factores ponderados, `contribution` suma 100),
+ * `signals` (las métricas observadas, cada una con su unidad) y `competitors`
+ * (el set completo). La decisión de invertir en visibilidad se toma mirando el
+ * conjunto: por eso el cuadro muestra todos los rivales y no sólo el líder.
  */
 export default function RetailMediaBoard({
   initialState,
@@ -96,6 +105,10 @@ export default function RetailMediaBoard({
   const facets = data.facets?.by_recommendation ?? []
   const thresholds = data.thresholds ?? {}
   const hasFilters = state.recommendation !== '' || state.min_score > 0
+  // Los drivers del cuadro mezclan dos familias: los 7 de retail media y el
+  // score de business importance, que es uno de ellos.
+  const terms = termIndex(data.glossary, 'retail_media', 'business_importance')
+  const glossaryNote = glossaryGroup(data.glossary, 'retail_media')?.description ?? null
 
   if (data.total === 0 && !hasFilters) {
     return (
@@ -229,7 +242,7 @@ export default function RetailMediaBoard({
             onPage={(page) => setState((prev) => ({ ...prev, page }))}
           />
           {data.items.map((item) => (
-            <RetailMediaRow key={item.id} item={item} />
+            <RetailMediaRow key={item.id} item={item} terms={terms} note={glossaryNote} />
           ))}
           <Pager
             page={state.page}
@@ -250,17 +263,31 @@ export default function RetailMediaBoard({
   )
 }
 
-function RetailMediaRow({ item }: { item: RetailMedia }) {
+function RetailMediaRow({
+  item,
+  terms,
+  note,
+}: {
+  item: RetailMedia
+  terms: GlossaryTerms
+  note: string | null
+}) {
   const rec = recommendationStyle(item.recommendation)
 
   const drivers = normalizeDrivers(item.drivers)
-  const metrics = driverMetrics(item.drivers)
-  const rationale = driversRationale(item.drivers)
+  // El racional es un campo propio del ítem. `driversRationale` queda de
+  // respaldo por si el motor todavía lo manda dentro del sobre viejo.
+  const rationale = item.rationale ?? driversRationale(item.drivers)
+  // Las métricas observadas viven en `signals`, con su unidad declarada.
+  const signals = signalIndex(item.signals)
 
   const stockHealth = driverValue(drivers, 'nike_stock_health')
   const priceCompetitiveness = driverValue(drivers, 'price_competitiveness')
   const competitiveRelevance = driverValue(drivers, 'competitive_relevance')
   const competitorStockGap = driverValue(drivers, 'competitor_stock_gap')
+
+  const competitors = item.competitors ?? []
+  const competitorCount = item.competitor_count ?? competitors.length
 
   return (
     <article
@@ -268,7 +295,7 @@ function RetailMediaRow({ item }: { item: RetailMedia }) {
       style={{ borderLeft: `4px solid ${rec.color}` }}
     >
       <div className="grid gap-4 p-4 xl:grid-cols-[1.5fr_1fr_1fr]">
-        {/* Sujetos */}
+        {/* Sujetos: el cuadro es producto Nike × retailer, con TODO su set rival */}
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <span
@@ -287,13 +314,8 @@ function RetailMediaRow({ item }: { item: RetailMedia }) {
           </div>
 
           <ProductLine product={item.nike_product} role="nike" />
-          <div className="flex items-center gap-2 pl-1">
-            <span aria-hidden="true" className="text-2xs font-bold text-nike-muted">
-              compite con
-            </span>
-            <span className="h-px flex-1 bg-surface-border" />
-          </div>
-          <ProductLine product={item.competitor_product} role="competitor" />
+
+          <CompetitorSet competitors={competitors} count={competitorCount} fallback={item.competitor_product} />
 
           <p className="text-2xs leading-relaxed text-nike-ink-soft">{rationale ?? rec.blurb}</p>
         </div>
@@ -309,40 +331,31 @@ function RetailMediaRow({ item }: { item: RetailMedia }) {
           <Signal
             label="Competitividad de precio"
             value={priceCompetitiveness}
-            hint="Qué tan cerca está Nike del precio del competidor."
+            hint="Qué tan competitivo está el precio Nike contra el peor caso del set."
           />
           <Signal
             label="Relevancia competitiva"
             value={competitiveRelevance}
-            hint="Match score con el competidor del caso."
+            hint="Match score del competidor líder del cuadro."
           />
           <Signal
             label="Quiebre del competidor"
             value={competitorStockGap}
-            hint="Cuánto stock le falta al competidor: ventana para capturar demanda."
+            hint="Cuánto stock le falta al set rival: ventana para capturar demanda."
           />
+
+          {/* Métricas observadas: cada una con la unidad que declara el backend */}
           <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-surface-border pt-2">
-            <Metric label="Stock Nike" value={metrics['nike_stock_pct']} suffix="%" />
-            <Metric label="Stock competidor" value={metrics['competitor_stock_pct']} suffix="%" />
-            <Metric label="Gap de precio" value={metrics['price_gap_pct']} suffix="%" signedValue />
-            <Metric label="Descuento Nike" value={metrics['nike_discount_pct']} suffix="%" />
-            <Metric
-              label="Share of shelf Nike"
-              value={
-                metrics['nike_shelf_share'] !== undefined
-                  ? metrics['nike_shelf_share'] * 100
-                  : undefined
-              }
-              suffix="%"
-            />
-            <Metric label="Business importance" value={metrics['business_importance']} />
+            <Metric signal={signals['nike_stock_pct']} label="Stock Nike" />
+            <Metric signal={signals['competitor_stock_pct']} label="Stock del set rival" />
+            <Metric signal={signals['price_gap_pct']} label="Gap de precio" signedValue />
+            <Metric signal={signals['nike_discount_pct']} label="Descuento Nike" />
+            <Metric signal={signals['nike_shelf_share']} label="Share of shelf Nike" />
+            <Metric signal={signals['business_importance']} label="Importancia de negocio" />
           </dl>
           {item.nike_product?.msrp !== null && item.nike_product?.msrp !== undefined && (
             <p className="tabular text-2xs text-nike-muted">
               MSRP Nike {money(item.nike_product.msrp)}
-              {item.competitor_product?.msrp !== null && item.competitor_product?.msrp !== undefined
-                ? ` · competidor ${money(item.competitor_product.msrp)}`
-                : ''}
             </p>
           )}
         </div>
@@ -360,11 +373,105 @@ function RetailMediaRow({ item }: { item: RetailMedia }) {
           </div>
           <MeterBar value={item.score} max={100} color={rec.color} height={8} />
 
-          <p className="label-caps mb-1.5 mt-3">Por qué — drivers</p>
-          <DriverList drivers={item.drivers} color={rec.color} max={7} />
+          <p className="label-caps mb-1.5 mt-3 flex items-center gap-1">
+            Por qué — drivers
+            {note && <InfoTip label="Cómo se combinan los drivers" content={note} side="left" />}
+          </p>
+          <DriverList drivers={item.drivers} color={rec.color} max={7} terms={terms} />
         </div>
       </div>
     </article>
+  )
+}
+
+/**
+ * El set competidor del cuadro.
+ *
+ * Mostrar un solo rival era la versión vieja del contrato y llevaba a decidir
+ * mirando a medias: si tres marcas empujan la misma franquicia en el mismo
+ * retailer, la inversión en visibilidad se justifica por el conjunto. Cada fila
+ * dice qué papel jugó el rival en el score (líder de relevancia, referencia de
+ * precio —que va a PEOR CASO— o motor del momentum) y si está presente en ese
+ * retailer.
+ */
+function CompetitorSet({
+  competitors,
+  count,
+  fallback,
+}: {
+  competitors: RetailMediaCompetitor[]
+  count: number
+  fallback: RetailMedia['competitor_product']
+}) {
+  if (competitors.length === 0) {
+    // Contrato viejo (o cuadro sin set persistido): al menos el rival de referencia.
+    return (
+      <>
+        <SetHeading count={count} />
+        <ProductLine product={fallback} role="competitor" />
+      </>
+    )
+  }
+
+  return (
+    <div>
+      <SetHeading count={count} />
+      <ul className="space-y-1.5">
+        {competitors.map((c) => (
+          <li
+            key={c.competitor_product_id}
+            className="rounded-lg border border-surface-border bg-surface-muted px-2.5 py-1.5"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="min-w-0 truncate text-2xs font-semibold text-nike-ink">
+                {text(c.product?.product_name)}
+              </span>
+              <span className="tabular flex-shrink-0 text-2xs font-bold text-nike-ink-soft">
+                match {dec(c.match_score, 1)}
+              </span>
+            </div>
+
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-nike-muted">
+              <span className="tabular">peso {pct((c.relevance_weight ?? 0) * 100, 0)}</span>
+              {c.stock_pct !== null && <span className="tabular">stock {dec(c.stock_pct, 0)}%</span>}
+              {c.price_gap_pct !== null && (
+                <span className="tabular">
+                  gap {c.price_gap_pct > 0 ? '+' : ''}
+                  {dec(c.price_gap_pct, 1)}%
+                </span>
+              )}
+              {c.momentum !== null && <span className="tabular">momentum {dec(c.momentum, 2)}</span>}
+              <span>{c.present_at_retailer ? 'en el retailer' : 'no listado acá'}</span>
+            </div>
+
+            <div className="mt-1 flex flex-wrap gap-1">
+              {c.is_leader && <RoleTag>líder de relevancia</RoleTag>}
+              {c.is_price_reference && <RoleTag>referencia de precio</RoleTag>}
+              {c.is_momentum_reference && <RoleTag>tracciona el momentum</RoleTag>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function SetHeading({ count }: { count: number }) {
+  return (
+    <div className="mb-1.5 flex items-center gap-2">
+      <span className="text-2xs font-bold text-nike-muted">
+        compite con {num(count)} {count === 1 ? 'rival relevante' : 'rivales relevantes'}
+      </span>
+      <span className="h-px flex-1 bg-surface-border" />
+    </div>
+  )
+}
+
+function RoleTag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-pill border border-surface-border-strong bg-white px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-nike-ink-soft">
+      {children}
+    </span>
   )
 }
 
@@ -398,24 +505,36 @@ function Signal({ label, value, hint }: { label: string; value: number | null; h
   )
 }
 
+/**
+ * Una métrica observada del cuadro.
+ *
+ * Se lee de `signals`, no de los drivers: el motor separó las dos cosas y cada
+ * señal viaja con su unidad, así que el formato lo decide la unidad y no una
+ * suposición de la pantalla (`nike_shelf_share` llega como fracción 0,4 y se
+ * muestra 40%; `price_gap_pct` llega ya en porcentaje).
+ */
 function Metric({
+  signal,
   label,
-  value,
-  suffix = '',
   signedValue = false,
 }: {
-  label: string
-  value: number | undefined
-  suffix?: string
+  signal: SignalValue | undefined
+  /** Etiqueta local. La del backend se usa si no se pasa ninguna. */
+  label?: string
   signedValue?: boolean
 }) {
-  const has = value !== undefined && Number.isFinite(value)
+  const value = signal?.value
+  const has = value !== null && value !== undefined && Number.isFinite(value)
+  const shown = has ? formatMagnitude(value, signal?.unit) : 'sin dato'
   const sign = signedValue && has && value > 0 ? '+' : ''
+
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wide text-nike-muted">{label}</dt>
+      <dt className="text-[10px] uppercase tracking-wide text-nike-muted">
+        {label ?? signal?.label ?? '—'}
+      </dt>
       <dd className="tabular text-2xs font-semibold text-nike-ink">
-        {has ? `${sign}${value.toFixed(1)}${suffix}` : 'sin dato'}
+        {has ? `${sign}${shown}` : shown}
       </dd>
     </div>
   )

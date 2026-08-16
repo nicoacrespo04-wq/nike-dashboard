@@ -1,5 +1,6 @@
-import type { Factor, MatchDetail } from '@/types/intelligence'
+import type { MatchDetail } from '@/types/intelligence'
 import { pct, pctFromFraction, score, text } from '@/lib/format'
+import { glossaryGroup, termIndex } from '@/lib/intelligence/glossary'
 import { factorLabel, scoreTone, sortFactors } from '@/components/charts/palette'
 import { Card, PageIntro, SectionHeader } from '@/components/ui'
 import { ConfidenceBadge } from '@/components/intelligence/badges'
@@ -22,6 +23,11 @@ export default function MatchExplain({ match }: { match: MatchDetail }) {
   const factors = match.factors
   const available = factors.filter((f) => f.available)
   const missing = factors.filter((f) => !f.available)
+
+  // Qué mide cada factor, según el glosario del backend. Es la MISMA definición
+  // que `backend/docs/glossary.md`: si cambia allá, cambia acá.
+  const terms = termIndex(match.glossary, 'competitive_match')
+  const group = glossaryGroup(match.glossary, 'competitive_match')
 
   const weightAvailable = available.reduce((acc, f) => acc + (f.weight ?? 0), 0)
   const weightMissing = missing.reduce((acc, f) => acc + (f.weight ?? 0), 0)
@@ -127,7 +133,7 @@ export default function MatchExplain({ match }: { match: MatchDetail }) {
           <div>
             <p className="label-caps mb-2">Reparto del score entre factores disponibles</p>
             <ContributionStack factors={factors} height={26} />
-            <FactorLegend factors={factors} />
+            <FactorLegend factors={factors} terms={terms} />
             {top ? (
               <p className="mt-3 text-xs leading-relaxed text-nike-ink-soft">
                 El factor que más sostiene este match es{' '}
@@ -149,11 +155,18 @@ export default function MatchExplain({ match }: { match: MatchDetail }) {
         <SectionHeader
           eyebrow="¿Por qué?"
           title="Feature importance de los 7 factores"
-          subtitle="Tocá una fila para ver las sub-señales que produjeron ese score."
-          hint="Los factores sin datos se listan igual — la ausencia de evidencia es información."
+          subtitle="Tocá el nombre de un factor para ver qué mide y las sub-señales que produjeron ese score. El ícono “i” resume la definición."
+          hint={
+            group?.description ??
+            'Los factores sin datos se listan igual — la ausencia de evidencia es información.'
+          }
           className="mb-3"
         />
-        <FactorTable factors={factors} configuredWeights={match.configured_weights} />
+        <FactorTable
+          factors={factors}
+          configuredWeights={match.configured_weights}
+          terms={terms}
+        />
       </Card>
 
       {/* ── Configurado vs efectivo ──────────────────────────────── */}

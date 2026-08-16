@@ -172,23 +172,49 @@ export const getRetailMedia = (params?: RetailMediaQuery, signal?: AbortSignal) 
   request<RetailMediaResponse>('/retail-media', params, signal)
 
 // ── Brand intelligence ──────────────────────────────────────────────
-export const getBrandInsights = (
-  params?: {
-    country?: string
-    dimension?: string
-    brand?: string
-    min_confidence?: string
-    limit?: number
-  },
-  signal?: AbortSignal,
-) => request<BrandInsightsResponse>('/brand/insights', params, signal)
+/**
+ * Ventana de comparación de los tres endpoints de brand.
+ *
+ * `month | quarter | year`. Sin ventana, el backend usa la persistida (mes
+ * contra mes anterior); con cualquier otra recalcula en memoria. Si el
+ * histórico no alcanza, la respuesta trae `window.available = false` y el
+ * motivo — que la UI tiene que mostrar en vez de quedar en blanco.
+ */
+export interface BrandWindowParams extends QueryParams {
+  country?: string
+  window?: string
+  window_days?: number
+  compare_days?: number
+}
 
-export const getBrandMomentum = (
-  params?: { country?: string; signal_type?: string; entity_type?: string; limit?: number },
-  signal?: AbortSignal,
-) => request<MomentumResponse>('/brand/momentum', params, signal)
+export interface BrandInsightsParams extends BrandWindowParams {
+  dimension?: string
+  brand?: string
+  min_confidence?: string
+  limit?: number
+}
 
-export const getBrandTopics = (
-  params?: { country?: string; limit?: number },
-  signal?: AbortSignal,
-) => request<TopicsResponse>('/brand/topics', params, signal)
+export interface BrandMomentumParams extends BrandWindowParams {
+  /** Uno o varios `signal_type`, separados por coma. */
+  signal_type?: string
+  /** `momentum` | `shelf`: las dos familias NO son comparables entre sí. */
+  signal_family?: string
+  entity_type?: string
+  sort?: string
+  limit?: number
+}
+
+export interface BrandTopicsParams extends BrandWindowParams {
+  topic?: string
+  brand?: string
+  limit?: number
+}
+
+export const getBrandInsights = (params?: BrandInsightsParams, signal?: AbortSignal) =>
+  request<BrandInsightsResponse>('/brand/insights', params, signal)
+
+export const getBrandMomentum = (params?: BrandMomentumParams, signal?: AbortSignal) =>
+  request<MomentumResponse>('/brand/momentum', params, signal)
+
+export const getBrandTopics = (params?: BrandTopicsParams, signal?: AbortSignal) =>
+  request<TopicsResponse>('/brand/topics', params, signal)

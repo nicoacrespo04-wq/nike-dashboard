@@ -7,6 +7,7 @@ import { getMatches, getProductMatches, getProducts } from '@/lib/intelligence/a
 import { depsKeyOf } from '@/lib/intelligence/depsKey'
 import { useApi, useDebounced } from '@/lib/intelligence/useApi'
 import { num, pctFromFraction, score, text } from '@/lib/format'
+import { termIndex } from '@/lib/intelligence/glossary'
 import { scoreTone } from '@/components/charts/palette'
 import { Card, EmptyState, ErrorState, SectionHeader } from '@/components/ui'
 import { ConfidenceBadge } from '@/components/intelligence/badges'
@@ -372,13 +373,23 @@ export default function MatchesExplorer({
 
                         <div className="mt-3 pl-9">
                           <ContributionStack factors={m.factors} height={14} />
-                          {i === 0 && <FactorLegend factors={m.factors} />}
                         </div>
 
                         <p className="mt-2 pl-9 text-2xs font-semibold text-nike-red">
                           Ver por qué el motor cree esto →
                         </p>
                       </Link>
+
+                      {/* La leyenda va FUERA del link: sus tooltips del glosario
+                          son botones y un `<a>` no puede contenerlos. */}
+                      {i === 0 && (
+                        <div className="px-3 pl-12">
+                          <FactorLegend
+                            factors={m.factors}
+                            terms={termIndex(matchesState.data?.glossary, 'competitive_match')}
+                          />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ol>

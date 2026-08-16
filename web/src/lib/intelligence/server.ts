@@ -24,6 +24,7 @@
 
 import type {
   BrandInsightsResponse,
+  Glossary,
   HealthResponse,
   MatchDetail,
   MatchListResponse,
@@ -37,12 +38,52 @@ import type {
   RetailMediaResponse,
   TopicsResponse,
 } from '@/types/intelligence'
-import type { OpportunityQuery, ProductQuery, QueryParams, RetailMediaQuery } from './api'
+import type {
+  BrandInsightsParams,
+  BrandMomentumParams,
+  BrandTopicsParams,
+  OpportunityQuery,
+  ProductQuery,
+  QueryParams,
+  RetailMediaQuery,
+} from './api'
 
 /** Base del backend de inteligencia. Configurable por entorno. */
 export const INTELLIGENCE_API_BASE = (
   process.env.INTELLIGENCE_API_URL ?? 'http://localhost:8000'
 ).replace(/\/+$/, '')
+
+/**
+ * API key del motor (`CI_API_KEY` del lado del backend, ver `backend/app/auth.py`).
+ *
+ * La autenticación del motor es OPCIONAL: sin `CI_API_KEY` en el backend no se
+ * exige nada y esta variable puede no existir. Cuando existe, todo lo que no
+ * sea público pide el header `X-API-Key`.
+ *
+ * La variable se llama `INTELLIGENCE_API_KEY`, **sin** el prefijo
+ * `NEXT_PUBLIC_`: con ese prefijo Next la inlinea en el bundle del cliente y la
+ * key queda a la vista de cualquiera con las devtools abiertas. Como todas las
+ * llamadas al motor salen del servidor (este módulo y el proxy
+ * `/api/intelligence/[...path]`), el browser nunca necesita conocerla.
+ *
+ * Se lee en cada llamada, no en el módulo: así el valor es el del proceso que
+ * corre y no queda congelado en el build.
+ */
+export function intelligenceApiKey(): string {
+  return (process.env.INTELLIGENCE_API_KEY ?? '').trim()
+}
+
+/**
+ * Headers de salida hacia el motor: `Accept` siempre, `X-API-Key` sólo si la
+ * variable está definida. Único lugar donde se arma, para que el proxy y los
+ * Server Components no puedan autenticarse distinto.
+ */
+export function intelligenceHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { Accept: 'application/json', ...extra }
+  const key = intelligenceApiKey()
+  if (key) headers['X-API-Key'] = key
+  return headers
+}
 
 /** Cuánto esperamos al backend antes de cortar (el pipeline puede ser lento). */
 export const TIMEOUT_MS = 20_000
@@ -62,6 +103,18 @@ export interface CacheRule {
   /** Por qué ese número. Se documenta acá para no discutirlo en cada page. */
   reason: string
 }
+
+/**
+ * Etiqueta con la que se marca TODO lo cacheado del motor.
+ *
+ * Existe por una razón concreta: el triaje escribe. Sin una etiqueta común, una
+ * oportunidad recién descartada seguía apareciendo abierta hasta un minuto
+ * después —la lista servida desde el Data Cache era anterior al `POST`—, y el
+ * usuario veía revertirse una decisión que en la base sí estaba guardada. El
+ * proxy invalida esta etiqueta después de cada escritura exitosa, así la
+ * siguiente lectura vuelve a preguntarle al backend.
+ */
+export const INTELLIGENCE_CACHE_TAG = 'intelligence'
 
 const SECONDS = {
   /** Semáforo del backend: cachearlo sería mentir sobre si está vivo. */
@@ -136,10 +189,10 @@ export async function fetchIntelligence<T>(
   let response: Response
   try {
     response = await fetch(url, {
-      headers: { Accept: 'application/json' },
+      headers: intelligenceHeaders(),
       signal: AbortSignal.timeout(TIMEOUT_MS),
       ...(rule.revalidate > 0
-        ? { next: { revalidate: rule.revalidate } }
+        ? { next: { revalidate: rule.revalidate, tags: [INTELLIGENCE_CACHE_TAG] } }
         : { cache: 'no-store' as const }),
     })
   } catch (cause) {
@@ -200,19 +253,37 @@ export const fetchOpportunities = (params?: OpportunityQuery) =>
 export const fetchRetailMedia = (params?: RetailMediaQuery) =>
   fetchIntelligence<RetailMediaResponse>('/retail-media', params)
 
-export const fetchBrandInsights = (params?: {
-  country?: string
-  dimension?: string
-  brand?: string
-  min_confidence?: string
-  limit?: number
-}) => fetchIntelligence<BrandInsightsResponse>('/brand/insights', params)
+export const fetchBrandInsights = (params?: BrandInsightsParams) =>
+  fetchIntelligence<BrandInsightsResponse>('/brand/insights', params)
 
-export const fetchBrandMomentum = (params?: { country?: string; limit?: number }) =>
+export const fetchBrandMomentum = (params?: BrandMomentumParams) =>
   fetchIntelligence<MomentumResponse>('/brand/momentum', params)
 
-export const fetchBrandTopics = (params?: { country?: string; limit?: number }) =>
+export const fetchBrandTopics = (params?: BrandTopicsParams) =>
   fetchIntelligence<TopicsResponse>('/brand/topics', params)
+
+/**
+ * Glosario de los componentes de business importance.
+ *
+ * `/api/opportunities` publica la contribución de cada driver pero todavía no
+ * adjunta el glosario; la MISMA definición sí viaja en `/api/retail-media`, que
+ * devuelve las dos familias (`retail_media` + `business_importance`) porque uno
+ * de sus factores es justamente el score de business importance.
+ *
+ * Se pide una sola fila (la respuesta es la más chica posible que incluya el
+ * bloque) y el resultado lo cachea el Data Cache como cualquier listado. Si el
+ * motor no lo publica, se devuelve `null` y las tarjetas quedan sin tooltip:
+ * degradar es aceptable, mentir sobre qué mide una variable no.
+ *
+ * Cuando el backend adjunte `glossary` a `/api/opportunities`, esto se borra y
+ * se lee de la propia respuesta.
+ */
+export async function fetchBusinessImportanceGlossary(): Promise<Glossary | null> {
+  const result = await fetchIntelligence<RetailMediaResponse>('/retail-media', { limit: 1 })
+  if (!result.ok) return null
+  const glossary = result.data.glossary
+  return glossary?.business_importance ? glossary : null
+}
 
 /**
  * Nombre de la marca foco (Nike) para poder filtrar `/api/products` server-side.

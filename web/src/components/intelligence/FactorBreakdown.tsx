@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import type { Factor } from '@/types/intelligence'
 import { dec, pct, pctFromFraction } from '@/lib/format'
+import { type GlossaryTerms, termFor } from '@/lib/intelligence/glossary'
 import { factorColor, factorHelp, factorLabel, sortFactors } from '@/components/charts/palette'
 import { EmptyState, MeterBar } from '@/components/ui'
+import { GlossaryTip } from './GlossaryTip'
 
 /** Formatea un valor del JSON `detail` sin recurrir a `any`. */
 function renderDetailValue(value: unknown): string {
@@ -75,7 +77,7 @@ export function ContributionStack({
   )
 }
 
-export function FactorLegend({ factors }: { factors: Factor[] }) {
+export function FactorLegend({ factors, terms }: { factors: Factor[]; terms?: GlossaryTerms }) {
   const ordered = sortFactors(factors)
   return (
     <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
@@ -89,6 +91,7 @@ export function FactorLegend({ factors }: { factors: Factor[] }) {
           <span className={f.available ? 'text-nike-ink-soft' : 'text-nike-muted line-through'}>
             {factorLabel(f.factor)}
           </span>
+          {terms && <GlossaryTip term={termFor(terms, f.factor)} size={11} />}
           <span className="tabular font-semibold text-nike-ink">
             {f.available ? pct(f.contribution, 0) : 's/d'}
           </span>
@@ -106,9 +109,16 @@ export function FactorLegend({ factors }: { factors: Factor[] }) {
 export function FactorTable({
   factors,
   configuredWeights,
+  terms,
 }: {
   factors: Factor[]
   configuredWeights?: Record<string, number>
+  /**
+   * Glosario del backend. Con él cada fila explica qué mide el factor —dentro
+   * del tooltip del encabezado y en prosa al abrir la fila—; sin él la tabla
+   * cae al texto corto de `factorHelp`, que es lo único que había antes.
+   */
+  terms?: GlossaryTerms
 }) {
   const [open, setOpen] = useState<string | null>(null)
 
@@ -140,12 +150,10 @@ export function FactorTable({
           const configured = configuredWeights?.[f.factor]
           return (
             <li key={f.factor} className={f.available ? '' : 'bg-surface-muted'}>
-              <button
-                type="button"
-                onClick={() => setOpen(isOpen ? null : f.factor)}
-                aria-expanded={isOpen}
-                className="grid w-full grid-cols-[minmax(140px,1.4fr)_minmax(90px,0.9fr)_minmax(150px,1.6fr)] items-center gap-3 py-2.5 text-left transition-colors duration-fast hover:bg-surface-muted"
-              >
+              {/* La fila no es un `<button>` entero: el ícono del glosario ya es
+                  un botón y anidar botones es HTML inválido. El disparador es el
+                  nombre del factor. */}
+              <div className="grid w-full grid-cols-[minmax(140px,1.4fr)_minmax(90px,0.9fr)_minmax(150px,1.6fr)] items-center gap-3 py-2.5 text-left">
                 {/* Identidad del factor */}
                 <span className="flex min-w-0 items-center gap-2">
                   <span
@@ -154,12 +162,18 @@ export function FactorTable({
                     style={{ backgroundColor: f.available ? factorColor(f.factor) : undefined }}
                   />
                   <span className="min-w-0">
-                    <span
-                      className={`block truncate text-xs font-semibold ${
-                        f.available ? 'text-nike-ink' : 'text-nike-muted'
-                      }`}
-                    >
-                      {factorLabel(f.factor)}
+                    <span className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setOpen(isOpen ? null : f.factor)}
+                        aria-expanded={isOpen}
+                        className={`min-w-0 truncate text-left text-xs font-semibold transition-colors duration-fast hover:underline ${
+                          f.available ? 'text-nike-ink' : 'text-nike-muted'
+                        }`}
+                      >
+                        {factorLabel(f.factor)}
+                      </button>
+                      {terms && <GlossaryTip term={termFor(terms, f.factor)} size={12} />}
                     </span>
                     <span className="tabular block text-2xs text-nike-muted">
                       peso {dec((configured ?? f.weight ?? 0) * 100, 0)}%
@@ -197,7 +211,7 @@ export function FactorTable({
                     {f.available ? pct(f.contribution, 1) : 'excluido'}
                   </span>
                 </span>
-              </button>
+              </div>
 
               {!f.available && (
                 <p className="pb-2.5 pl-5 text-2xs italic leading-relaxed text-nike-muted">
@@ -209,7 +223,7 @@ export function FactorTable({
 
               {isOpen && (
                 <div className="border-l-2 border-surface-border pb-3 pl-4 text-2xs leading-relaxed text-nike-ink-soft">
-                  <p className="mb-1.5">{factorHelp(f.factor)}</p>
+                  <FactorMeaning factor={f.factor} terms={terms} />
                   {detailEntries.length > 0 ? (
                     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                       {detailEntries.map(([key, value]) => (
@@ -228,6 +242,35 @@ export function FactorTable({
           )
         })}
       </ul>
+    </div>
+  )
+}
+
+/**
+ * Qué mide un factor, en prosa, dentro de la fila abierta.
+ *
+ * El glosario del backend contesta tres cosas —qué mide, con qué datos, cómo se
+ * lee alto y bajo— y es la misma definición que publica `docs/glossary.md`. Sin
+ * glosario cae al texto corto que ya existía en la paleta.
+ */
+function FactorMeaning({ factor, terms }: { factor: string; terms?: GlossaryTerms }) {
+  const term = termFor(terms, factor)
+
+  if (!term || term.definition.trim() === '') {
+    return <p className="mb-1.5">{factorHelp(factor)}</p>
+  }
+
+  return (
+    <div className="mb-2 space-y-1">
+      <p className="font-semibold text-nike-ink">{term.definition}</p>
+      {term.data && (
+        <p>
+          <span className="font-semibold text-nike-ink">Con qué datos: </span>
+          {term.data}
+        </p>
+      )}
+      {term.high && <p className="text-nike-muted">{term.high}</p>}
+      {term.low && <p className="text-nike-muted">{term.low}</p>}
     </div>
   )
 }

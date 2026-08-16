@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { fetchOpportunities } from '@/lib/intelligence/server'
+import { fetchBusinessImportanceGlossary, fetchOpportunities } from '@/lib/intelligence/server'
 import { PageIntro } from '@/components/ui'
 import OpportunityCenter from '../_components/OpportunityCenter'
 import {
@@ -40,13 +40,18 @@ async function OpportunitySection({
   searchParams: Record<string, string | string[] | undefined>
 }) {
   const state = opportunityStateFromParams(searchParams)
-  const opportunities = await fetchOpportunities(opportunityQueryFrom(state))
+  // Las dos consultas van en paralelo: el glosario no debe retrasar la lista.
+  const [opportunities, glossary] = await Promise.all([
+    fetchOpportunities(opportunityQueryFrom(state)),
+    fetchBusinessImportanceGlossary(),
+  ])
 
   return (
     <OpportunityCenter
       initialState={state}
       initialData={opportunities.ok ? opportunities.data : null}
       initialError={opportunities.ok ? null : opportunities.error}
+      glossary={glossary}
     />
   )
 }

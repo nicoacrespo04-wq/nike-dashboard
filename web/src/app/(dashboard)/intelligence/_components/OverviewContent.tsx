@@ -321,11 +321,13 @@ function MomentumList({ items }: { items: MarketSignal[] }) {
         return (
           <li key={s.id} className="grid grid-cols-[1fr_auto] items-center gap-3">
             <div className="min-w-0">
+              {/* El backend ya resuelve el nombre real de la entidad; el id
+                  formateado queda sólo como respaldo. */}
               <p className="truncate text-xs font-semibold text-nike-ink">
-                {entityLabel(s.entity_type, s.entity_id)}
+                {s.entity_label ?? entityLabel(s.entity_type, s.entity_id)}
               </p>
               <p className="text-2xs text-nike-muted">
-                {signalTypeLabel(s.signal_type)} · {s.entity_type}
+                {signalTypeLabel(s.signal_type)} · {s.entity_type_label ?? s.entity_type}
               </p>
               <div className="mt-1">
                 <MeterBar value={Math.abs(s.value ?? 0)} max={maxValue} color="#2A78D6" height={5} />

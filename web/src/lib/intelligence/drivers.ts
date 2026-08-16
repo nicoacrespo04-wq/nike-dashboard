@@ -8,7 +8,7 @@
  * sola y se rescatan además el racional y las métricas crudas del caso.
  */
 
-import type { Driver, DriverEnvelope, DriversPayload } from "@/types/intelligence";
+import type { Driver, DriverEnvelope, DriversPayload, SignalValue } from "@/types/intelligence";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -22,7 +22,19 @@ function asDriver(value: unknown): Driver | null {
     const raw = value[key];
     return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
   };
-  return { name, value: num("value"), contribution: num("contribution") };
+  const str = (key: string): string | null => {
+    const raw = value[key];
+    return typeof raw === "string" && raw.trim() !== "" ? raw : null;
+  };
+  const detail = value["detail"];
+  return {
+    name,
+    label: str("label"),
+    value: num("value"),
+    unit: str("unit"),
+    contribution: num("contribution"),
+    detail: isRecord(detail) ? detail : undefined,
+  };
 }
 
 /** Aplana cualquiera de las dos formas a una lista de drivers usable. */
@@ -45,6 +57,26 @@ export function normalizeDrivers(payload: DriversPayload | null | undefined): Dr
   return out;
 }
 
+/**
+ * Índice `name` → señal observada, para pedir una métrica por nombre.
+ *
+ * `signals` es el campo hermano de `drivers`: los drivers son las VARIABLES DEL
+ * MODELO (ponderadas, `contribution` suma 100) y las señales son las MÉTRICAS
+ * OBSERVADAS del caso, cada una con su unidad. Antes las métricas viajaban
+ * sueltas dentro del sobre de drivers y había que rescatarlas con
+ * `driverMetrics()`, que contra el contrato nuevo devuelve vacío.
+ */
+export function signalIndex(
+  signals: SignalValue[] | null | undefined,
+): Record<string, SignalValue> {
+  const index: Record<string, SignalValue> = {};
+  if (!Array.isArray(signals)) return index;
+  for (const signal of signals) {
+    if (signal && typeof signal.name === "string") index[signal.name] = signal;
+  }
+  return index;
+}
+
 /** Racional en prosa que algunos motores adjuntan junto a los drivers. */
 export function driversRationale(payload: DriversPayload | null | undefined): string | null {
   if (!Array.isArray(payload)) return null;
@@ -58,8 +90,12 @@ export function driversRationale(payload: DriversPayload | null | undefined): st
 }
 
 /**
- * Métricas crudas del caso (stock %, gap de precio, share of shelf…) que viajan
- * en el sobre de retail media. Devuelve sólo las numéricas de primer nivel.
+ * Métricas crudas del caso que viajaban en el sobre de retail media, cuando
+ * `drivers` era `[{rationale, nike_stock_pct, …, factors:[…]}]`.
+ *
+ * @deprecated Contra el contrato nuevo devuelve `{}`: las métricas ahora son un
+ * campo hermano (`signals`, con unidad declarada) y se leen con `signalIndex()`.
+ * Se conserva sólo como respaldo de una base servida por un motor viejo.
  */
 export function driverMetrics(payload: DriversPayload | null | undefined): Record<string, number> {
   const metrics: Record<string, number> = {};

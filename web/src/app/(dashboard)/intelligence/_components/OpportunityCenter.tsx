@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { Opportunity, OpportunityListResponse } from '@/types/intelligence'
+import type { Glossary, Opportunity, OpportunityListResponse } from '@/types/intelligence'
 import { getOpportunities } from '@/lib/intelligence/api'
 import { depsKeyOf } from '@/lib/intelligence/depsKey'
+import { type GlossaryTerms, termIndex } from '@/lib/intelligence/glossary'
 import { useApi, useDebounced } from '@/lib/intelligence/useApi'
 import { num } from '@/lib/format'
 import {
@@ -33,6 +34,12 @@ export interface OpportunityCenterProps {
   initialState: OpportunityState
   initialData: OpportunityListResponse | null
   initialError: string | null
+  /**
+   * Glosario de los componentes de business importance, resuelto en el servidor.
+   * Es lo que hace que un driver con "18,7% de contribución" al lado se pueda
+   * juzgar: sin saber qué mide la variable, el número no explica nada.
+   */
+  glossary?: Glossary | null
 }
 
 /**
@@ -53,8 +60,10 @@ export default function OpportunityCenter({
   initialState,
   initialData,
   initialError,
+  glossary,
 }: OpportunityCenterProps) {
   const [state, setState] = useState<OpportunityState>(initialState)
+  const terms = useMemo(() => termIndex(glossary, 'business_importance'), [glossary])
 
   // El slider dispara `onChange` en cada paso del arrastre. El valor que se
   // pinta es el crudo (la UI responde al instante); el que consulta al backend
@@ -272,7 +281,7 @@ export default function OpportunityCenter({
             onPage={(page) => setState((prev) => ({ ...prev, page }))}
           />
 
-          <OpportunityGroups items={data.items} group={state.group} />
+          <OpportunityGroups items={data.items} group={state.group} terms={terms} />
 
           <Pager
             page={state.page}
@@ -293,12 +302,20 @@ export default function OpportunityCenter({
   )
 }
 
-function OpportunityGroups({ items, group }: { items: Opportunity[]; group: GroupMode }) {
+function OpportunityGroups({
+  items,
+  group,
+  terms,
+}: {
+  items: Opportunity[]
+  group: GroupMode
+  terms: GlossaryTerms
+}) {
   if (group === 'none') {
     return (
       <div className="grid gap-gutter lg:grid-cols-2 2xl:grid-cols-3">
         {items.map((o) => (
-          <OpportunityCard key={o.id} opportunity={o} />
+          <OpportunityCard key={o.id} opportunity={o} terms={terms} />
         ))}
       </div>
     )
@@ -340,7 +357,7 @@ function OpportunityGroups({ items, group }: { items: Opportunity[]; group: Grou
             </h2>
             <div className="grid gap-gutter lg:grid-cols-2 2xl:grid-cols-3">
               {list.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} />
+                <OpportunityCard key={o.id} opportunity={o} terms={terms} />
               ))}
             </div>
           </section>
