@@ -312,3 +312,86 @@ CREATE TABLE IF NOT EXISTS retail_media_opportunities (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rmo_score ON retail_media_opportunities(score DESC);
+
+-- ============================================================
+-- 6. HISTORIAL Y TRIAJE
+--
+-- El pipeline borra y recalcula en cada corrida, así que los `id` de
+-- `opportunities` y `competitive_matches` no sobreviven entre runs. Para
+-- responder "¿esto viene subiendo?" o "¿ya lo resolvimos?" hace falta una
+-- IDENTIDAD ESTABLE: `entity_key`, hash determinístico de los campos que
+-- definen de qué se está hablando (tipo + productos + retailer + país).
+-- Ver `app/services/history.py::entity_key`.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+    id             INTEGER PRIMARY KEY,
+    started_at     TEXT NOT NULL,
+    finished_at    TEXT,
+    status         TEXT,                    -- ok | partial | error
+    config_version TEXT,
+    source         TEXT,                    -- demo | ingest
+    counts         TEXT                     -- JSON con el reporte del pipeline
+);
+
+CREATE TABLE IF NOT EXISTS match_history (
+    id                    INTEGER PRIMARY KEY,
+    run_id                INTEGER NOT NULL REFERENCES pipeline_runs(id) ON DELETE CASCADE,
+    entity_key            TEXT NOT NULL,
+    nike_product_id       INTEGER,
+    competitor_product_id INTEGER,
+    match_score           REAL,
+    raw_match_score       REAL,
+    coverage              REAL,
+    confidence            TEXT,
+    observed_at           TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mhist_key ON match_history(entity_key, observed_at);
+
+CREATE TABLE IF NOT EXISTS opportunity_history (
+    id                  INTEGER PRIMARY KEY,
+    run_id              INTEGER NOT NULL REFERENCES pipeline_runs(id) ON DELETE CASCADE,
+    entity_key          TEXT NOT NULL,
+    opportunity_type    TEXT,
+    family              TEXT,
+    nike_product_id     INTEGER,
+    competitor_product_id INTEGER,
+    retailer_id         INTEGER,
+    country_code        TEXT,
+    business_importance REAL,
+    severity            TEXT,
+    confidence          TEXT,
+    observed_at         TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ohist_key ON opportunity_history(entity_key, observed_at);
+
+CREATE TABLE IF NOT EXISTS signal_history (
+    id          INTEGER PRIMARY KEY,
+    run_id      INTEGER NOT NULL REFERENCES pipeline_runs(id) ON DELETE CASCADE,
+    signal_type TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id   TEXT,
+    value       REAL,
+    delta       REAL,
+    observed_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_shist ON signal_history(signal_type, entity_type, entity_id, observed_at);
+
+-- Triaje: sobrevive a los recálculos porque se indexa por `entity_key`,
+-- no por el id efímero de `opportunities`.
+CREATE TABLE IF NOT EXISTS opportunity_triage (
+    id            INTEGER PRIMARY KEY,
+    entity_key    TEXT NOT NULL UNIQUE,
+    state         TEXT NOT NULL DEFAULT 'open',   -- open|snoozed|dismissed|resolved
+    assignee      TEXT,
+    note          TEXT,
+    snooze_until  TEXT,
+    first_seen_at TEXT,
+    updated_at    TEXT DEFAULT (datetime('now')),
+    updated_by    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_triage_state ON opportunity_triage(state);
