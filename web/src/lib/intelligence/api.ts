@@ -65,7 +65,11 @@ async function request<T>(path: string, params?: QueryParams, signal?: AbortSign
 
   let response: Response
   try {
-    response = await fetch(url, { signal, headers: { Accept: 'application/json' }, cache: 'no-store' })
+    // Sin `cache: 'no-store'`: el proxy define la política por endpoint con su
+    // `Cache-Control` (`private, max-age=…` para lo cacheable, `no-store` para
+    // `/health` y para cualquier error). Forzar no-store acá anulaba esa
+    // política y hacía que volver atrás en el browser re-pidiera todo.
+    response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
     throw new ApiError(

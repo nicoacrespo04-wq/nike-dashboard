@@ -9,30 +9,36 @@
  *    sesiones autenticadas.
  *  - Un único lugar donde traducir "backend caído" a un error accionable en
  *    vez de un stacktrace o un fetch que queda colgado.
+ *  - Un único lugar donde decidir qué se cachea y por cuánto.
  *
  * Mapeo de rutas:
  *    /api/intelligence/health            → ${INTELLIGENCE_API_URL}/api/health
  *    /api/intelligence/products/12       → ${INTELLIGENCE_API_URL}/api/products/12
  *    /api/intelligence/brand/insights?q= → ${INTELLIGENCE_API_URL}/api/brand/insights?q=
+ *
+ * Caché (ver `cacheRuleFor` en `lib/intelligence/server.ts`):
+ *  - `/health` nunca se cachea: es el semáforo del propio backend.
+ *  - `/overview` 30s, listados 60s, detalles 120s, metadatos 600s.
+ *  - Se cachea en dos niveles: el Data Cache de Next para el salto
+ *    servidor→backend (compartido, y por eso el `Cache-Control` de salida es
+ *    `private`: la copia del browser queda dentro de la sesión de cada
+ *    usuario), y el browser del usuario para el salto browser→servidor.
+ *  - Es seguro compartir la copia servidor-side porque el backend no tiene
+ *    noción de usuario: la respuesta depende de la ruta y sus query params,
+ *    nunca de quién pregunta. Los errores salen siempre `no-store`.
  */
 
 import { NextResponse } from 'next/server'
+import {
+  INTELLIGENCE_API_BASE,
+  OFFLINE_MESSAGE,
+  TIMEOUT_MESSAGE,
+  TIMEOUT_MS,
+  cacheRuleFor,
+} from '@/lib/intelligence/server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-/** Base del backend de inteligencia. Configurable por entorno. */
-const API_BASE = (process.env.INTELLIGENCE_API_URL ?? 'http://localhost:8000').replace(/\/+$/, '')
-
-/** Cuánto esperamos al backend antes de cortar (el pipeline puede ser lento). */
-const TIMEOUT_MS = 20_000
-
-/** Mensaje único de "no está levantado". Es la copy que ve el usuario. */
-const OFFLINE_MESSAGE =
-  'El motor de inteligencia no está disponible — levantalo con `uvicorn app.main:app --port 8000` desde la carpeta backend/.'
-
-const TIMEOUT_MESSAGE =
-  'El motor de inteligencia no respondió a tiempo. Verificá que el proceso de `uvicorn` siga vivo y que el pipeline haya terminado.'
 
 interface RouteContext {
   params: { path?: string[] }
@@ -40,7 +46,7 @@ interface RouteContext {
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
-    { detail: message, source: 'intelligence-proxy', upstream: API_BASE },
+    { detail: message, source: 'intelligence-proxy', upstream: INTELLIGENCE_API_BASE },
     { status, headers: { 'Cache-Control': 'no-store' } },
   )
 }
@@ -51,15 +57,19 @@ async function forward(request: Request, context: RouteContext): Promise<Respons
     return errorResponse('Falta la ruta del endpoint de inteligencia.', 400)
   }
 
+  const path = `/${segments.join('/')}`
+  const rule = cacheRuleFor(path)
   const search = new URL(request.url).search
-  const target = `${API_BASE}/api/${segments.map(encodeURIComponent).join('/')}${search}`
+  const target = `${INTELLIGENCE_API_BASE}/api/${segments.map(encodeURIComponent).join('/')}${search}`
 
   let upstream: Response
   try {
     upstream = await fetch(target, {
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
       signal: AbortSignal.timeout(TIMEOUT_MS),
+      ...(rule.revalidate > 0
+        ? { next: { revalidate: rule.revalidate } }
+        : { cache: 'no-store' as const }),
     })
   } catch (cause) {
     // `TimeoutError` / `AbortError` vienen como DOMException; el resto son
@@ -76,14 +86,26 @@ async function forward(request: Request, context: RouteContext): Promise<Respons
   const contentType = upstream.headers.get('content-type') ?? ''
   if (!contentType.includes('json')) {
     return errorResponse(
-      `El backend en ${API_BASE} respondió algo que no es JSON (${upstream.status}). ¿Está apuntando INTELLIGENCE_API_URL al servicio correcto?`,
+      `El backend en ${INTELLIGENCE_API_BASE} respondió algo que no es JSON (${upstream.status}). ¿Está apuntando INTELLIGENCE_API_URL al servicio correcto?`,
       502,
     )
   }
 
+  // Un error del backend no se cachea aunque el endpoint sea cacheable: si no,
+  // un 500 puntual se quedaría pegado en pantalla el resto de la ventana.
+  const cacheControl =
+    upstream.ok && rule.revalidate > 0
+      ? `private, max-age=${rule.revalidate}, stale-while-revalidate=${rule.revalidate * 2}`
+      : 'no-store'
+
   return new Response(body, {
     status: upstream.status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': cacheControl,
+      // Trazabilidad: permite verificar la política desde devtools.
+      'X-Intelligence-Cache': `${rule.revalidate}s · ${rule.reason}`,
+    },
   })
 }
 
