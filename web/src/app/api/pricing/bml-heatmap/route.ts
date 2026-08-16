@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { canonicalMarcaSql } from '@/lib/marca'
+import { RETAILERS_AR_SQL } from '@/lib/scrapers'
 
 export const dynamic = 'force-dynamic'
+
+// Marca canónica y scrapers por clave canónica: `UPPER(marca) = 'NIKE'` y un
+// `NOT IN ('ADIDAS_7')` fallan cerrados ante ' Nike ' o 'adidas_7' y dejan el
+// heat-map vacío sin decir por qué (ver `lib/marca.ts` y `lib/scrapers.ts`).
+const IS_NIKE = `${canonicalMarcaSql('marca')} = 'NIKE'`
 
 
 // Heat-map BML (Beat/Meet/Lose) por retailer x franchise, SOLO filas de
@@ -30,8 +37,8 @@ export async function GET() {
         COUNT(*) FILTER (WHERE bml_final_price NOT IN ('BEAT','MEET','LOSE') OR bml_final_price IS NULL) AS nd,
         ROUND(AVG(gap_final_price_pct) FILTER (WHERE gap_final_price_pct IS NOT NULL)::numeric, 4) AS avg_gap_pct
       FROM pricing_data
-      WHERE UPPER(marca) = 'NIKE'
-        AND scraper NOT IN ('nike_ar_general','nike_co_general','nike_us_general','URU','USA','ADIDAS_7','Puma_AR')
+      WHERE ${IS_NIKE}
+        AND ${RETAILERS_AR_SQL}
       GROUP BY scraper, franchise
       HAVING COUNT(*) >= 3
       ORDER BY scraper, total DESC

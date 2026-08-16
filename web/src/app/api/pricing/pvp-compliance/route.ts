@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { isValidPriceSql, validPriceSql } from '@/lib/price'
+import { canonicalMarcaSql } from '@/lib/marca'
+import { RETAILERS_AR_SQL } from '@/lib/scrapers'
 
 export const dynamic = 'force-dynamic'
 
 // Excluir canales propios de Nike y D2C de la competencia: acá medimos
-// cumplimiento de PVP de los RETAILERS.
-const EXCLUDED_SCRAPERS = `'nike_ar_general','nike_co_general','nike_us_general','URU','USA','ADIDAS_7','Puma_AR'`
+// cumplimiento de PVP de los RETAILERS. La comparación va por clave canónica
+// de scraper: en los datos reales conviven 'ADIDAS_7' y 'adidas_7', y un
+// `NOT IN ('ADIDAS_7')` deja pasar el segundo (ver `lib/scrapers.ts`).
+const ONLY_RETAILERS = RETAILERS_AR_SQL
+
+// Marca canónica: `UPPER(marca) = 'NIKE'` se queda con CERO filas ante un
+// ' Nike ' con un espacio invisible, y la pantalla entera queda vacía sin
+// decir por qué (ver `lib/marca.ts`).
+const IS_NIKE = `${canonicalMarcaSql('marca')} = 'NIKE'`
 
 // Precios y PVP saneados: `<= 0` y outliers del bug de cuotas quedan en NULL
 // y no participan de ningún conteo ni promedio (ver web/src/lib/price.ts).
@@ -14,6 +23,19 @@ const PRICE = validPriceSql('competitor_final_price')
 const PVP = validPriceSql('precio_sugerido')
 const HAS_PRICE = isValidPriceSql('competitor_final_price')
 const HAS_PVP = isValidPriceSql('precio_sugerido')
+
+/** Cumplimiento de PVP de un retailer, tal cual sale de Postgres. */
+interface RetailerComplianceRow {
+  scraper: string | null
+  total: string
+  with_pvp: string
+  compliant: string
+  below_pvp: string
+  above_pvp: string
+  without_price: string
+  avg_price: string | null
+  avg_pvp: string | null
+}
 
 const MAX_PAGE_SIZE = 500
 const DEFAULT_PAGE_SIZE = 50
@@ -34,7 +56,7 @@ export async function GET(req: NextRequest) {
       // compliant + below_pvp + above_pvp === with_pvp siempre cierre.
       // Las filas con PVP pero sin precio usable se reportan aparte en
       // `without_price` en vez de desbalancear la tabla.
-      query(`
+      query<RetailerComplianceRow>(`
         SELECT
           scraper,
           COUNT(*) AS total,
@@ -55,8 +77,8 @@ export async function GET(req: NextRequest) {
           ROUND(AVG(${PRICE})::numeric, 0) AS avg_price,
           ROUND(AVG(${PVP})::numeric, 0)   AS avg_pvp
         FROM pricing_data
-        WHERE UPPER(marca) = 'NIKE'
-          AND scraper NOT IN (${EXCLUDED_SCRAPERS})
+        WHERE ${IS_NIKE}
+          AND ${ONLY_RETAILERS}
         GROUP BY scraper
         ORDER BY total DESC
       `),
@@ -71,11 +93,11 @@ export async function GET(req: NextRequest) {
           ROUND(((${PRICE} - ${PVP}) / ${PVP} * 100)::numeric, 1) AS diff_pct,
           link_pdp_competitor
         FROM pricing_data
-        WHERE UPPER(marca) = 'NIKE'
+        WHERE ${IS_NIKE}
           AND ${HAS_PVP}
           AND ${HAS_PRICE}
           AND ${PRICE} < ${PVP} * 0.95
-          AND scraper NOT IN (${EXCLUDED_SCRAPERS})
+          AND ${ONLY_RETAILERS}
         ORDER BY diff_pct ASC, scraper, style_color
         LIMIT $1 OFFSET $2
       `, [pageSize, offset]),
@@ -84,15 +106,15 @@ export async function GET(req: NextRequest) {
       query<{ total: string }>(`
         SELECT COUNT(*) AS total
         FROM pricing_data
-        WHERE UPPER(marca) = 'NIKE'
+        WHERE ${IS_NIKE}
           AND ${HAS_PVP}
           AND ${HAS_PRICE}
           AND ${PRICE} < ${PVP} * 0.95
-          AND scraper NOT IN (${EXCLUDED_SCRAPERS})
+          AND ${ONLY_RETAILERS}
       `),
     ])
 
-    const retailersWithPVP = byRetailer.map((r: any) => ({
+    const retailersWithPVP = byRetailer.map((r) => ({
       ...r,
       compliance_pct: Number(r.with_pvp) > 0
         ? Math.round((Number(r.compliant) / Number(r.with_pvp)) * 100)

@@ -12,13 +12,20 @@ interface MarcaDiagnosticRow {
   n: number
 }
 
+interface BrandVisibility {
+  value: number | null
+  rows: number
+  terms: number
+}
+
 interface SummaryResponse {
   byCanal: Record<string, { marca: string; wins: number; pct: number }[]>
   global: { nike: number | null; adidas: number | null; puma: number | null; n: number }
+  visibility: { nike: BrandVisibility; adidas: BrandVisibility; puma: BrandVisibility }
   totalByCanal: Record<string, number>
-  /** Sólo llega cuando alguna marca no apareció en la base. Ver /api/shelf/summary. */
+  /** Siempre llega; `marcasFaltantes` está vacío cuando las tres resolvieron. */
   diagnostics?: {
-    message: string
+    message?: string
     marcasFaltantes: string[]
     marcasEnLaBase: MarcaDiagnosticRow[]
   }
@@ -38,6 +45,18 @@ const MARCA_COLOR: Record<string, string> = {
   Adidas: '#0046CC',
   Puma: '#E4032E',
 }
+
+/** Las tres tarjetas de visibilidad, en orden. */
+const MARCAS_KPI = [
+  { key: 'nike', label: 'Nike' },
+  { key: 'adidas', label: 'Adidas' },
+  { key: 'puma', label: 'Puma' },
+] as const satisfies readonly { key: 'nike' | 'adidas' | 'puma'; label: string }[]
+
+const VISIBILIDAD_HINT =
+  'Promedio de Nike_Visibility (0-1, donde 1 es la mejor posición posible) de ' +
+  'todos los términos de búsqueda en los que se observó la marca, en todos los ' +
+  'retailers monitoreados. Se pondera por cantidad de observaciones.'
 
 // `nike_visibility` es un float 0..1: hay que formatearlo explícitamente como
 // porcentaje. Si de verdad no hay dato mostramos "N/D", nunca vacío.
@@ -99,7 +118,7 @@ export default function ShelfPage() {
         (' Nike ' pasaba INITCAP pero no el filtro). Así el próximo valor raro
         se diagnostica desde la propia pantalla, sin abrir la base.
       */}
-      {summary?.diagnostics && (
+      {summary?.diagnostics && summary.diagnostics.marcasFaltantes.length > 0 && (
         <div className="nike-card border border-amber-200 bg-amber-50">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
@@ -135,30 +154,25 @@ export default function ShelfPage() {
 
       {/* KPIs globales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <KPICard
-          title="Visibilidad Nike"
-          value={pct(summary?.global?.nike)}
-          subtitle={`Promedio en ${summary?.global?.n ?? 0} búsquedas`}
-          icon={<Search size={18} />}
-          color="#E31837"
-          loading={loading}
-        />
-        <KPICard
-          title="Visibilidad Adidas"
-          value={pct(summary?.global?.adidas)}
-          subtitle="Promedio en buscadores"
-          icon={<Search size={18} />}
-          color="#0046CC"
-          loading={loading}
-        />
-        <KPICard
-          title="Visibilidad Puma"
-          value={pct(summary?.global?.puma)}
-          subtitle="Promedio en buscadores"
-          icon={<Search size={18} />}
-          color="#E4032E"
-          loading={loading}
-        />
+        {MARCAS_KPI.map((m) => {
+          const vis = summary?.visibility?.[m.key]
+          return (
+            <KPICard
+              key={m.key}
+              title={`Visibilidad ${m.label}`}
+              value={pct(vis ? vis.value : summary?.global?.[m.key])}
+              subtitle={
+                vis && vis.terms > 0
+                  ? `Promedio en ${vis.terms.toLocaleString('es-AR')} búsquedas`
+                  : 'Promedio en los buscadores de los retailers'
+              }
+              hint={VISIBILIDAD_HINT}
+              icon={<Search size={18} />}
+              color={MARCA_COLOR[m.label]}
+              loading={loading}
+            />
+          )
+        })}
         <KPICard
           title="Retailers"
           value={canales.length.toString()}

@@ -20,17 +20,18 @@ export const dynamic = 'force-dynamic'
 // ─────────────────────────────────────────────────────────────────────────
 // POR QUÉ ESTE ENDPOINT NO FILTRA POR MARCA
 // ─────────────────────────────────────────────────────────────────────────
-// Los KPIs globales quedaban en N/D mientras las barras de la misma respuesta
-// funcionaban. Causa raíz confirmada (reproducida en un Postgres local, ver el
-// bloque largo de `lib/marca.ts`): `marca` llega con espacios — ' Nike ' — que
-// `INITCAP` de las barras tolera porque sólo AGRUPA, y que el
-// `WHERE UPPER(marca) = ANY($1)` del bloque global NO tolera porque FILTRA:
-// cero filas → null → N/D. El binding de `= ANY($1)` estaba bien; se verificó
-// contra la misma base que devuelve lo mismo que un `IN` literal.
+// Los KPIs globales quedaban en N/D mientras las barras de la MISMA respuesta
+// funcionaban. Causa raíz reproducida en un Postgres local (la matriz completa
+// está en `lib/marca.ts`): no era el binding de `= ANY($1)` —da exactamente lo
+// mismo que un `IN` literal— ni el casing —con casing mezclado el filtro viejo
+// anda—. Era que `WHERE <marca> = 'NIKE'` FALLA CERRADO ante cualquier
+// suciedad de caracteres (espacio, NBSP, zero-width, `\r` de CRLF), mientras
+// el `INITCAP` de las barras sólo AGRUPA y por eso las tolera.
 //
-// La lección quedó como regla de este archivo: **agrupar por marca normalizada
-// y resolver la marca canónica en TypeScript.** Un valor sucio nuevo degrada
-// una marca, nunca vacía el bloque entero.
+// La regla que queda: **agrupar por marca normalizada y resolver la marca
+// canónica en TypeScript.** Un valor sucio nuevo degrada una marca, nunca vacía
+// el bloque entero. Y `canonicalMarca()` tiene un último recurso por token, así
+// que un valor desconocido pero reconocible igual cae en su marca.
 const MARCA_NORM = marcaNormSql('marca')
 
 interface WinnerRow {
@@ -57,15 +58,31 @@ export interface ShelfCanalShare {
   pct: number
 }
 
+/** Visibilidad promedio de una marca y sobre cuánta evidencia se calculó. */
+export interface ShelfBrandVisibility {
+  value: number | null
+  /** Filas (marca × término × retailer) que entraron al promedio. */
+  rows: number
+  /** Términos de búsqueda distintos en los que se observó la marca. */
+  terms: number
+}
+
 export interface ShelfSummaryResponse {
   byCanal: Record<string, ShelfCanalShare[]>
+  /** Compat: promedio por marca + `n` de términos de Nike. */
   global: Record<MarcaKey, number | null> & { n: number }
+  /** Lo mismo, con la evidencia detrás de cada número. */
+  visibility: Record<MarcaKey, ShelfBrandVisibility>
   totalByCanal: Record<string, number>
-  /** Sólo viene cuando alguna marca esperada no apareció. Ver más abajo. */
-  diagnostics?: {
-    message: string
+  /**
+   * Siempre presente. `marcasEnLaBase` son los valores DISTINCT CRUDOS de
+   * `marca` con su hexadecimal: si un KPI vuelve a quedar sin dato, acá se ve
+   * por qué sin tener que abrir la base ni adivinar.
+   */
+  diagnostics: {
     marcasFaltantes: string[]
     marcasEnLaBase: MarcaDiagnosticRow[]
+    message?: string
   }
 }
 
@@ -74,14 +91,16 @@ export interface ShelfSummaryResponse {
 // posición posible). Share = % de términos ganados por marca en ese canal.
 export async function GET() {
   try {
-    const [winners, totals, globalRows] = await Promise.all([
+    const [winners, totals, globalRows, marcasEnLaBase] = await Promise.all([
+      // Las barras agrupan por marca NORMALIZADA (antes `INITCAP`, que dejaba
+      // pasar ' Nike ' y hacía que el color de marca no matcheara: barra gris).
       query<WinnerRow>(`
         WITH ranked AS (
           SELECT
             canal, search_term, ${MARCA_NORM} AS marca, nike_visibility,
             ROW_NUMBER() OVER (
               PARTITION BY canal, search_term
-              ORDER BY nike_visibility DESC NULLS LAST
+              ORDER BY nike_visibility DESC NULLS LAST, ${MARCA_NORM}
             ) AS rn
           FROM retail_media_search
           WHERE nike_visibility IS NOT NULL
@@ -111,13 +130,14 @@ export async function GET() {
         WHERE nike_visibility IS NOT NULL
         GROUP BY ${MARCA_NORM}
       `),
+
+      query<MarcaDiagnosticRow>(marcaDiagnosticSql('retail_media_search')),
     ])
 
     const totalByCanal: Record<string, number> = {}
     for (const t of totals) totalByCanal[t.canal] = t.total
 
-    // Las barras muestran la marca canónica ('Nike'), no el valor crudo: con
-    // ' Nike ' el color de marca no matcheaba y las barras salían grises.
+    // Las barras muestran la marca canónica ('Nike'), no el valor crudo.
     const byCanal: Record<string, ShelfCanalShare[]> = {}
     for (const w of winners) {
       const canonical = canonicalMarca(w.marca)
@@ -135,56 +155,59 @@ export async function GET() {
     for (const bucket of Object.values(byCanal)) bucket.sort((a, b) => b.pct - a.pct)
 
     // Varias filas crudas pueden colapsar en la misma marca canónica (alias,
-    // sub-marcas): el promedio se recompone ponderado por cantidad de filas,
-    // que es el promedio correcto, no el promedio de promedios.
-    const accumulated = new Map<Marca, { sum: number; n: number; terms: number }>()
+    // sub-marcas, valores sucios distintos): el promedio se recompone ponderado
+    // por cantidad de filas, que es el promedio correcto, no el promedio de
+    // promedios.
+    const accumulated = new Map<Marca, { sum: number; rows: number; terms: number }>()
     for (const row of globalRows) {
       const canonical = canonicalMarca(row.marca)
       if (!canonical) continue
       const avg = row.avg_visibility === null ? null : Number(row.avg_visibility)
       if (avg === null || !Number.isFinite(avg)) continue
-      const acc = accumulated.get(canonical) ?? { sum: 0, n: 0, terms: 0 }
+      const acc = accumulated.get(canonical) ?? { sum: 0, rows: 0, terms: 0 }
       acc.sum += avg * row.n
-      acc.n += row.n
+      acc.rows += row.n
       acc.terms = Math.max(acc.terms, row.terms)
       accumulated.set(canonical, acc)
     }
 
     const global = { n: 0 } as Record<MarcaKey, number | null> & { n: number }
+    const visibility = {} as Record<MarcaKey, ShelfBrandVisibility>
     const marcasFaltantes: string[] = []
     for (const marca of MARCAS) {
       const acc = accumulated.get(marca)
-      global[marcaKey(marca)] = acc && acc.n > 0 ? acc.sum / acc.n : null
-      if (!acc || acc.n === 0) marcasFaltantes.push(marca)
+      const value = acc && acc.rows > 0 ? acc.sum / acc.rows : null
+      global[marcaKey(marca)] = value
+      visibility[marcaKey(marca)] = {
+        value,
+        rows: acc?.rows ?? 0,
+        terms: acc?.terms ?? 0,
+      }
+      if (value === null) marcasFaltantes.push(marca)
     }
-    global.n = accumulated.get('NIKE')?.terms ?? 0
+    global.n = visibility.nike.terms
 
-    const payload: ShelfSummaryResponse = { byCanal, global, totalByCanal }
-
-    // Diagnóstico: si alguna marca sigue sin aparecer es que la base trae un
-    // valor de `marca` que la normalización todavía no contempla. En vez de
-    // devolver N/D a secas, se listan los valores CRUDOS con su hexadecimal
-    // (así se ven los caracteres invisibles) por log y en la respuesta, que es
-    // exactamente lo que hizo falta para encontrar este bug.
+    // El diagnóstico va SIEMPRE (son ≤25 filas). Si además falta una marca se
+    // deja el mensaje explícito y se loguea: es exactamente la información que
+    // hizo falta para encontrar este bug.
+    const diagnostics: ShelfSummaryResponse['diagnostics'] = {
+      marcasFaltantes,
+      marcasEnLaBase,
+    }
     if (marcasFaltantes.length > 0) {
-      const marcasEnLaBase = await query<MarcaDiagnosticRow>(
-        marcaDiagnosticSql('retail_media_search'),
-      )
+      diagnostics.message =
+        `No se encontró ninguna fila para: ${marcasFaltantes.join(', ')}. ` +
+        'Abajo están los valores de `marca` que sí hay en la base ' +
+        '(la columna hex muestra los caracteres invisibles).'
       console.warn(
-        '[/api/shelf/summary] marcas sin datos:', marcasFaltantes.join(', '),
+        '[/api/shelf/summary] marcas sin datos:',
+        marcasFaltantes.join(', '),
         '· valores DISTINCT de `marca` en la base:',
         JSON.stringify(marcasEnLaBase),
       )
-      payload.diagnostics = {
-        message:
-          `No se encontraron filas para: ${marcasFaltantes.join(', ')}. ` +
-          'Los valores de `marca` que sí están en la base se listan abajo ' +
-          '(la columna hex muestra los caracteres invisibles).',
-        marcasFaltantes,
-        marcasEnLaBase,
-      }
     }
 
+    const payload: ShelfSummaryResponse = { byCanal, global, visibility, totalByCanal, diagnostics }
     return NextResponse.json(payload)
   } catch (err) {
     console.error('[/api/shelf/summary]', err)

@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { isValidPriceSql, validPriceSql } from '@/lib/price'
+import { canonicalMarcaSql } from '@/lib/marca'
+import { NIKE_D2C_FOREIGN, RETAILERS_AR_SQL, scraperNotInSql } from '@/lib/scrapers'
 
 export const dynamic = 'force-dynamic'
 
-const EXCLUDED_SCRAPERS = `'ADIDAS_7','Puma_AR','nike_ar_general','nike_co_general','nike_us_general','URU','USA'`
+// Sólo góndola: los sitios de marca no son retailers. La comparación va por
+// clave canónica de scraper ('ADIDAS_7' y 'adidas_7' son el mismo canal).
+const ONLY_RETAILERS = RETAILERS_AR_SQL
+
+// Marca canónica en vez de `UPPER(marca)`: un ' Nike ' con espacio invisible
+// abría una fila aparte y partía el conteo de la marca (ver `lib/marca.ts`).
+const MARCA_CANON = canonicalMarcaSql('marca')
 
 // Precios saneados (ver web/src/lib/price.ts): `<= 0` y outliers del bug de
 // cuotas quedan NULL y no entran en promedios ni en los conteos de promo.
@@ -23,7 +31,7 @@ export async function GET() {
       query(`
         SELECT
           scraper,
-          UPPER(marca) AS marca,
+          ${MARCA_CANON} AS marca,
           COUNT(*) AS total,
           COUNT(*) FILTER (WHERE ${HAS_FINAL}) AS with_price,
           COUNT(*) FILTER (WHERE ${HAS_FINAL} AND competitor_markdown > 0) AS in_promo,
@@ -37,8 +45,8 @@ export async function GET() {
             FILTER (WHERE ${HAS_FULL} AND competitor_markdown > 0)::numeric, 1
           ) AS avg_markdown_pct
         FROM pricing_data
-        WHERE scraper NOT IN (${EXCLUDED_SCRAPERS})
-        GROUP BY scraper, UPPER(marca)
+        WHERE ${ONLY_RETAILERS}
+        GROUP BY scraper, ${MARCA_CANON}
         ORDER BY promo_pct DESC NULLS LAST
       `),
 
@@ -47,7 +55,7 @@ export async function GET() {
       // 'PUMA' y en la base conviven 'Puma' y 'PUMA'.
       query(`
         SELECT
-          UPPER(marca) AS marca,
+          ${MARCA_CANON} AS marca,
           COUNT(*) AS total,
           COUNT(*) FILTER (WHERE ${HAS_FINAL}) AS with_price,
           COUNT(*) FILTER (WHERE ${HAS_FINAL} AND competitor_markdown > 0) AS in_promo,
@@ -58,15 +66,15 @@ export async function GET() {
           ROUND(AVG((competitor_markdown / ${FULL}) * 100)
             FILTER (WHERE ${HAS_FULL} AND competitor_markdown > 0)::numeric, 1) AS avg_markdown_pct
         FROM pricing_data
-        WHERE scraper NOT IN (${EXCLUDED_SCRAPERS})
-        GROUP BY UPPER(marca)
+        WHERE ${ONLY_RETAILERS}
+        GROUP BY ${MARCA_CANON}
         ORDER BY promo_pct DESC NULLS LAST
       `),
 
       // Top productos con mayor markdown
       query(`
         SELECT
-          scraper, UPPER(marca) AS marca, style_color, product_name_competitor,
+          scraper, ${MARCA_CANON} AS marca, style_color, product_name_competitor,
           franchise_competitor, silueta,
           ${FULL}  AS competitor_full_price,
           ${FINAL} AS competitor_final_price,
@@ -77,7 +85,7 @@ export async function GET() {
         WHERE competitor_markdown > 0
           AND ${HAS_FULL}
           AND ${HAS_FINAL}
-          AND scraper NOT IN ('nike_ar_general','nike_co_general','nike_us_general','URU','USA')
+          AND ${scraperNotInSql(NIKE_D2C_FOREIGN)}
         ORDER BY markdown_pct DESC
         LIMIT 100
       `),

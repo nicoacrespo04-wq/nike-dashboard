@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { sanitizeRowsPrices, validPriceSql } from '@/lib/price'
+import { canonicalMarca, canonicalMarcaSql } from '@/lib/marca'
+import { BRAND_SITE_SCRAPERS, D2C_AR_SCRAPERS, scraperInSql, scraperNotInSql } from '@/lib/scrapers'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +45,10 @@ export async function GET(req: NextRequest) {
   let idx = 1
 
   // UPPER() en ambos lados: en la base conviven 'Puma'/'PUMA', 'Nike'/'NIKE'.
-  if (marca)     { conditions.push(`UPPER(marca) = UPPER($${idx++})`);      params.push(marca) }
+  // Marca canónica (mismo criterio que `lib/marca.ts`): un ' Nike ' con
+  // espacio invisible dejaba la tabla vacía sin decir por qué.
+  const marcaCanonica = canonicalMarca(marca)
+  if (marcaCanonica) { conditions.push(`${canonicalMarcaSql('marca')} = $${idx++}`); params.push(marcaCanonica) }
   if (franchise) { conditions.push(`franchise_competitor ILIKE $${idx++}`); params.push(`%${franchise}%`) }
   if (silueta)   { conditions.push(`silueta = $${idx++}`);                  params.push(silueta) }
   if (category)  { conditions.push(`category_competitor = $${idx++}`);      params.push(category) }
@@ -54,8 +59,10 @@ export async function GET(req: NextRequest) {
     conditions.push(`(product_name_competitor ILIKE $${idx} OR style_color ILIKE $${idx} OR franchise_competitor ILIKE $${idx})`)
     params.push(`%${search}%`); idx++
   }
-  if (canal === 'd2c') conditions.push(`scraper IN ('ADIDAS_7','Puma_AR','nike_ar_general')`)
-  if (canal === 'b2b') conditions.push(`scraper NOT IN ('ADIDAS_7','Puma_AR','nike_ar_general','nike_co_general','nike_us_general','URU','USA')`)
+  // Nombres de scraper por clave canónica: 'ADIDAS_7' y 'adidas_7' son el mismo
+  // canal y un `NOT IN` literal deja pasar el segundo (ver `lib/scrapers.ts`).
+  if (canal === 'd2c') conditions.push(scraperInSql(D2C_AR_SCRAPERS))
+  if (canal === 'b2b') conditions.push(scraperNotInSql(BRAND_SITE_SCRAPERS))
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 

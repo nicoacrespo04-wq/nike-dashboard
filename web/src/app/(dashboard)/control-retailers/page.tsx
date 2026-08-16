@@ -7,13 +7,84 @@ import KPICard from '@/components/ui/KPICard'
 import { formatPrice, cn } from '@/lib/utils'
 import { fetchJson, errorMessage } from '@/lib/fetchJson'
 
+
+// ── Tipos de las respuestas de la API ─────────────────────────
+/** Un número que Postgres puede devolver como string. */
+type Numeric = number | string | null
+
+interface RetailerCompliance {
+  scraper: string
+  total: Numeric
+  with_pvp: Numeric
+  compliant: Numeric
+  below_pvp: Numeric
+  above_pvp: Numeric
+  without_price: Numeric
+  compliance_pct: number | null
+}
+
+interface PvpViolation {
+  scraper: string
+  style_color: string | null
+  marketing_name: string | null
+  franchise_scrapper: string | null
+  competitor_final_price: number | null
+  precio_sugerido: number | null
+  diff_pct: Numeric
+  link_pdp_competitor: string | null
+}
+
+interface PvpResponse {
+  retailers: RetailerCompliance[]
+  violations: PvpViolation[]
+  violations_total: Numeric
+  violations_page_size: Numeric
+  violations_total_pages: Numeric
+}
+
+interface MarkdownByMarca {
+  marca: string
+  promo_pct: Numeric
+  avg_markdown_pct: Numeric
+  in_promo: Numeric
+}
+
+interface MarkdownByRetailer {
+  scraper: string
+  marca: string
+  promo_pct: Numeric
+}
+
+interface TopMarkdown {
+  marca: string
+  scraper: string
+  style_color: string | null
+  product_name_competitor: string | null
+  franchise_competitor: string | null
+  competitor_full_price: number | null
+  competitor_final_price: number | null
+  markdown_pct: Numeric
+  bml_final_price: string | null
+}
+
+interface MarkdownResponse {
+  by_marca: MarkdownByMarca[]
+  by_retailer: MarkdownByRetailer[]
+  top_markdowns: TopMarkdown[]
+}
+
+const num = (v: Numeric | undefined): number => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
 // Filas por página de la tabla de violaciones. El KPI NO usa este número:
 // usa `violations_total`, que viene de un COUNT(*) sin LIMIT.
 const VIOLATIONS_PAGE_SIZE = 50
 
 export default function ControlRetailersPage() {
-  const [pvp, setPvp]           = useState<any>(null)
-  const [markdown, setMarkdown] = useState<any>(null)
+  const [pvp, setPvp]           = useState<PvpResponse | null>(null)
+  const [markdown, setMarkdown] = useState<MarkdownResponse | null>(null)
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
   const [tab, setTab]           = useState<'pvp'|'markdown'|'bml'>('pvp')
@@ -24,8 +95,8 @@ export default function ControlRetailersPage() {
     setLoading(true)
     setError(null)
     Promise.all([
-      fetchJson(`/api/pricing/pvp-compliance?page=${violationsPage}&pageSize=${VIOLATIONS_PAGE_SIZE}`),
-      fetchJson('/api/pricing/markdown-analysis'),
+      fetchJson<PvpResponse>(`/api/pricing/pvp-compliance?page=${violationsPage}&pageSize=${VIOLATIONS_PAGE_SIZE}`),
+      fetchJson<MarkdownResponse>('/api/pricing/markdown-analysis'),
     ])
       .then(([p, m]) => {
         if (cancelled) return
@@ -45,9 +116,9 @@ export default function ControlRetailersPage() {
   // Total REAL de violaciones (COUNT(*) en el endpoint). Antes el KPI usaba
   // `violations.length`, que estaba topeado por el LIMIT de la tabla y por eso
   // siempre decía 100.
-  const violationsTotal = Number(pvp?.violations_total ?? 0)
-  const violationsPageSize = Number(pvp?.violations_page_size ?? VIOLATIONS_PAGE_SIZE)
-  const violationsTotalPages = Number(pvp?.violations_total_pages ?? 0)
+  const violationsTotal = num(pvp?.violations_total)
+  const violationsPageSize = num(pvp?.violations_page_size) || VIOLATIONS_PAGE_SIZE
+  const violationsTotalPages = num(pvp?.violations_total_pages)
   const violationsFrom = violationsTotal === 0 ? 0 : (violationsPage - 1) * violationsPageSize + 1
   const violationsTo   = Math.min(violationsPage * violationsPageSize, violationsTotal)
   const byMarca     = markdown?.by_marca    ?? []
@@ -55,12 +126,12 @@ export default function ControlRetailersPage() {
   const topMarkdowns = markdown?.top_markdowns ?? []
 
   const avgCompliance = retailers.length > 0
-    ? Math.round(retailers.reduce((s: number, r: any) => s + (r.compliance_pct ?? 0), 0) / retailers.length)
+    ? Math.round(retailers.reduce((s, r) => s + (r.compliance_pct ?? 0), 0) / retailers.length)
     : 0
 
-  const nikeMarkdown  = byMarca.find((m: any) => m.marca === 'NIKE')
-  const adidasMarkdown = byMarca.find((m: any) => m.marca === 'ADIDAS')
-  const pumaMarkdown  = byMarca.find((m: any) => m.marca === 'PUMA')
+  const nikeMarkdown   = byMarca.find((m) => m.marca === 'NIKE')
+  const adidasMarkdown = byMarca.find((m) => m.marca === 'ADIDAS')
+  const pumaMarkdown   = byMarca.find((m) => m.marca === 'PUMA')
 
   function ComplianceBadge({ pct }: { pct: number | null }) {
     if (pct === null) return <span className="text-xs text-gray-400">Sin datos</span>
@@ -139,18 +210,18 @@ export default function ControlRetailersPage() {
               <tbody>
                 {loading
                   ? Array.from({length:8}).map((_,i) => <tr key={i} className="animate-pulse border-b"><td colSpan={8}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td></tr>)
-                  : retailers.map((r: any) => (
+                  : retailers.map((r) => (
                     <tr key={r.scraper}>
                       <td className="font-semibold">{r.scraper}</td>
-                      <td className="text-right font-mono">{Number(r.total).toLocaleString('es-AR')}</td>
-                      <td className="text-right font-mono">{Number(r.with_pvp).toLocaleString('es-AR')}</td>
-                      <td className="text-right font-mono text-green-600">{Number(r.compliant).toLocaleString('es-AR')}</td>
-                      <td className="text-right font-mono text-red-600">{Number(r.below_pvp).toLocaleString('es-AR')}</td>
-                      <td className="text-right font-mono text-yellow-600">{Number(r.above_pvp).toLocaleString('es-AR')}</td>
+                      <td className="text-right font-mono">{num(r.total).toLocaleString('es-AR')}</td>
+                      <td className="text-right font-mono">{num(r.with_pvp).toLocaleString('es-AR')}</td>
+                      <td className="text-right font-mono text-green-600">{num(r.compliant).toLocaleString('es-AR')}</td>
+                      <td className="text-right font-mono text-red-600">{num(r.below_pvp).toLocaleString('es-AR')}</td>
+                      <td className="text-right font-mono text-yellow-600">{num(r.above_pvp).toLocaleString('es-AR')}</td>
                       {/* Filas con PVP pero sin precio usable (0 o inflado por
                           cuotas): quedan fuera de los 3 buckets a propósito. */}
                       <td className="text-right font-mono text-gray-400" title="Con PVP pero sin precio de competidor válido (N/D)">
-                        {Number(r.without_price ?? 0).toLocaleString('es-AR')}
+                        {num(r.without_price).toLocaleString('es-AR')}
                       </td>
                       <td className="text-center"><ComplianceBadge pct={r.compliance_pct} /></td>
                     </tr>
@@ -173,7 +244,7 @@ export default function ControlRetailersPage() {
                 <table className="nike-table">
                   <thead><tr><th>Retailer</th><th>StyleColor</th><th>Producto</th><th>Franchise</th><th className="text-right">Precio Comp.</th><th className="text-right">PVP Sugerido</th><th className="text-right">Diferencia</th><th>Link</th></tr></thead>
                   <tbody>
-                    {violations.map((v: any, i: number) => (
+                    {violations.map((v, i) => (
                       <tr key={`${v.scraper}-${v.style_color}-${i}`}>
                         <td><span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded font-medium">{v.scraper}</span></td>
                         <td className="font-mono text-xs text-gray-600">{v.style_color ?? '—'}</td>
@@ -241,7 +312,7 @@ export default function ControlRetailersPage() {
                 </div>
                 <div className="flex justify-between text-xs mt-1">
                   <span className="text-gray-500">SKUs en promo</span>
-                  <strong>{Number(d?.in_promo ?? 0).toLocaleString('es-AR')}</strong>
+                  <strong>{num(d?.in_promo).toLocaleString('es-AR')}</strong>
                 </div>
               </div>
             ))}
@@ -258,7 +329,7 @@ export default function ControlRetailersPage() {
               <tbody>
                 {loading
                   ? Array.from({length:8}).map((_,i) => <tr key={i} className="animate-pulse border-b"><td colSpan={9}><div className="h-3 bg-gray-200 rounded my-3 w-2/3 mx-3"/></td></tr>)
-                  : topMarkdowns.slice(0,50).map((p: any, i: number) => (
+                  : topMarkdowns.slice(0,50).map((p, i) => (
                     <tr key={i}>
                       <td><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${p.marca === 'NIKE' ? 'bg-gray-900 text-white' : p.marca === 'ADIDAS' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>{p.marca}</span></td>
                       <td className="font-mono text-[11px] text-gray-600">{p.style_color ?? '—'}</td>
@@ -286,13 +357,13 @@ export default function ControlRetailersPage() {
             <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-4">Markdown por Retailer y Marca</h2>
             <ResponsiveContainer width="100%" height={320}>
               <BarChart
-                data={byRetailer.filter((r: any) => !['ADIDAS_7','Puma_AR','nike_ar_general','nike_co_general','URU','USA'].includes(r.scraper)).slice(0,20)}
+                data={byRetailer.slice(0, 20)}
                 margin={{ top: 4, right: 16, left: 0, bottom: 40 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
                 <XAxis dataKey="scraper" tick={{ fontSize: 10, fill: '#666' }} angle={-30} textAnchor="end" interval={0} height={60} />
                 <YAxis tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#9B9B9B' }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: any) => [`${v}%`, 'En promo']} />
+                <Tooltip formatter={(v: number) => [`${v}%`, 'En promo']} />
                 <Bar dataKey="promo_pct" fill="#F5A623" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
