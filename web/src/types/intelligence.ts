@@ -377,6 +377,8 @@ export interface OpportunityListResponse {
     by_severity?: SeverityFacet[];
     by_type?: TypeFacet[];
   };
+  /** Qué mide cada driver de Business Importance. Viaja en la propia respuesta. */
+  glossary?: Glossary | null;
   limit?: number;
   offset?: number;
 }

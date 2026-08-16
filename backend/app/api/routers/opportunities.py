@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.api.glossary import glossary_payload
 from app.api.serializers import expand_opportunities, table_exists
 from app.db import query
 
@@ -23,7 +24,8 @@ def list_opportunities(
     offset: int = Query(0, ge=0),
 ) -> dict[str, Any]:
     if not table_exists("opportunities"):
-        return {"total": 0, "items": [], "facets": {}}
+        return {"total": 0, "items": [], "facets": {},
+                "glossary": glossary_payload("business_importance")}
 
     where = ["business_importance >= ?"]
     params: list[Any] = [min_importance]
@@ -52,7 +54,12 @@ def list_opportunities(
     }
 
     return {"total": int(total), "items": expand_opportunities(rows),
-            "facets": facets, "limit": limit, "offset": offset}
+            "facets": facets,
+            # Qué mide cada driver de Business Importance. Se publica acá y no
+            # sólo en /api/retail-media para que el Opportunity Center no tenga
+            # que ir a buscarlo a otro endpoint.
+            "glossary": glossary_payload("business_importance"),
+            "limit": limit, "offset": offset}
 
 
 @router.get("/opportunities/{opportunity_id}")

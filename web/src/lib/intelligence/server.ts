@@ -278,12 +278,6 @@ export const fetchBrandTopics = (params?: BrandTopicsParams) =>
  * Cuando el backend adjunte `glossary` a `/api/opportunities`, esto se borra y
  * se lee de la propia respuesta.
  */
-export async function fetchBusinessImportanceGlossary(): Promise<Glossary | null> {
-  const result = await fetchIntelligence<RetailMediaResponse>('/retail-media', { limit: 1 })
-  if (!result.ok) return null
-  const glossary = result.data.glossary
-  return glossary?.business_importance ? glossary : null
-}
 
 /**
  * Nombre de la marca foco (Nike) para poder filtrar `/api/products` server-side.
