@@ -6,13 +6,14 @@ el fixture está armado a propósito para disparar las 12 reglas.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import date, timedelta
 
 import pytest
 
-from app.config import section
+from app.config import get_config, section
 from app.db import get_conn, init_db, query
-from app.services import opportunities, scoring
+from app.services import opportunities, scoring, triage
 from app.services.common import from_json
 
 TODAY = date.today()
@@ -449,3 +450,295 @@ def test_solo_catalogo_sin_observaciones(tmp_path):
     counts = opportunities.run_opportunities(path)
     assert counts["opportunities"] >= 0
     assert counts["price_competitiveness_risk"] == 0
+
+
+# ── diversidad: agrupación por producto Nike ────────────────
+#
+# El problema que resuelven estos tests: el Opportunity Center se ordena por
+# `business_importance` y un producto con muchas oportunidades legítimas se
+# quedaba con toda la primera pantalla (en la base demo, 9 de las 10 primeras
+# filas eran la misma zapatilla). La respuesta es AGRUPAR, no descartar, así que
+# lo que hay que fijar es: no se pierde ninguna fila, no cambia la identidad de
+# ninguna (o el triaje y el historial se cortan), y la primera pantalla deja de
+# ser un solo SKU.
+
+
+@contextmanager
+def diversity(**overrides):
+    """Sobrescribe ``opportunities.diversity`` de config dentro del bloque."""
+    config = get_config()["opportunities"]
+    previous = config.get("diversity")
+    config["diversity"] = overrides
+    try:
+        yield
+    finally:
+        if previous is None:
+            config.pop("diversity", None)
+        else:
+            config["diversity"] = previous
+
+
+def _group_detail(row: dict) -> dict | None:
+    """`detail` del driver de grupo de una fila persistida, si lo tiene."""
+    for driver in from_json(row["drivers"], []):
+        if driver["name"] == "opportunity_group":
+            return driver["detail"]
+    return None
+
+
+def _entity_keys(path) -> set[str]:
+    return {triage.entity_key(row) for row in query("SELECT * FROM opportunities", path=path)}
+
+
+def _raw_draft_counts(path) -> dict[str, int]:
+    """Drafts CRUDOS por regla, sin pasar por la persistencia."""
+    ctx = opportunities.build_context(path)
+    return {t: len(opportunities.RULES[t](ctx)) for t in opportunities.ALL_OPPORTUNITY_TYPES}
+
+
+def test_agrupar_no_pierde_ninguna_oportunidad(db):
+    """Cada draft que produce una regla termina siendo una fila propia.
+
+    El pedido explícito del negocio es AGRUPAR sobre DESCARTAR: una oportunidad
+    agrupada tiene que seguir existiendo. También es lo que audita
+    `app.calibration` (drafts producidos vs filas persistidas por regla).
+    """
+    counts = opportunities.run_opportunities(db)
+    crudos = _raw_draft_counts(db)
+
+    for rule, n in crudos.items():
+        assert counts[rule] == n, f"{rule}: {n} drafts -> {counts[rule]} filas persistidas"
+    assert counts["opportunities"] == sum(crudos.values())
+
+
+def test_agrupar_no_cambia_la_identidad_de_ninguna_oportunidad(db):
+    """`entity_key` idéntica con y sin agrupación: el triaje no se entera.
+
+    Si la agrupación tocara la identidad (fusionando filas, cambiando el
+    competidor o el retailer de la fila que sobrevive), el estado que el equipo
+    ya cargó — descartada, pospuesta, asignada — quedaría huérfano en la próxima
+    corrida.
+    """
+    with diversity(enabled=False):
+        opportunities.run_opportunities(db)
+        sin_agrupar = _entity_keys(db)
+
+    opportunities.run_opportunities(db)
+    agrupado = _entity_keys(db)
+
+    assert agrupado == sin_agrupar
+    filas = query("SELECT * FROM opportunities", path=db)
+    assert len(agrupado) == len(filas), "dos filas con la misma identidad rompen el triaje"
+
+
+def test_el_triaje_sigue_apuntando_a_la_misma_oportunidad_tras_recalcular(db):
+    """Descartar una variante agrupada → recalcular → sigue descartada."""
+    opportunities.run_opportunities(db)
+    variantes = [row for row in query("SELECT * FROM opportunities", path=db)
+                 if (_group_detail(row) or {}).get("role") == "variant"]
+    assert variantes, "el fixture tiene que producir al menos una variante agrupada"
+
+    objetivo = variantes[0]
+    key = triage.entity_key(objetivo)
+    triage.set_state(key, "dismissed", db, updated_by="nico")
+
+    opportunities.run_opportunities(db)
+
+    iguales = [row for row in query("SELECT * FROM opportunities", path=db)
+               if triage.entity_key(row) == key]
+    assert len(iguales) == 1
+    assert triage.get_state(key, db)["state"] == "dismissed"
+
+
+def test_la_cabecera_del_grupo_lleva_todas_sus_variantes_y_son_filas_reales(db):
+    """La tarjeta del grupo contiene la lista completa, y cada variante existe."""
+    opportunities.run_opportunities(db)
+    filas = query("SELECT * FROM opportunities", path=db)
+    por_clave = {triage.entity_key(row): row for row in filas}
+
+    grupos: dict[str, list[dict]] = {}
+    for row in filas:
+        detail = _group_detail(row)
+        if detail:
+            grupos.setdefault(detail["group_key"], []).append(row)
+
+    assert grupos, "el fixture tiene que producir grupos"
+    for group_key, miembros in grupos.items():
+        cabeceras = [r for r in miembros if _group_detail(r)["role"] == "head"]
+        assert len(cabeceras) == 1, f"{group_key}: {len(cabeceras)} cabeceras"
+        detail = _group_detail(cabeceras[0])
+        assert detail["size"] == len(miembros)
+        assert len(detail["members"]) == len(miembros)
+        # cada variante listada en la tarjeta es una fila accesible de la base
+        for member in detail["members"]:
+            assert member["entity_key"] in por_clave
+            assert member["opportunity_type"] and member["title"] and member["action"]
+        # y cada variante sabe volver a su cabecera
+        for row in miembros:
+            assert _group_detail(row)["head_entity_key"] == detail["entity_key"]
+
+
+def test_la_cabecera_conserva_su_importancia_y_las_variantes_bajan_con_piso(db):
+    """La más grave de cada producto compite de igual a igual; el resto baja."""
+    with diversity(repeat_decay=0.75, min_factor=0.35):
+        opportunities.run_opportunities(db)
+        for row in query("SELECT * FROM opportunities", path=db):
+            detail = _group_detail(row)
+            if detail is None:
+                continue
+            base, mostrado = detail["base_importance"], row["business_importance"]
+            if detail["role"] == "head":
+                assert detail["rank_factor"] == 1.0
+                assert mostrado == pytest.approx(base, abs=0.01)
+            else:
+                assert detail["rank"] >= 1
+                assert 0.35 <= detail["rank_factor"] < 1.0
+                assert mostrado == pytest.approx(base * detail["rank_factor"], abs=0.01)
+                # nunca desaparece: conserva el piso de su importancia real
+                assert mostrado >= base * 0.35 - 0.01
+
+
+def test_la_severidad_no_baja_por_la_posicion_en_el_ranking(db):
+    """`severity` sale de la importancia REAL, no del score atenuado.
+
+    Una oportunidad no se vuelve menos grave porque otra del mismo producto la
+    superó en la lista: si eso pasara, el filtro por severidad dejaría de
+    encontrar la variante crítica que quedó decimoquinta.
+    """
+    opportunities.run_opportunities(db)
+    atenuadas = 0
+    for row in query("SELECT * FROM opportunities", path=db):
+        detail = _group_detail(row)
+        base = detail["base_importance"] if detail else row["business_importance"]
+        assert row["severity"] == scoring.severity(base)
+        if detail and detail["rank_factor"] < 1.0:
+            atenuadas += 1
+            assert row["business_importance"] < base
+    assert atenuadas, "el fixture tiene que atenuar alguna variante"
+
+
+def test_agrupar_descongestiona_la_primera_pantalla(db):
+    """La métrica que motivó el cambio: cuántos productos distintos se ven."""
+    with diversity(enabled=False):
+        opportunities.run_opportunities(db)
+        antes = opportunities.concentration(db)
+
+    opportunities.run_opportunities(db)
+    despues = opportunities.concentration(db)
+
+    # ninguna oportunidad se pierde por el camino
+    assert despues["total"] == antes["total"]
+    assert despues["by_product"] == antes["by_product"]
+    # pero la primera pantalla deja de ser el mismo SKU repetido
+    assert despues["distinct_in_screen"] > antes["distinct_in_screen"]
+    assert despues["max_repeat_in_screen"] < antes["max_repeat_in_screen"]
+
+
+def test_la_diversidad_se_puede_apagar_sin_tocar_codigo(db):
+    """`enabled: false` devuelve el ranking a la importancia pura."""
+    with diversity(enabled=False):
+        opportunities.run_opportunities(db)
+        filas = query("SELECT * FROM opportunities", path=db)
+        assert filas
+        assert all(_group_detail(row) is None for row in filas)
+        assert all(row["severity"] == scoring.severity(row["business_importance"])
+                   for row in filas)
+
+
+def test_rank_penalty_false_agrupa_pero_no_toca_el_score(db):
+    """Cuando la UI agrupe nativo, se apaga la atenuación y quedan las tarjetas."""
+    with diversity(rank_penalty=False):
+        opportunities.run_opportunities(db)
+        filas = query("SELECT * FROM opportunities", path=db)
+        agrupadas = [row for row in filas if _group_detail(row)]
+        assert agrupadas
+        for row in agrupadas:
+            detail = _group_detail(row)
+            assert detail["rank_factor"] == 1.0
+            assert row["business_importance"] == pytest.approx(detail["base_importance"],
+                                                               abs=0.01)
+        assert any(_group_detail(row)["size"] > 1 for row in agrupadas)
+
+
+def test_el_driver_de_grupo_respeta_el_contrato_canonico_de_driver(db):
+    """`value` en 0..1 y `contribution` 0: la API publica los drivers tal cual.
+
+    El contrato lo fija `tests/test_api_drivers.py`, pero ese test se saltea si
+    no hay base del pipeline; acá queda amarrado con el fixture propio. Poner el
+    tamaño del grupo en `value` (11) rompía la escala publicada.
+    """
+    opportunities.run_opportunities(db)
+    vistos = 0
+    for row in query("SELECT * FROM opportunities", path=db):
+        drivers = from_json(row["drivers"], [])
+        assert sum(d["contribution"] for d in drivers) == pytest.approx(100.0, abs=0.5)
+        for driver in drivers:
+            assert 0.0 <= driver["value"] <= 1.0, driver
+        detail = _group_detail(row)
+        if detail is None:
+            continue
+        vistos += 1
+        grupo = next(d for d in drivers if d["name"] == "opportunity_group")
+        assert grupo["value"] == pytest.approx(detail["rank_factor"])
+        assert grupo["contribution"] == 0.0
+        assert isinstance(detail["size"], int) and detail["size"] >= 1
+    assert vistos, "el fixture tiene que producir drivers de grupo"
+
+
+def test_la_clave_de_grupo_es_estable_y_no_colisiona_con_la_de_una_oportunidad():
+    """Identidad NUEVA: convive con `entity_key`, no la reemplaza."""
+    from app.services import history
+
+    key = opportunities.group_key_of("nike_product", 1)
+    assert key == opportunities.group_key_of("nike_product", 1)          # determinística
+    assert key == history.entity_key(opportunities.GROUP_KIND,
+                                     group_axis="nike_product", entity_id=1)
+    assert key != opportunities.group_key_of("nike_product", 2)
+    assert key != opportunities.group_key_of("retailer", 1)              # otro eje
+    # y jamás puede confundirse con la clave de una oportunidad de ese producto
+    assert key != triage.entity_key({"opportunity_type": "promotional_pressure",
+                                     "nike_product_id": 1, "competitor_product_id": None,
+                                     "retailer_id": None, "country_code": "AR"})
+
+
+def test_dos_drafts_con_la_misma_identidad_se_fusionan_en_vez_de_duplicarla():
+    """Duplicar una `entity_key` haría que el triaje se aplique a una fila sí y a otra no.
+
+    No dispara con los datos de hoy (el motor produce claves todas distintas);
+    está para que un cambio futuro en una regla no rompa en silencio la
+    supervivencia del triaje.
+    """
+    def _draft(description: str) -> opportunities.OpportunityDraft:
+        return opportunities.OpportunityDraft(
+            opportunity_type="promotional_pressure", nike_product_id=1,
+            competitor_product_id=10, retailer_id=None, title="t",
+            description=description, drivers=[], importance_inputs={},
+            action="PREPARE_PROMO_RESPONSE", rationale="r", country_code="AR",
+        )
+
+    def _fila(descripcion: str, revenue: float) -> opportunities.RankedOpportunity:
+        draft = _draft(descripcion)
+        return opportunities.RankedOpportunity(
+            draft=draft,
+            importance=scoring.business_importance({"revenue_proxy": revenue}),
+            drivers=[],
+            entity_key=opportunities.entity_key_of(draft),
+        )
+
+    # gana la más importante, sin importar en qué orden llegan
+    for orden in ((0.9, 0.1), (0.1, 0.9)):
+        quedan, fusionadas = opportunities._merge_duplicates(
+            [_fila("la primera", orden[0]), _fila("la segunda", orden[1])])
+        assert fusionadas == 1
+        assert len(quedan) == 1
+        ganadora = "la primera" if orden[0] > orden[1] else "la segunda"
+        perdedora = "la segunda" if orden[0] > orden[1] else "la primera"
+        assert quedan[0].draft.description == f"{ganadora} Además: {perdedora}"
+
+
+def test_las_oportunidades_sin_producto_nike_no_se_agrupan_por_producto(db):
+    """Segmento o retailer: se agrupan por su propio eje, o quedan sueltas."""
+    opportunities.run_opportunities(db)
+    for row in query("SELECT * FROM opportunities WHERE nike_product_id IS NULL", path=db):
+        detail = _group_detail(row)
+        assert detail is None or detail["group_axis"] == "retailer"

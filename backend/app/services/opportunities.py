@@ -11,6 +11,13 @@ Cada oportunidad lleva:
   * ``drivers``           JSON [{name, value, contribution}]
   * una ``recommendation`` accionable (action + rationale)
 
+Diversidad del ranking: un producto Nike importante dispara muchas reglas a la
+vez y se quedaba con toda la primera pantalla. Las oportunidades del mismo
+producto se AGRUPAN (identidad de grupo nueva, que convive con la individual) en
+vez de descartarse — ver la sección "DIVERSIDAD" y ``backend/docs/opportunities.md``.
+La identidad de cada oportunidad (``entity_key``) NO cambia: el triaje y el
+historial siguen apuntando a lo mismo.
+
 Degradación elegante: ninguna tabla se asume poblada. En particular
 ``competitive_matches`` la escribe otro módulo; si está vacía, las reglas que
 dependen de matches simplemente no disparan.
@@ -1396,85 +1403,29 @@ def _rule_product_launch_threat(ctx: IntelContext) -> list[OpportunityDraft]:
     return drafts
 
 
-# ── diversidad: agrupación de oportunidades del mismo SKU ───
+# ── el catálogo de reglas ───────────────────────────────────
 #
-# Un mismo producto Nike puede disparar varias veces la MISMA regla: tres
-# lanzamientos de competidores distintos contra la Pegasus son tres filas de
-# `product_launch_threat` que dicen lo mismo y ocupan tres lugares del ranking.
-#
-# Se AGRUPAN, no se descartan: la fila resultante conserva los datos de todos
-# los casos (los describe uno por uno) y apunta al más grave, que es el que
-# define la acción. Esto vive DENTRO de las reglas, no en el persistidor,
-# porque `app.calibration` audita "drafts producidos vs filas persistidas" y
-# esa igualdad es lo que detecta una regla rota.
-
-
-def _group_by_product(drafts: list[OpportunityDraft], *,
-                      connector: str = "Además") -> list[OpportunityDraft]:
-    """Colapsa a una sola oportunidad los drafts del mismo producto Nike.
-
-    Preserva el orden de aparición y deja intactos los drafts sin producto
-    (las oportunidades de retailer o de segmento sin representante).
-    """
-    if not bool(section("opportunities", "diversity", "group_same_product", default=True)):
-        return drafts
-
-    grouped: dict[int, OpportunityDraft] = {}
-    extras: dict[int, list[OpportunityDraft]] = {}
-    out: list[OpportunityDraft] = []
-
-    for draft in drafts:
-        pid = draft.nike_product_id
-        if pid is None:
-            out.append(draft)
-            continue
-        if pid not in grouped:
-            grouped[pid] = draft
-            extras[pid] = []
-            out.append(draft)
-        else:
-            extras[pid].append(draft)
-
-    for pid, others in extras.items():
-        if not others:
-            continue
-        head = grouped[pid]
-        cases = " ".join(f"{connector}: {o.description}" for o in others)
-        head.description = f"{head.description} {cases}"
-        head.rationale = (
-            f"{head.rationale} Se agruparon {len(others) + 1} casos del mismo producto "
-            f"para no saturar el ranking; la acción cubre a todos."
-        )
-        head.importance_inputs = dict(head.importance_inputs)
-        head.importance_inputs["grouped_cases"] = len(others) + 1
-    return out
-
-
-def _grouped(rule):
-    """Envuelve una regla para que agrupe sus drafts por producto Nike."""
-
-    def wrapped(ctx: IntelContext) -> list[OpportunityDraft]:
-        return _group_by_product(rule(ctx))
-
-    wrapped.__name__ = getattr(rule, "__name__", "rule")
-    wrapped.__doc__ = rule.__doc__
-    return wrapped
-
+# Una entrada por tipo. Las reglas devuelven sus drafts CRUDOS: acá no se
+# descarta ni se fusiona nada. La legibilidad del ranking se resuelve después,
+# al persistir, agrupando (ver "DIVERSIDAD" más abajo) — nunca tirando filas.
+# Esa separación también sostiene la auditoría de `app.calibration`, que
+# compara "drafts producidos" contra "filas persistidas" por regla: si esos dos
+# números se separan, hay una regla rota.
 
 RULES = {
-    "price_competitiveness_risk": _grouped(_rule_price_competitiveness_risk),
-    "over_discounting_risk": _grouped(_rule_over_discounting_risk),
-    "full_price_opportunity": _grouped(_rule_full_price_opportunity),
-    "clearance_needed": _grouped(_rule_clearance_needed),
-    "assortment_gap": _grouped(_rule_assortment_gap),
-    "distribution_gap": _grouped(_rule_distribution_gap),
-    "share_of_shelf_risk": _grouped(_rule_share_of_shelf_risk),
-    "competitor_momentum": _grouped(_rule_competitor_momentum),
-    "competitor_stockout_opportunity": _grouped(_rule_competitor_stockout_opportunity),
-    "assortment_white_space": _grouped(_rule_assortment_white_space),
-    "premiumization_opportunity": _grouped(_rule_premiumization_opportunity),
-    "promotional_pressure": _grouped(_rule_promotional_pressure),
-    "product_launch_threat": _grouped(_rule_product_launch_threat),
+    "price_competitiveness_risk": _rule_price_competitiveness_risk,
+    "over_discounting_risk": _rule_over_discounting_risk,
+    "full_price_opportunity": _rule_full_price_opportunity,
+    "clearance_needed": _rule_clearance_needed,
+    "assortment_gap": _rule_assortment_gap,
+    "distribution_gap": _rule_distribution_gap,
+    "share_of_shelf_risk": _rule_share_of_shelf_risk,
+    "competitor_momentum": _rule_competitor_momentum,
+    "competitor_stockout_opportunity": _rule_competitor_stockout_opportunity,
+    "assortment_white_space": _rule_assortment_white_space,
+    "premiumization_opportunity": _rule_premiumization_opportunity,
+    "promotional_pressure": _rule_promotional_pressure,
+    "product_launch_threat": _rule_product_launch_threat,
 }
 
 
@@ -1528,7 +1479,7 @@ def _nike_counterpart(ctx: IntelContext, comp_id: int) -> int | None:
     return _representative(ctx, ctx.products_in_segment(ctx.segment_of(comp_id), nike=True))
 
 
-# ── persistencia ────────────────────────────────────────────
+# ── explicabilidad ──────────────────────────────────────────
 
 
 def _drivers_from(score: Any) -> list[dict]:
@@ -1545,85 +1496,358 @@ def _drivers_from(score: Any) -> list[dict]:
     ]
 
 
-def _diversity_factors(rows: list[tuple]) -> list[float]:
-    """Factor de prioridad por repetición del mismo producto Nike.
+# ── DIVERSIDAD: agrupación por producto Nike ────────────────
+#
+# El Opportunity Center se ordena por `business_importance`, y un producto con
+# muchas oportunidades legítimas se lleva toda la primera pantalla: en la base
+# demo, 9 de las 10 primeras filas eran la misma zapatilla (Pegasus 41, 11 de 52
+# oportunidades). Una lista así no sirve para decidir — quien la abre ve lo
+# mismo repetido y deja de mirarla.
+#
+# La respuesta es AGRUPAR, no descartar. Tres piezas:
+#
+#   1. **No se pierde ninguna fila.** Las 52 oportunidades se persisten con los
+#      mismos cinco campos de identidad de siempre, así que su `entity_key`
+#      (ver `app.services.history` / `app.services.triage`) sale idéntica y el
+#      triaje y el historial que el equipo ya cargó siguen apuntando a lo mismo.
+#      Lo único que se colapsa son los duplicados EXACTOS — dos drafts con la
+#      misma identidad son, para el triaje, la misma oportunidad (ver
+#      `_merge_duplicates`).
+#
+#   2. **Identidad de grupo NUEVA, que convive con la individual.** Las
+#      oportunidades del mismo producto Nike se atan con una `group_key`
+#      calculada con el mismo esquema de hash pero con otro `kind`
+#      (`opportunity_group`), así que no puede colisionar con la clave de
+#      ninguna oportunidad. La más grave del producto es la CABECERA y lleva en
+#      `drivers` la lista completa de sus variantes (clave, tipo, familia,
+#      severidad, importancia y título): con eso la UI arma UNA tarjeta por
+#      producto con las variantes adentro, y cada variante sigue siendo una fila
+#      real, filtrable por tipo/familia/severidad y direccionable por
+#      `/api/opportunities/{id}`.
+#
+#   3. **La lista plana también se vuelve legible.** `/api/opportunities`
+#      ordena por `business_importance`, así que mientras la UI no agrupe, la
+#      única palanca sobre el orden es esa columna: la k-ésima oportunidad de un
+#      mismo producto entra con la prioridad atenuada
+#      (`repeat_decay ** k`, con piso `min_factor`). La cabecera de cada
+#      producto NO se toca (factor 1.0) y la importancia REAL queda registrada
+#      en el driver del grupo, así que la atenuación es auditable y reversible
+#      (`diversity.rank_penalty: false` la apaga cuando la UI agrupe nativo).
+#
+# Lo que NO se hace: bajar la SEVERIDAD. Qué tan grave es una oportunidad es una
+# propiedad suya, no de su posición en la lista. Se calcula siempre sobre la
+# importancia BASE, así el filtro por severidad sigue encontrando la variante
+# CRITICAL que quedó decimoquinta. (Antes se derivaba del score atenuado: una
+# oportunidad se "curaba" sola porque otra del mismo producto la superaba.)
 
-    El Opportunity Center ordena por `business_importance`, así que un producto
-    con muchas oportunidades legítimas se queda con toda la primera pantalla:
-    en la base demo, 8 de las 10 primeras filas eran la misma zapatilla. Una
-    lista así no sirve para decidir — el que la lee ya sabía que ese producto
-    importa.
+#: `kind` del hash de grupo. Distinto de "opportunity"/"match"/"signal", así que
+#: una `group_key` nunca puede confundirse con una `entity_key`.
+GROUP_KIND = "opportunity_group"
 
-    En vez de descartar filas (perdería oportunidades reales), la n-ésima
-    oportunidad de un mismo producto entra al ranking con la prioridad
-    atenuada:
+#: Ejes de agrupación, en orden de preferencia. El producto Nike es el que pide
+#: el negocio ("que un mismo producto no acapare la lista"); el retailer cubre
+#: las oportunidades sin producto (share of shelf por canal), que si no quedan
+#: sueltas y pueden repetir el mismo problema.
+GROUP_AXES: tuple[str, ...] = ("nike_product", "retailer")
 
-        factor = max(min_factor, repeat_decay ** k)      # k = 0, 1, 2, ...
+try:  # definición canónica de la identidad de una oportunidad
+    from app.services.triage import entity_key as _opportunity_entity_key
+except ImportError:  # pragma: no cover - depende de qué módulos existan
+    _opportunity_entity_key = None
 
-    La más grave de cada producto NO se toca (k=0, factor 1.0): compite de igual
-    a igual. Las repeticiones bajan pero nunca desaparecen — con `min_factor`
-    conservan un piso — así que siguen estando en la lista, filtrables por
-    producto y por tipo, con su importancia original guardada en `drivers`.
+try:  # misma función de hash, para la identidad NUEVA de grupo
+    from app.services.history import entity_key as _stable_entity_key
+except ImportError:  # pragma: no cover
+    _stable_entity_key = None
+
+
+def _diversity_cfg() -> dict[str, Any]:
+    """Bloque ``opportunities.diversity`` de config (todo con default)."""
+    return section("opportunities", "diversity", default={}) or {}
+
+
+def entity_key_of(draft: OpportunityDraft) -> str | None:
+    """`entity_key` de la oportunidad: la identidad que ata triaje e historial.
+
+    Se delega en `app.services.triage` (que a su vez delega en
+    `app.services.history`): la fórmula NO se reimplementa acá. Si esos módulos
+    no están disponibles devuelve ``None`` y la agrupación sigue funcionando,
+    sólo que sin publicar claves.
     """
-    cfg = section("opportunities", "diversity", default={}) or {}
-    if not bool(cfg.get("enabled", True)):
-        return [1.0] * len(rows)
+    if _opportunity_entity_key is None:
+        return None
+    return _opportunity_entity_key({
+        "opportunity_type": draft.opportunity_type,
+        "nike_product_id": draft.nike_product_id,
+        "competitor_product_id": draft.competitor_product_id,
+        "retailer_id": draft.retailer_id,
+        "country_code": draft.country_code,
+    })
 
-    decay = float(cfg.get("repeat_decay", 0.80))
-    floor = float(cfg.get("min_factor", 0.40))
 
-    order = sorted(range(len(rows)), key=lambda i: -float(rows[i][1].score))
-    seen: dict[int, int] = {}
-    factors = [1.0] * len(rows)
-    for i in order:
-        pid = rows[i][0].nike_product_id
-        if pid is None:                      # oportunidades de retailer/segmento
+def group_key_of(axis: str, entity_id: int) -> str:
+    """Identidad estable de un GRUPO de oportunidades.
+
+    Es una clave NUEVA: no reemplaza ni modifica la de ninguna oportunidad,
+    convive con ellas. Mismo hash y misma normalización que `entity_key`, con un
+    `kind` propio. Sin `history` cae a una clave legible (`nike_product:1`), que
+    también es determinística y estable entre corridas.
+    """
+    if _stable_entity_key is None:  # pragma: no cover - history siempre está
+        return f"{axis}:{entity_id}"
+    return _stable_entity_key(GROUP_KIND, group_axis=axis, entity_id=entity_id)
+
+
+@dataclass
+class RankedOpportunity:
+    """Una oportunidad puntuada, con su lugar dentro del grupo de su producto."""
+
+    draft: OpportunityDraft
+    importance: Any                       # scoring.CompositeScore
+    drivers: list[dict]
+    entity_key: str | None = None
+    group_key: str | None = None
+    group_axis: str | None = None
+    group_entity_id: int | None = None
+    group_label: str | None = None
+    group_size: int = 1
+    group_rank: int = 0                   # 0 = cabecera del grupo
+    factor: float = 1.0                   # atenuación de ranking (1.0 = intacta)
+
+    @property
+    def base_importance(self) -> float:
+        """Business Importance real, sin atenuar. Manda para la severidad."""
+        return float(self.importance.score)
+
+    @property
+    def score(self) -> float:
+        """Prioridad con la que la fila entra al ranking."""
+        return round(self.base_importance * self.factor, 2)
+
+    @property
+    def is_head(self) -> bool:
+        return self.group_rank == 0
+
+
+def _group_axis_of(draft: OpportunityDraft) -> tuple[str, int] | None:
+    """Eje de agrupación de un draft: producto Nike, si no retailer, si no nada."""
+    if draft.nike_product_id is not None:
+        return "nike_product", int(draft.nike_product_id)
+    if draft.retailer_id is not None:
+        return "retailer", int(draft.retailer_id)
+    return None
+
+
+def _merge_duplicates(rows: list[RankedOpportunity]) -> tuple[list[RankedOpportunity], int]:
+    """Colapsa filas que comparten `entity_key` — son la MISMA oportunidad.
+
+    Dos drafts con el mismo tipo, los mismos productos, el mismo retailer y el
+    mismo país son indistinguibles para el triaje y para el historial:
+    persistir los dos haría que el estado cargado por el equipo (descartada,
+    pospuesta) se aplique a uno sí y al otro no, según qué fila devuelva primero
+    la query. Esto NO es descartar una oportunidad: es no duplicar una identidad.
+
+    Se conserva la de mayor importancia y su descripción absorbe la de la otra,
+    así no se pierde el detalle. Con el dataset demo no dispara nunca (52 drafts,
+    52 claves distintas); existe para que un cambio futuro en una regla no rompa
+    en silencio la supervivencia del triaje.
+    """
+    at: dict[str, int] = {}                      # entity_key -> posición en `out`
+    out: list[RankedOpportunity] = []
+    merged = 0
+    for row in rows:
+        key = row.entity_key
+        if key is None or key not in at:
+            if key is not None:
+                at[key] = len(out)
+            out.append(row)
             continue
-        k = seen.get(pid, 0)
-        seen[pid] = k + 1
-        factors[i] = max(floor, decay ** k) if k else 1.0
-    return factors
+        merged += 1
+        first = out[at[key]]
+        keep, drop = ((first, row) if first.base_importance >= row.base_importance
+                      else (row, first))
+        out[at[key]] = keep                      # gana la de mayor importancia
+        if drop.draft.description and drop.draft.description not in keep.draft.description:
+            keep.draft.description = f"{keep.draft.description} Además: {drop.draft.description}"
+    return out, merged
 
 
-def _diversity_driver(base: float, adjusted: float, factor: float) -> dict:
-    """Driver informativo: qué importancia tenía la fila antes de la atenuación."""
+def _assign_groups(ctx: IntelContext, rows: list[RankedOpportunity]) -> None:
+    """Asigna grupo, posición dentro del grupo y factor de ranking. Muta `rows`."""
+    cfg = _diversity_cfg()
+    if not bool(cfg.get("enabled", True)):
+        return
+
+    decay = float(cfg.get("repeat_decay", 0.75))
+    floor = float(cfg.get("min_factor", 0.35))
+    full = max(int(cfg.get("full_weight_per_group", 1)), 1)
+    penalize = bool(cfg.get("rank_penalty", True))
+
+    # Por importancia BASE descendente: la más grave de cada producto es la
+    # cabecera. El índice desempata para que dos corridas den lo mismo.
+    order = sorted(range(len(rows)), key=lambda i: (-rows[i].base_importance, i))
+
+    sizes: dict[tuple[str, int], int] = {}
+    for i in order:
+        row = rows[i]
+        axis = _group_axis_of(row.draft)
+        if axis is None:
+            continue
+        rank = sizes.get(axis, 0)
+        sizes[axis] = rank + 1
+        row.group_axis, row.group_entity_id = axis
+        row.group_key = group_key_of(*axis)
+        row.group_label = (ctx.name(axis[1]) if axis[0] == "nike_product"
+                           else ctx.retailer_name(axis[1]))
+        row.group_rank = rank
+        if penalize and rank >= full:
+            row.factor = max(floor, decay ** (rank - full + 1))
+
+    for row in rows:
+        if row.group_axis is not None and row.group_entity_id is not None:
+            row.group_size = sizes[(row.group_axis, row.group_entity_id)]
+
+
+def _member_card(row: RankedOpportunity) -> dict[str, Any]:
+    """Ficha de una variante dentro de la tarjeta del grupo."""
     return {
-        "name": "diversity_factor",
-        "value": round(factor, 4),
-        "contribution": 0.0,
-        "weight": 0.0,
-        "detail": {
-            "base_importance": round(base, 2),
-            "adjusted_importance": round(adjusted, 2),
-            "reason": ("no es la oportunidad más grave de este producto Nike: baja en el "
-                       "ranking para que la lista no la ocupe un solo SKU"),
-        },
+        "entity_key": row.entity_key,
+        "opportunity_type": row.draft.opportunity_type,
+        "family": family_of(row.draft.opportunity_type),
+        "severity": scoring.severity(row.base_importance),
+        "business_importance": round(row.base_importance, 2),
+        "ranked_importance": row.score,
+        "rank": row.group_rank,
+        "role": "head" if row.is_head else "variant",
+        "title": row.draft.title,
+        "action": row.draft.action,
     }
 
 
+def _group_index(rows: list[RankedOpportunity]) -> dict[str, list[RankedOpportunity]]:
+    """`group_key` -> miembros ordenados por posición dentro del grupo."""
+    index: dict[str, list[RankedOpportunity]] = {}
+    for row in rows:
+        if row.group_key:
+            index.setdefault(row.group_key, []).append(row)
+    for members in index.values():
+        members.sort(key=lambda r: r.group_rank)
+    return index
+
+
+def _group_driver(row: RankedOpportunity,
+                  members: list[RankedOpportunity]) -> dict[str, Any]:
+    """Driver informativo con TODO lo que la UI necesita para armar la tarjeta.
+
+    Va en `drivers` (JSON) porque es la única columna de `opportunities` que el
+    motor escribe libre y que la API publica tal cual: no hace falta tocar el
+    esquema ni los serializers.
+
+    Respeta el contrato canónico de driver (ver `tests/test_api_drivers.py`):
+    `value` en 0..1 — acá el factor de ranking, que es justamente lo que el
+    grupo le hizo al score — y `contribution=0`, porque la agrupación no
+    participa del cálculo de la importancia. El tamaño del grupo y la lista de
+    variantes viajan en `detail`, que es libre.
+    """
+    head = members[0] if members else row
+    detail: dict[str, Any] = {
+        "group_key": row.group_key,
+        "group_axis": row.group_axis,
+        "group_label": row.group_label,
+        "size": row.group_size,
+        "rank": row.group_rank,
+        "role": "head" if row.is_head else "variant",
+        "entity_key": row.entity_key,
+        "head_entity_key": head.entity_key,
+        "base_importance": round(row.base_importance, 2),
+        "ranked_importance": row.score,
+        "rank_factor": round(row.factor, 4),
+    }
+    if row.is_head:
+        detail["members"] = [_member_card(m) for m in members]
+        if row.group_size > 1:
+            detail["reason"] = (
+                f"{row.group_size} oportunidades de {row.group_label} se muestran en una sola "
+                f"tarjeta: la más grave encabeza y el resto queda adentro, sin perderse."
+            )
+    else:
+        detail["reason"] = (
+            "no es la oportunidad más grave de este producto: baja en el ranking para que la "
+            "lista no la ocupe un solo SKU, pero sigue existiendo con su identidad propia "
+            "(triaje e historial intactos) y accesible dentro de la tarjeta del grupo."
+        )
+    return {"name": "opportunity_group", "value": round(row.factor, 4),
+            "contribution": 0.0, "weight": 0.0, "detail": detail}
+
+
+def concentration(db_path: Any = DB_PATH) -> dict[str, Any]:
+    """Qué tan concentrado quedó el Opportunity Center. Diagnóstico, no scoring.
+
+    Devuelve el conteo por producto Nike, cuánto se lleva el más repetido y
+    cuántos productos distintos entran en la primera pantalla — que es la
+    pregunta real: "¿el ejecutivo ve variedad o el mismo SKU quince veces?".
+    """
+    rows = query(
+        "SELECT o.business_importance, o.opportunity_type, o.family, "
+        "       COALESCE(p.product_name, '(sin producto Nike)') AS product "
+        "FROM opportunities o LEFT JOIN products p ON p.id = o.nike_product_id "
+        "ORDER BY o.business_importance DESC, o.id",
+        path=db_path,
+    )
+    total = len(rows)
+    by_product: dict[str, int] = {}
+    for row in rows:
+        by_product[row["product"]] = by_product.get(row["product"], 0) + 1
+    ranked = sorted(by_product.items(), key=lambda kv: (-kv[1], kv[0]))
+    screen = int(section("opportunities", "diversity", "screen_size", default=10) or 10)
+    first = [row["product"] for row in rows[:screen]]
+    return {
+        "total": total,
+        "by_product": dict(ranked),
+        "distinct_products": len(by_product),
+        "top_product": ranked[0][0] if ranked else None,
+        "top_product_count": ranked[0][1] if ranked else 0,
+        "top_product_share": round(ranked[0][1] / total, 3) if total else 0.0,
+        "screen_size": screen,
+        "distinct_in_screen": len(set(first)),
+        "max_repeat_in_screen": max((first.count(p) for p in set(first)), default=0),
+    }
+
+
+# ── persistencia ────────────────────────────────────────────
+
+
 def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
-    """Ejecuta las reglas, puntúa, y persiste. Idempotente (borra y recalcula)."""
+    """Ejecuta las reglas, puntúa, agrupa y persiste. Idempotente (borra y recalcula)."""
     ctx = build_context(db_path)
 
-    counts: dict[str, int] = {name: 0 for name in ALL_OPPORTUNITY_TYPES}
-    rows: list[tuple] = []
-
+    rows: list[RankedOpportunity] = []
     for opportunity_type in ALL_OPPORTUNITY_TYPES:
         for draft in RULES[opportunity_type](ctx):
             importance = scoring.business_importance(draft.importance_inputs, ctx)
-            drivers = draft.drivers or _drivers_from(importance)
-            rows.append((draft, importance, drivers))
-            counts[opportunity_type] += 1
+            rows.append(RankedOpportunity(
+                draft=draft,
+                importance=importance,
+                drivers=draft.drivers or _drivers_from(importance),
+                entity_key=entity_key_of(draft),
+            ))
 
-    factors = _diversity_factors(rows)
+    rows, merged = _merge_duplicates(rows)
+    _assign_groups(ctx, rows)
+    index = _group_index(rows)
+
+    counts: dict[str, int] = {name: 0 for name in ALL_OPPORTUNITY_TYPES}
 
     with get_conn(db_path) as conn:
         conn.execute("DELETE FROM recommendations")
         conn.execute("DELETE FROM opportunities")
-        for (draft, importance, drivers), factor in zip(rows, factors):
-            score = round(importance.score * factor, 2)
-            if factor < 1.0:
-                drivers = [*drivers, _diversity_driver(importance.score, score, factor)]
+        for row in rows:
+            draft = row.draft
+            counts[draft.opportunity_type] += 1
+            drivers = row.drivers
+            if row.group_key:
+                drivers = [*drivers, _group_driver(row, index.get(row.group_key, []))]
+            score = row.score
             cur = conn.execute(
                 "INSERT INTO opportunities (opportunity_type, family, severity, "
                 "nike_product_id, competitor_product_id, retailer_id, country_code, title, "
@@ -1632,7 +1856,10 @@ def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
                 (
                     draft.opportunity_type,
                     family_of(draft.opportunity_type),
-                    scoring.severity(score),
+                    # Severidad = gravedad REAL, nunca el score atenuado: una
+                    # oportunidad no se vuelve menos grave porque otra del mismo
+                    # producto la superó en el ranking.
+                    scoring.severity(row.base_importance),
                     draft.nike_product_id,
                     draft.competitor_product_id,
                     draft.retailer_id,
@@ -1640,7 +1867,7 @@ def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
                     draft.title,
                     draft.description,
                     score,
-                    importance.confidence,
+                    row.importance.confidence,
                     to_json(drivers),
                 ),
             )
@@ -1652,11 +1879,14 @@ def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
                     draft.action,
                     draft.rationale,
                     score,
-                    importance.confidence,
+                    row.importance.confidence,
                     to_json(drivers),
                 ),
             )
 
     counts["opportunities"] = len(rows)
     counts["recommendations"] = len(rows)
+    counts["opportunity_groups"] = len(index)
+    counts["grouped_variants"] = sum(1 for row in rows if row.group_key and row.group_rank)
+    counts["merged_duplicates"] = merged
     return counts
