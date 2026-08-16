@@ -3,15 +3,32 @@
 Toma lo que trae el scraper (nombre, taxonomía, precio, descripción) y deriva:
 
   * ``normalized_product_name`` — clave de comparación entre marcas.
+  * ``division`` — FW (footwear) | AP (apparel) | EQ (equipment).
+  * ``category`` / ``sport`` — la categoría deportiva, unificada (ver abajo).
   * ``use_case`` — uno de la taxonomía cerrada del negocio.
-  * ``price_band`` — según ``enrichment.price_bands[country]`` de weights.yaml.
+  * ``price_band`` (+ ``price_band_min`` / ``price_band_max`` / ``price_tier``)
+    — el rango EN PLATA según ``enrichment.price_bands[country]``.
   * ``lifecycle_stage`` — días desde el launch + presión de descuento.
   * atributos esparsos (``product_attributes``) físicos, visuales,
     de performance y ratings derivados 0..1.
 
+Taxonomía (ver ``backend/docs/taxonomy.md``)
+--------------------------------------------
+* ``category`` y ``sport`` son **el mismo concepto**: la categoría deportiva
+  (running, football, basketball, training, tennis, lifestyle…). ``category``
+  es el CANÓNICO —es el nombre de la columna en la fuente (`pricing_data`) y
+  el que usa la API— y ``sport`` queda como ALIAS: se conserva en la tabla
+  por compatibilidad y este módulo lo mantiene sincronizado, pero el scoring
+  lo pondera en 0.0 para no contar la misma señal dos veces.
+* ``division`` (FW/AP/EQ) es la dimensión que FALTABA. Hasta ahora la
+  ingesta metía la división dentro de ``category`` (footwear/apparel), lo que
+  producía a la vez el hueco y la duplicación. Este módulo rescata esa
+  división del valor legacy antes de reescribir ``category``.
+
 Reglas del proyecto que se respetan acá:
   * Cero LLMs cloud, cero red: todo es reglas + léxicos locales.
-  * Cero pesos hardcodeados: bandas y ciclo de vida salen de weights.yaml.
+  * Cero pesos hardcodeados: bandas, división y ciclo de vida salen de
+    weights.yaml.
   * Sólo se emite un atributo si hay **evidencia** en el texto/taxonomía.
     Lo que no se puede afirmar, simplemente no se emite (el modelo EAV
     acepta atributos ausentes).
@@ -426,11 +443,223 @@ def infer_use_case(product: dict) -> tuple[str | None, float]:
 
 
 # ============================================================
-# C) Banda de precio
+# B-bis) División (FW / AP / EQ)
 # ============================================================
 
-def infer_price_band(price: float | None, country: str) -> str | None:
-    """Banda según ``enrichment.price_bands[country]``. Nunca hardcodeada."""
+def _division_config() -> dict[str, Any]:
+    return section("enrichment", "division", default={}) or {}
+
+
+def _upper(value: Any) -> str:
+    """Mayúsculas, sin acentos, espacios colapsados (para matchear división)."""
+    text = _strip_accents(str(value if value is not None else "")).upper()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_division(value: Any) -> str | None:
+    """``'FOOTWEAR DIVISION'`` / ``'Calzado'`` / ``'fw'`` -> ``'FW'``.
+
+    MISMO CRITERIO que ``web/src/lib/utils.ts::normalizeDivision`` —FOOT o FW
+    => footwear, APP o AP => apparel, EQUIP o EQ => equipment, evaluados en
+    ese orden—, extendido con los sinónimos ES que ya traía
+    ``ingest/mapping.py``. Devuelve el CÓDIGO (FW/AP/EQ), que es lo que
+    guarda ``products.division``; el front sigue mostrando el nombre largo.
+
+    El vocabulario vive en ``enrichment.division.codes`` de weights.yaml:
+    agregar un sinónimo no requiere tocar código.
+    """
+    text = _upper(value)
+    if not text:
+        return None
+    codes = _division_config().get("codes") or {}
+
+    # 1) igualdad exacta (códigos ya normalizados: 'FW', 'AP', 'EQ')
+    for code, rules in codes.items():
+        exact = {_upper(x) for x in (rules or {}).get("exact") or ()}
+        if text in exact:
+            return str(code).upper()
+
+    # 2) subcadena ('FOOTWEAR DIVISION' contiene 'FOOT')
+    for code, rules in codes.items():
+        for needle in (rules or {}).get("contains") or ():
+            needle = _upper(needle)
+            if needle and needle in text:
+                return str(code).upper()
+    return None
+
+
+def infer_division(product: dict) -> str | None:
+    """División del producto, por orden de confiabilidad de la evidencia.
+
+    1. columna ``division`` (la trae ``pricing_data.division`` /
+       ``division_competitor``, o la dejó una corrida previa);
+    2. valor LEGACY de ``category`` — hasta la unificación de taxonomía la
+       ingesta guardaba ahí la división (``footwear``/``apparel``/
+       ``accessories``), así que ese valor NO se tira: se rescata acá antes
+       de que ``category`` pase a ser la categoría deportiva;
+    3. otros campos de taxonomía que a veces la nombran;
+    4. evidencia textual (``enrichment.division.text_evidence``);
+    5. ``None`` — sin evidencia no se inventa división.
+    """
+    for field in ("division", "category", "subcategory", "sport", "activity"):
+        code = normalize_division(product.get(field))
+        if code:
+            return code
+
+    haystack = _haystack(product)
+    best: tuple[str, int] | None = None
+    for code, keywords in (_division_config().get("text_evidence") or {}).items():
+        hits = _hits(haystack, tuple(str(k) for k in keywords or ()))
+        if hits and (best is None or hits > best[1]):
+            best = (str(code).upper(), hits)
+    return best[0] if best else None
+
+
+# ============================================================
+# B-ter) Categoría deportiva (`category` canónico, `sport` alias)
+# ============================================================
+
+# Último recurso: si no hay ni `category` ni `sport`, el use_case ya
+# canonicalizado implica la categoría. Es una derivación determinística de la
+# taxonomía cerrada del negocio, no una invención.
+_USE_CASE_TO_CATEGORY: dict[str, str] = {
+    "daily running":  "running",
+    "race day":       "running",
+    "trail running":  "running",
+    "walking":        "walking",
+    "football":       "football",
+    "basketball":     "basketball",
+    "tennis":         "tennis",
+    "gym/training":   "training",
+    "skateboarding":  "skateboarding",
+    "lifestyle":      "lifestyle",
+    "casual":         "lifestyle",
+}
+
+
+def _taxonomy_value(value: Any) -> str | None:
+    text = _norm(value or "")
+    return text or None
+
+
+def unify_category(product: dict, use_case: str | None = None) -> str | None:
+    """Valor canónico de la CATEGORÍA DEPORTIVA (``category`` == ``sport``).
+
+    ``category`` y ``sport`` son el mismo concepto de negocio, así que acá se
+    resuelve UN valor y ``enrich_product`` lo escribe en las dos columnas.
+
+    Un ``category`` que en realidad es una DIVISIÓN (el mapeo legacy de la
+    ingesta) se descarta: ``footwear`` no es una categoría deportiva. Gracias
+    a eso la función es **idempotente**: en la segunda corrida ``category`` ya
+    trae el valor canónico y se devuelve tal cual.
+    """
+    category = _taxonomy_value(product.get("category"))
+    if category and normalize_division(category):
+        category = None                       # era la división, no la categoría
+    sport = _taxonomy_value(product.get("sport"))
+    if sport and normalize_division(sport):
+        sport = None
+
+    resolved = category or sport
+    if resolved:
+        return resolved
+    canonical_uc = _canonical_use_case(use_case if use_case is not None else product.get("use_case"))
+    return _USE_CASE_TO_CATEGORY.get(canonical_uc or "")
+
+
+# ============================================================
+# C) Banda de precio — EN PLATA (montos, no gamas)
+# ============================================================
+# La banda dejó de ser una etiqueta cualitativa: el label ES el rango en
+# moneda del país ('90.000-160.000', '260.000+'). Se conserva el nombre
+# cualitativo como ALIAS posicional en `price_tier`.
+#
+# CONTRATO CON `matching._price_band_similarity` (módulo de otro dueño):
+# ese código lee `enrichment.price_bands[country]` y usa el ORDEN de las
+# claves para medir distancia ordinal entre bandas. Por eso `products.price_band`
+# guarda LA CLAVE del yaml —no un label recalculado— y las bandas deben estar
+# declaradas de menor a mayor. Así el decaimiento por cercanía sigue
+# funcionando exactamente igual sin tocar `matching.py`.
+
+_DEFAULT_BAND_FORMAT: dict[str, str] = {
+    "thousands_sep": "", "open_top": "+", "separator": "-", "currency_prefix": "",
+}
+
+
+def _band_format(country: str) -> dict[str, str]:
+    cfg = section("enrichment", "price_band_format", default={}) or {}
+    fmt = dict(_DEFAULT_BAND_FORMAT)
+    for override in (cfg.get("default"), cfg.get(str(country or "").upper())):
+        if isinstance(override, dict):
+            fmt.update({k: str(v) for k, v in override.items()})
+    return fmt
+
+
+def _format_amount(value: float, thousands_sep: str) -> str:
+    number = int(round(float(value)))
+    body = f"{abs(number):,}".replace(",", thousands_sep) if thousands_sep else str(abs(number))
+    return ("-" if number < 0 else "") + body
+
+
+def price_band_label(low: float, high: float, country: str, *, open_top: bool = False) -> str:
+    """Label canónico de una banda a partir de sus MONTOS.
+
+    ``(90000, 160000, 'AR')`` -> ``'90.000-160.000'``;
+    ``(260000, ..., 'AR', open_top=True)`` -> ``'260.000+'``.
+    El formato (separador de miles, prefijo de moneda, sufijo de banda
+    abierta) sale de ``enrichment.price_band_format``.
+    """
+    fmt = _band_format(country)
+    prefix = fmt["currency_prefix"]
+    floor = f"{prefix}{_format_amount(low, fmt['thousands_sep'])}"
+    if open_top:
+        return f"{floor}{fmt['open_top']}"
+    return f"{floor}{fmt['separator']}{prefix}{_format_amount(high, fmt['thousands_sep'])}"
+
+
+def price_bands(country: str) -> list[dict[str, Any]]:
+    """Bandas configuradas del país, de menor a mayor.
+
+    Cada banda: ``{label, canonical_label, min, max, upper_bound, tier,
+    index, is_top}``. ``label`` es la clave tal cual está en weights.yaml (la
+    que se persiste); ``canonical_label`` es la derivada de los montos —si no
+    coinciden, la config tiene un typo (lo verifica el test de configuración).
+    ``max`` es ``None`` en la banda superior: es abierta, y el centinela del
+    yaml (99999999) no es un monto real que debamos mostrar.
+
+    La cantidad de bandas sale de la config: acá no hay ningún número fijo.
+    """
+    code = str(country or "").upper()
+    raw = section("enrichment", "price_bands", code, default=None)
+    if not isinstance(raw, dict) or not raw:
+        return []
+
+    items = [(str(name), float(rng[0]), float(rng[1]))
+             for name, rng in raw.items()
+             if isinstance(rng, (list, tuple)) and len(rng) >= 2]
+    items.sort(key=lambda item: item[1])
+    if not items:
+        return []
+
+    tiers = section("enrichment", "price_band_tiers", code, default=None) or []
+    bands: list[dict[str, Any]] = []
+    for index, (name, low, high) in enumerate(items):
+        is_top = index == len(items) - 1
+        bands.append({
+            "label": name,
+            "canonical_label": price_band_label(low, high, code, open_top=is_top),
+            "min": low,
+            "max": None if is_top else high,
+            "upper_bound": high,                       # corte real (excluyente)
+            "tier": str(tiers[index]) if index < len(tiers) else None,
+            "index": index,
+            "is_top": is_top,
+        })
+    return bands
+
+
+def band_for_price(price: float | None, country: str) -> dict[str, Any] | None:
+    """Banda que contiene ``price``, o ``None`` si no se puede determinar."""
     if price is None:
         return None
     try:
@@ -440,25 +669,33 @@ def infer_price_band(price: float | None, country: str) -> str | None:
     if value < 0:
         return None
 
-    bands = section("enrichment", "price_bands", str(country or "").upper(), default=None)
-    if not isinstance(bands, dict) or not bands:
+    bands = price_bands(country)
+    if not bands:
         return None
+    for band in bands:
+        if band["min"] <= value < band["upper_bound"]:
+            return band
+    if value < bands[0]["min"]:
+        return bands[0]
+    return bands[-1]              # por encima del techo => banda más alta
 
-    ordered = sorted(
-        ((name, float(rng[0]), float(rng[1]))
-         for name, rng in bands.items()
-         if isinstance(rng, (list, tuple)) and len(rng) >= 2),
-        key=lambda item: item[1],
-    )
-    if not ordered:
-        return None
 
-    for name, low, high in ordered:
-        if low <= value < high:
-            return name
-    if value < ordered[0][1]:
-        return ordered[0][0]
-    return ordered[-1][0]          # por encima del techo => banda más alta
+def infer_price_band(price: float | None, country: str) -> str | None:
+    """Label EN PLATA de la banda ('90.000-160.000'). Nunca hardcodeado."""
+    band = band_for_price(price, country)
+    return band["label"] if band else None
+
+
+def infer_price_band_bounds(price: float | None, country: str) -> tuple[float | None, float | None]:
+    """``(min, max)`` de la banda, en moneda del país. ``max`` es ``None`` arriba."""
+    band = band_for_price(price, country)
+    return (band["min"], band["max"]) if band else (None, None)
+
+
+def infer_price_tier(price: float | None, country: str) -> str | None:
+    """Alias LEGACY cualitativo (entry|mid|premium|super-premium), si está configurado."""
+    band = band_for_price(price, country)
+    return band["tier"] if band else None
 
 
 # ============================================================
@@ -625,11 +862,22 @@ def enrich_product(product: dict, context: dict | None = None) -> dict:
     avg_discount = ctx.get("avg_discount_pct")
 
     use_case, _use_case_confidence = infer_use_case(product)
+    # La división se resuelve ANTES de reescribir `category`: el valor legacy
+    # de esa columna (footwear/apparel) es justamente la mejor evidencia.
+    division = infer_division(product)
+    category = unify_category(product, use_case)
+    band = band_for_price(price, country)
 
     fields = {
         "normalized_product_name": normalize_name(product.get("product_name") or ""),
+        "division": division,
+        "category": category,
+        "sport": category,                 # alias sincronizado (misma dimensión)
         "use_case": use_case,
-        "price_band": infer_price_band(price, country),
+        "price_band": band["label"] if band else None,
+        "price_band_min": band["min"] if band else None,
+        "price_band_max": band["max"] if band else None,
+        "price_tier": band["tier"] if band else None,
         "lifecycle_stage": infer_lifecycle_stage(product, avg_discount),
         "enrichment_version": enrichment_version(),
     }
@@ -663,8 +911,14 @@ def enrich_product(product: dict, context: dict | None = None) -> dict:
 _UPDATE_SQL = """
 UPDATE products
    SET normalized_product_name = ?,
+       division                = ?,
+       category                = ?,
+       sport                   = ?,
        use_case                = ?,
        price_band              = ?,
+       price_band_min          = ?,
+       price_band_max          = ?,
+       price_tier              = ?,
        lifecycle_stage         = ?,
        enrichment_version      = ?,
        updated_at              = datetime('now')
@@ -702,7 +956,8 @@ def run_enrichment(db_path: Path | str = DB_PATH) -> dict[str, int]:
     """Enriquece todos los productos y persiste columnas + atributos.
 
     Devuelve conteos: ``products``, ``updated``, ``attributes``,
-    ``use_case_inferred``, ``price_band_set``, ``lifecycle_set``.
+    ``use_case_inferred``, ``price_band_set``, ``lifecycle_set``,
+    ``division_set``, ``category_unified``.
     """
     counts = {
         "products": 0,
@@ -711,6 +966,8 @@ def run_enrichment(db_path: Path | str = DB_PATH) -> dict[str, int]:
         "use_case_inferred": 0,
         "price_band_set": 0,
         "lifecycle_set": 0,
+        "division_set": 0,
+        "category_unified": 0,
     }
 
     with get_conn(db_path) as conn:
@@ -742,10 +999,30 @@ def run_enrichment(db_path: Path | str = DB_PATH) -> dict[str, int]:
             if fields["lifecycle_stage"]:
                 counts["lifecycle_set"] += 1
 
+            # División y categoría: si no hay evidencia se conserva lo que
+            # hubiera (nunca se borra un dato de la fuente con un NULL).
+            division = fields["division"] or product.get("division")
+            if fields["division"]:
+                counts["division_set"] += 1
+            category = fields["category"] or product.get("category")
+            # `sport` es alias: si la categoría se resolvió, las dos columnas
+            # quedan iguales; si no, se respeta lo que hubiera en cada una.
+            sport = category if fields["category"] else product.get("sport")
+            if fields["category"] and (
+                product.get("category") != category or product.get("sport") != category
+            ):
+                counts["category_unified"] += 1
+
             cursor = conn.execute(_UPDATE_SQL, (
                 fields["normalized_product_name"],
+                division,
+                category,
+                sport,
                 use_case,
                 price_band,
+                fields["price_band_min"],
+                fields["price_band_max"],
+                fields["price_tier"],
                 lifecycle,
                 fields["enrichment_version"],
                 product["id"],

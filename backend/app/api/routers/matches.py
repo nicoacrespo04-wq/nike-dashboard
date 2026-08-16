@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.api.glossary import glossary_payload
 from app.api.serializers import PRODUCT_CARD_SQL, product_card, products_by_id, table_exists
 from app.config import weights
 from app.db import query
@@ -57,6 +58,8 @@ def product_matches(product_id: int, limit: int = Query(10, ge=1, le=50),
 
     return {
         "product": product_card(subject[0]),
+        # Qué mide cada factor (mismo texto que `docs/glossary.md`).
+        "glossary": glossary_payload("competitive_match"),
         "matches": [{
             "id": r["id"],
             "match_score": r["match_score"],
@@ -94,6 +97,9 @@ def get_match(match_id: int) -> dict[str, Any]:
         "competitor_product": product_card(prods.get(match["competitor_product_id"])),
         "factors": detail,
         "configured_weights": weights("competitive_match", "weights"),
+        # Junto a los pesos configurados viaja QUÉ MIDE cada factor: sin eso la
+        # pantalla de explicabilidad muestra siete nombres y ningún significado.
+        "glossary": glossary_payload("competitive_match"),
         "computed_at": match.get("computed_at"),
     }
 

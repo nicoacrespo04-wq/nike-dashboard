@@ -105,6 +105,161 @@ def _pair_key(a: int, b: int) -> tuple[int, int]:
     return (a, b) if a <= b else (b, a)
 
 
+# ── vigencia de generación (franquicia · modelo · versión) ──
+#
+# Una franquicia ("Pegasus", "Metcon") vive en el catálogo como una SUCESIÓN de
+# generaciones: Metcon 9 -> Metcon 10, Pegasus 41 -> Pegasus 42. Comparar un
+# competidor contra la generación que ya salió de la góndola produce
+# conclusiones sobre un producto que el negocio no está empujando.
+#
+# La vigencia se DERIVA del catálogo, no se declara: dentro de un mismo linaje
+# (marca + país + línea de modelo) gana la versión más alta y, a igualdad, la
+# fecha de lanzamiento más reciente. Nada de listas de "modelos vigentes" en
+# config, que envejecen con cada lanzamiento.
+#
+# Ojo con la granularidad: el linaje NO es la franquicia sino la LÍNEA DE
+# MODELO. "Pegasus" y "Pegasus Trail" comparten franquicia y son siluetas
+# distintas que conviven; tratarlas como generaciones de lo mismo declararía
+# discontinuada a una de las dos.
+
+_VERSION_NUM_RE = re.compile(r"\d+")
+_TRAILING_VERSION_RE = re.compile(r"[\s\-_.]*(?:v)?\d+[a-z]*$")
+
+
+def _version_number(product: dict) -> float | None:
+    """Número de generación del producto, o None si no se puede leer.
+
+    Busca en ``version`` y, si no hay, en ``model`` / ``product_name``. Toma el
+    ÚLTIMO número del texto: "v14" -> 14, "Rise 2" -> 2, "'07" -> 7,
+    "Adizero Adios Pro 3" -> 3. Un versionado no numérico ("Classic XXI", "OG")
+    devuelve None y el linaje se ordena por fecha.
+    """
+    for value in (product.get("version"), product.get("model"), product.get("product_name")):
+        if value in (None, ""):
+            continue
+        nums = _VERSION_NUM_RE.findall(str(value))
+        if nums:
+            return float(nums[-1])
+    return None
+
+
+def lineage_key(product: dict) -> tuple:
+    """Identidad de la LÍNEA de producto a la que pertenece una generación.
+
+    marca + país + línea de modelo (``model``, si no ``franchise``, si no el
+    nombre sin su número de versión). Marca y país entran porque una sucesión
+    de generaciones sólo tiene sentido dentro del mismo catálogo comercial.
+    """
+    base = _norm(product.get("model")) or _norm(product.get("franchise"))
+    if not base:
+        base = _TRAILING_VERSION_RE.sub("", _norm(product.get("product_name"))).strip()
+    return (product.get("brand_id"), product.get("country_code"), base)
+
+
+@dataclass(frozen=True)
+class Generation:
+    """Dónde está un producto dentro de la sucesión de su línea."""
+
+    lineage: tuple
+    version: float | None
+    is_current: bool                 # es la última generación del linaje
+    generations_behind: int          # 0 = vigente, 1 = la anterior, ...
+    successor_id: int | None
+    successor_name: str | None
+    lifecycle_stage: str | None
+    stale: bool                      # generación saliente: no comparar contra ella
+    reason: str | None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "lineage": self.lineage[-1] if self.lineage else None,
+            "version": self.version,
+            "is_current": self.is_current,
+            "generations_behind": self.generations_behind,
+            "successor": self.successor_name,
+            "lifecycle_stage": self.lifecycle_stage,
+            "stale": self.stale,
+            "reason": self.reason,
+        }
+
+
+def stale_lifecycle_stages() -> set[str]:
+    """Etapas de ``lifecycle_stage`` que marcan una generación saliente.
+
+    Se apoya en el `lifecycle_stage` que ya calcula `enrichment` — acá no se
+    vuelve a derivar nada de `launch_date`. Por defecto sólo ``clearance``:
+    ``decline`` es la segunda mitad normal de la vida de un producto vigente y
+    castigar ahí apagaría medio catálogo.
+    """
+    raw = section("competitive_match", "generation", "stale_lifecycle_stages",
+                  default=["clearance"]) or []
+    return {_norm(s) for s in raw if s}
+
+
+def generation_map(products: dict[int, dict]) -> dict[int, Generation]:
+    """Ubica cada producto en su linaje y marca las generaciones salientes.
+
+    Función pura sobre el catálogo en memoria: la usan `matching` (para
+    penalizar pares contra generaciones discontinuadas) y `opportunities`
+    (para elegir el producto Nike de referencia de una franquicia).
+    """
+    stale_stages = stale_lifecycle_stages()
+
+    lineages: dict[tuple, list[int]] = defaultdict(list)
+    for pid, product in products.items():
+        lineages[lineage_key(product)].append(pid)
+
+    out: dict[int, Generation] = {}
+    for key, pids in lineages.items():
+        # Orden de la sucesión: versión numérica y, a igualdad (o sin versión),
+        # fecha de lanzamiento. El último elemento es la generación vigente.
+        ordered = sorted(
+            pids,
+            key=lambda pid: (
+                _version_number(products[pid]) is not None,
+                _version_number(products[pid]) or 0.0,
+                str(products[pid].get("launch_date") or ""),
+                pid,
+            ),
+        )
+        latest = ordered[-1]
+        for position, pid in enumerate(ordered):
+            behind = len(ordered) - 1 - position
+            stage = products[pid].get("lifecycle_stage")
+            superseded = behind > 0
+            by_stage = _norm(stage) in stale_stages
+            reason = None
+            if superseded:
+                reason = (f"generación superada por {products[latest].get('product_name')} "
+                          f"({behind} generación/es atrás)")
+            elif by_stage:
+                reason = f"lifecycle_stage={stage}"
+            out[pid] = Generation(
+                lineage=key,
+                version=_version_number(products[pid]),
+                is_current=not superseded,
+                generations_behind=behind,
+                successor_id=None if not superseded else latest,
+                successor_name=None if not superseded else products[latest].get("product_name"),
+                lifecycle_stage=stage,
+                stale=superseded or by_stage,
+                reason=reason,
+            )
+    return out
+
+
+def current_generation_ids(products: dict[int, dict], *,
+                           brand_is_focus: bool | None = None) -> set[int]:
+    """Ids de los productos que son la generación vigente de su linaje."""
+    gens = generation_map(products)
+    return {
+        pid for pid, gen in gens.items()
+        if gen.is_current
+        and (brand_is_focus is None
+             or bool(products[pid].get("brand_is_focus")) is brand_is_focus)
+    }
+
+
 def _blend(parts: dict[str, float | None], sub_weights: dict[str, float]) -> float | None:
     """Combina sub-señales renormalizando sobre las disponibles.
 
@@ -146,10 +301,15 @@ class MatchContext:
     social: dict[tuple[int, int], list[dict]]       # par ordenado normalizado -> agregados sociales
     # Auxiliar: fechas de publicación por lista editorial (para ponderar recencia).
     editorial_list_dates: dict[str, list[str | None]] = field(default_factory=dict)
+    # Vigencia de generación por producto (ver `generation_map`).
+    generations: dict[int, Generation] = field(default_factory=dict)
     # Memo interno: promedio de precio actual por producto.
     _avg_price_cache: dict[int, float | None] = field(default_factory=dict, repr=False)
 
     # -- accesos convenientes ------------------------------------------------
+
+    def generation(self, product_id: int) -> Generation | None:
+        return self.generations.get(product_id)
 
     def attrs(self, product_id: int) -> dict[str, Any]:
         return self.attributes.get(product_id, {})
@@ -250,6 +410,7 @@ def build_context(db_path: Path | str = DB_PATH) -> MatchContext:
                 social[_pair_key(a, b)].append(r)
 
     return MatchContext(
+        generations=generation_map(products),
         products=products,
         attributes=dict(attributes),
         retailers_by_product=dict(retailers_by_product),
@@ -431,8 +592,51 @@ def _score_semantic(nike: dict, comp: dict, ctx: MatchContext) -> tuple[float | 
     else:
         detail["hard_mismatch"] = None
 
+    # -- atenuación por generación discontinuada --
+    # Dos productos pueden describir exactamente el mismo propósito y aun así
+    # no ser comparables HOY si alguno de los dos ya fue reemplazado por su
+    # siguiente generación (Metcon 9 cuando el negocio empuja la Metcon 10).
+    # Es una atenuación, no un veto: el par sigue existiendo y explicado.
+    score, gen_detail = _apply_generation_penalty(score, nike, comp, ctx)
+    detail["generation"] = gen_detail
+
     detail["score"] = round(score, 4)
     return score, detail
+
+
+def _apply_generation_penalty(score: float, nike: dict, comp: dict,
+                              ctx: MatchContext) -> tuple[float, dict]:
+    """Atenúa el score semántico por cada lado del par que sea generación saliente.
+
+    ``competitive_match.generation.stale_penalty`` (default 0.85) se aplica una
+    vez por lado marcado ``stale``: dos generaciones viejas comparadas entre sí
+    pesan aún menos que una sola.
+    """
+    cfg = section("competitive_match", "generation", default={}) or {}
+    detail: dict[str, Any] = {
+        "nike": (ctx.generation(nike["id"]).as_dict() if ctx.generation(nike["id"]) else None),
+        "competitor": (ctx.generation(comp["id"]).as_dict() if ctx.generation(comp["id"]) else None),
+    }
+    if not bool(cfg.get("enabled", True)):
+        detail["penalty"] = None
+        detail["reason"] = "competitive_match.generation.enabled = false"
+        return score, detail
+
+    penalty = float(cfg.get("stale_penalty", 0.85))
+    stale_sides = [
+        side for side, product in (("nike", nike), ("competitor", comp))
+        if (ctx.generation(product["id"]) or None) is not None
+        and ctx.generation(product["id"]).stale
+    ]
+    detail["stale_sides"] = stale_sides
+    detail["stale_penalty"] = penalty
+    if not stale_sides:
+        detail["penalty"] = None
+        return score, detail
+
+    applied = penalty ** len(stale_sides)
+    detail["penalty"] = round(applied, 4)
+    return clamp(score * applied), detail
 
 
 # ── FACTOR 3: price ─────────────────────────────────────────
@@ -785,6 +989,10 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
     Para cada producto Nike (marca con ``is_focus=1``) evalúa contra todos los
     productos de otras marcas del mismo país, se queda con los que superan
     ``min_score_to_persist`` y persiste el ``top_n_per_product``.
+
+    Al truncar en ``top_n_per_product`` desempata a favor de la generación
+    VIGENTE del competidor: si dos generaciones de la misma línea rival puntúan
+    casi igual, el cupo se lo lleva la que se está vendiendo hoy.
     """
     cfg = section("competitive_match", default={}) or {}
     min_score = float(cfg.get("min_score_to_persist", 0.0))
@@ -794,7 +1002,12 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
 
     nike_products = [p for p in ctx.products.values() if p.get("brand_is_focus")]
     pairs_evaluated = 0
+    stale_pairs = 0
     kept: list[tuple[dict, dict, CompositeScore]] = []
+
+    def _is_stale(pid: int) -> bool:
+        gen = ctx.generation(pid)
+        return bool(gen and gen.stale)
 
     for nike in nike_products:
         candidates: list[tuple[dict, CompositeScore]] = []
@@ -805,11 +1018,16 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
                 continue
             pairs_evaluated += 1
             result = compute_match(nike, comp, ctx)
+            if _is_stale(nike["id"]) or _is_stale(comp["id"]):
+                stale_pairs += 1
             # El umbral y el orden usan el score ajustado por evidencia.
             if evidence_adjusted(result.score, result.coverage) >= min_score:
                 candidates.append((comp, result))
-        candidates.sort(key=lambda item: evidence_adjusted(item[1].score, item[1].coverage),
-                        reverse=True)
+        candidates.sort(
+            key=lambda item: (evidence_adjusted(item[1].score, item[1].coverage),
+                              0 if _is_stale(item[0]["id"]) else 1),
+            reverse=True,
+        )
         if top_n:
             candidates = candidates[:top_n]
         kept.extend((nike, comp, res) for comp, res in candidates)
@@ -863,4 +1081,11 @@ def run_matching(db_path: Path | str = DB_PATH) -> dict[str, int]:
         "pairs_evaluated": pairs_evaluated,
         "matches": len(match_rows),
         "factors": len(factor_rows),
+        # Diagnóstico de vigencia: cuántos pares involucraban una generación
+        # saliente (atenuados en `semantic`) y cuántos Nike ya tienen sucesor.
+        "stale_pairs": stale_pairs,
+        "superseded_nike_products": sum(
+            1 for p in nike_products
+            if (ctx.generation(p["id"]) and ctx.generation(p["id"]).generations_behind > 0)
+        ),
     }

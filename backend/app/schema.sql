@@ -57,8 +57,23 @@ CREATE TABLE IF NOT EXISTS products (
     lifecycle_stage           TEXT,          -- launch|growth|mature|decline|clearance
 
     -- Taxonomía
+    -- `division` es la dimensión de negocio de Nike: FW (footwear),
+    -- AP (apparel), EQ (equipment). Viene de `pricing_data.division` /
+    -- `division_competitor`; si falta, la infiere `services/enrichment.py`.
+    -- Dos productos de divisiones distintas NO compiten.
+    division                  TEXT,          -- FW|AP|EQ
+    -- `category` es la CATEGORÍA DEPORTIVA y es el campo CANÓNICO
+    -- (running|football|basketball|training|tennis|lifestyle|...). Es la
+    -- columna `category` / `category_competitor` de la fuente.
+    -- OJO: hasta la unificación de taxonomía esta columna guardaba la
+    -- división (footwear|apparel|accessories); `enrichment` la reescribe.
     category                  TEXT,
     subcategory               TEXT,
+    -- `sport` es ALIAS de `category`: mismo concepto, se conserva por
+    -- compatibilidad con consumidores existentes (API, UI, queries).
+    -- `enrichment` mantiene las dos columnas sincronizadas y el scoring
+    -- pondera SÓLO `category` para no contar la misma señal dos veces
+    -- (ver competitive_match.semantic.field_weights en weights.yaml).
     sport                     TEXT,
     activity                  TEXT,
     use_case                  TEXT,          -- daily running|race day|trail running|lifestyle|...
@@ -69,7 +84,16 @@ CREATE TABLE IF NOT EXISTS products (
 
     -- Precio de referencia (MSRP en moneda del país)
     msrp                      REAL,
-    price_band                TEXT,          -- entry|mid|premium|super-premium
+    -- La banda de precio se expresa EN PLATA, no en etiquetas cualitativas:
+    -- el label es el rango en moneda del país ('90.000-160.000', '260.000+')
+    -- y sale de `enrichment.price_bands[country]` en weights.yaml.
+    price_band                TEXT,          -- '90.000-160.000' | '260.000+' | ...
+    price_band_min            REAL,          -- piso de la banda, en moneda del país
+    price_band_max            REAL,          -- techo; NULL en la banda superior (abierta)
+    -- Alias legacy cualitativo (entry|mid|premium|super-premium) para los
+    -- consumidores que todavía razonan por gama. Sale de
+    -- `enrichment.price_band_tiers[country]`, posicional respecto de las bandas.
+    price_tier                TEXT,
 
     -- Enlaces
     url                       TEXT,
@@ -85,6 +109,8 @@ CREATE INDEX IF NOT EXISTS idx_products_brand      ON products(brand_id);
 CREATE INDEX IF NOT EXISTS idx_products_franchise  ON products(franchise);
 CREATE INDEX IF NOT EXISTS idx_products_use_case   ON products(use_case);
 CREATE INDEX IF NOT EXISTS idx_products_country    ON products(country_code);
+CREATE INDEX IF NOT EXISTS idx_products_division   ON products(division);
+CREATE INDEX IF NOT EXISTS idx_products_category   ON products(category);
 
 -- Atributos esparsos (EAV). Permite atributos faltantes sin migraciones.
 --   attr_group: 'physical' | 'visual' | 'performance' | 'derived'

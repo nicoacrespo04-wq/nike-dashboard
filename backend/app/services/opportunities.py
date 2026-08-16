@@ -25,9 +25,14 @@ from typing import Any
 from app.config import DB_PATH, section
 from app.db import get_conn, query
 from app.services import scoring
+from app.services.matching import Generation, generation_map
 from app.services.common import clamp, parse_date, recency_weight, to_json
 
-# Los 12 tipos, en el orden en que se ejecutan.
+# Los 12 tipos históricos, en el orden en que se ejecutan.
+# NO agregar acá tipos nuevos: `app.calibration` declara un umbral y una señal
+# de entrada por cada elemento de esta tupla (ver `calibration.THRESHOLDS` y
+# `calibration.RULE_INPUTS`). Los tipos que todavía no tienen ficha de
+# calibración viven en `EXTRA_OPPORTUNITY_TYPES`.
 OPPORTUNITY_TYPES: tuple[str, ...] = (
     "price_competitiveness_risk",
     "over_discounting_risk",
@@ -43,11 +48,22 @@ OPPORTUNITY_TYPES: tuple[str, ...] = (
     "product_launch_threat",
 )
 
+# Reglas nuevas, todavía sin ficha en `app.calibration`.
+# `clearance_needed` es la hermana de `full_price_opportunity`: las dos deciden
+# sobre el MISMO stylecolor y con la MISMA evidencia de rotación, en sentidos
+# opuestos. Ver `_rule_clearance_needed`.
+EXTRA_OPPORTUNITY_TYPES: tuple[str, ...] = (
+    "clearance_needed",
+)
+
+ALL_OPPORTUNITY_TYPES: tuple[str, ...] = OPPORTUNITY_TYPES + EXTRA_OPPORTUNITY_TYPES
+
 # Acción sugerida por tipo (texto de UI en español, códigos en inglés).
 ACTIONS: dict[str, str] = {
     "price_competitiveness_risk": "REVIEW_PRICE_POSITIONING",
     "over_discounting_risk": "REDUCE_DISCOUNT_DEPTH",
     "full_price_opportunity": "RETURN_TO_FULL_PRICE",
+    "clearance_needed": "LIQUIDATE_STYLECOLOR",
     "assortment_gap": "EXPAND_ASSORTMENT",
     "distribution_gap": "EXPAND_DISTRIBUTION",
     "share_of_shelf_risk": "DEFEND_SHARE_OF_SHELF",
@@ -57,6 +73,13 @@ ACTIONS: dict[str, str] = {
     "premiumization_opportunity": "EVALUATE_PRICE_INCREASE",
     "promotional_pressure": "PREPARE_PROMO_RESPONSE",
     "product_launch_threat": "PREPARE_LAUNCH_DEFENSE",
+}
+
+# Familia por tipo cuando `opportunities.families` (weights.yaml) todavía no la
+# declara. Sólo cubre los tipos nuevos: lo que ya está en config manda siempre.
+#   PENDIENTE en config/weights.yaml:  opportunities.families.clearance_needed: pricing
+_FALLBACK_FAMILIES: dict[str, str] = {
+    "clearance_needed": "pricing",
 }
 
 
@@ -81,8 +104,13 @@ class OpportunityDraft:
 
     @property
     def family(self) -> str | None:
-        families = section("opportunities", "families", default={}) or {}
-        return families.get(self.opportunity_type)
+        return family_of(self.opportunity_type)
+
+
+def family_of(opportunity_type: str) -> str | None:
+    """Familia declarada en config; si falta, la de `_FALLBACK_FAMILIES`."""
+    families = section("opportunities", "families", default={}) or {}
+    return families.get(opportunity_type) or _FALLBACK_FAMILIES.get(opportunity_type)
 
 
 # ── contexto ────────────────────────────────────────────────
@@ -98,6 +126,121 @@ def _fmt(value: float | None, digits: int = 0) -> str:
     return f"{value:.{digits}f}"
 
 
+def _rotation_cfg(key: str, default: Any) -> Any:
+    return section("opportunities", "rotation", key, default=default)
+
+
+# ── rotación por STYLECOLOR (proxy de WOH) ──────────────────
+#
+# La decisión de volver a precio lleno NO es de la silueta ni de la franquicia:
+# es del stylecolor. Dentro de una misma silueta conviven colorways que vuelan y
+# colorways con exceso de inventario que hay que liquidar sí o sí. Por eso la
+# unidad de análisis acá es `style_code` (el stylecolor), no `product`.
+#
+# No hay tabla de ventas ni de inventario: la rotación se ESTIMA de dos series
+# que sí existen, agregadas por stylecolor y por fecha de observación:
+#
+#   * `stock_observations.availability_pct` (talles disponibles / talles totales)
+#     -> cuánto del size run queda vivo, y a qué ritmo se está drenando.
+#   * `price_observations.discount_pct` -> hacia dónde va el markdown.
+#
+#     drenaje  = (disponibilidad_inicial - disponibilidad_final) / días × 30
+#     WOH      = disponibilidad_actual / (drenaje semanal)      # semanas de cobertura
+#
+# Un stylecolor que ROTA drena su curva de talles y no necesita profundizar
+# descuento. Uno con exceso de inventario mantiene la disponibilidad alta y
+# plana mientras el descuento sube: ése hay que liquidarlo, no devolverlo a full
+# price. Si no hay serie suficiente para medir el drenaje, `sufficient=False` y
+# NINGUNA de las dos reglas dispara: vale más callarse.
+
+
+@dataclass(frozen=True)
+class Rotation:
+    """Estimación de rotación de un stylecolor a partir de series observadas."""
+
+    style_key: str
+    product_ids: tuple[int, ...]
+    n_observations: int                    # fechas distintas con disponibilidad
+    span_days: int
+    availability_now: float | None
+    availability_avg: float | None
+    depletion_pp_per_month: float | None   # >0 = el size run se está drenando
+    weeks_on_hand: float | None            # None = no drena (cobertura infinita)
+    discount_now: float | None
+    discount_trend_pp_per_month: float | None
+    sufficient: bool
+    reason: str | None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "style_key": self.style_key,
+            "n_observations": self.n_observations,
+            "span_days": self.span_days,
+            "availability_now_pct": _round(self.availability_now, 1),
+            "availability_avg_pct": _round(self.availability_avg, 1),
+            "depletion_pp_per_month": _round(self.depletion_pp_per_month, 2),
+            "weeks_on_hand": _round(self.weeks_on_hand, 1),
+            "discount_now_pct": _round(self.discount_now, 1),
+            "discount_trend_pp_per_month": _round(self.discount_trend_pp_per_month, 2),
+            "sufficient": self.sufficient,
+            "reason": self.reason,
+        }
+
+
+def _round(value: float | None, digits: int) -> float | None:
+    return None if value is None else round(float(value), digits)
+
+
+def style_key(product: dict) -> str:
+    """Identidad del STYLECOLOR: ``style_code`` -> ``sku`` -> id del producto.
+
+    El `style_code` de Nike ya identifica silueta + colorway; el `sku` es el
+    respaldo cuando el scraper no lo trajo. El id del producto es el último
+    recurso y mantiene la regla operando a la granularidad más fina disponible.
+    """
+    for key in ("style_code", "sku"):
+        value = product.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return f"product:{product.get('id')}"
+
+
+def _daily_series(rows: list[dict], value_of) -> list[tuple[date, float]]:
+    """Serie (fecha, promedio entre retailers) ordenada, descartando huecos."""
+    buckets: dict[date, list[float]] = {}
+    for row in rows:
+        when = parse_date(row.get("observed_at"))
+        if when is None:
+            continue
+        value = value_of(row)
+        if value is None:
+            continue
+        buckets.setdefault(when, []).append(float(value))
+    return [(day, sum(v) / len(v)) for day, v in sorted(buckets.items())]
+
+
+def _availability_of(row: dict) -> float | None:
+    pct = row.get("availability_pct")
+    if pct is not None:
+        return float(pct)
+    total, available = row.get("sizes_total"), row.get("sizes_available")
+    if total and available is not None:
+        return float(available) / float(total) * 100.0
+    if row.get("in_stock") is not None:
+        return 100.0 if int(row["in_stock"]) else 0.0
+    return None
+
+
+def _slope_per_month(series: list[tuple[date, float]]) -> tuple[float | None, int]:
+    """Pendiente extremo-a-extremo en unidades/30 días y span en días."""
+    if len(series) < 2:
+        return None, 0
+    span = (series[-1][0] - series[0][0]).days
+    if span <= 0:
+        return None, 0
+    return (series[-1][1] - series[0][1]) / span * 30.0, span
+
+
 @dataclass
 class IntelContext:
     """Snapshot en memoria de todo lo que las reglas necesitan leer."""
@@ -110,6 +253,13 @@ class IntelContext:
     competitor_ids: list[int] = field(default_factory=list)
     prices: dict[int, dict[int, dict]] = field(default_factory=dict)   # product -> retailer -> obs
     stock: dict[int, dict[int, dict]] = field(default_factory=dict)
+    # Series completas (todas las observaciones, no sólo la última): son la
+    # materia prima del proxy de rotación por stylecolor.
+    price_series: dict[int, list[dict]] = field(default_factory=dict)
+    stock_series: dict[int, list[dict]] = field(default_factory=dict)
+    stylecolors: dict[str, list[int]] = field(default_factory=dict)    # style_key -> products
+    generations: dict[int, Generation] = field(default_factory=dict)
+    _rotation_cache: dict[str, Rotation] = field(default_factory=dict, repr=False)
     reviews: dict[int, dict] = field(default_factory=dict)
     matches: dict[int, list[dict]] = field(default_factory=dict)       # nike -> [match]
     pair_scores: dict[tuple[int, int], float] = field(default_factory=dict)
@@ -211,6 +361,93 @@ class IntelContext:
             if v is not None
         ]
         return sum(values) / len(values) if values else None
+
+    # — stylecolor y rotación —
+
+    def style_key_of(self, pid: int | None) -> str | None:
+        product = self.product(pid)
+        return style_key(product) if product else None
+
+    def stylecolor_products(self, key: str) -> list[int]:
+        return list(self.stylecolors.get(key) or [])
+
+    def nike_stylecolors(self) -> list[str]:
+        """Stylecolors Nike, en orden estable."""
+        seen: list[str] = []
+        for pid in self.nike_ids:
+            key = self.style_key_of(pid)
+            if key and key not in seen:
+                seen.append(key)
+        return seen
+
+    def rotation(self, key: str) -> Rotation:
+        """Proxy de rotación / WOH del stylecolor (memoizado).
+
+        ``sufficient=False`` cuando la serie no alcanza para afirmar nada: sin
+        eso, un stylecolor observado una sola vez parecería "sin exceso de
+        inventario" simplemente porque no hay con qué contradecirlo.
+        """
+        cached = self._rotation_cache.get(key)
+        if cached is not None:
+            return cached
+
+        pids = self.stylecolor_products(key)
+        stock_rows = [row for pid in pids for row in (self.stock_series.get(pid) or [])]
+        price_rows = [row for pid in pids for row in (self.price_series.get(pid) or [])]
+
+        availability = _daily_series(stock_rows, _availability_of)
+        discounts = _daily_series(
+            price_rows,
+            lambda r: float(r["discount_pct"]) if r.get("discount_pct") is not None else None,
+        )
+
+        min_obs = int(_rotation_cfg("min_observations", 3))
+        min_span = float(_rotation_cfg("min_span_days", 45.0))
+
+        slope, span = _slope_per_month(availability)
+        depletion = None if slope is None else -slope          # >0 = drena
+        discount_trend, _ = _slope_per_month(discounts)
+
+        reason: str | None = None
+        if len(availability) < min_obs:
+            reason = (f"serie de stock insuficiente: {len(availability)} observación/es "
+                      f"(mínimo {min_obs})")
+        elif span < min_span:
+            reason = f"la serie cubre {span} días (mínimo {min_span:.0f})"
+        elif depletion is None:
+            reason = "no se pudo estimar el drenaje de talles"
+
+        now = availability[-1][1] if availability else None
+        avg = (sum(v for _, v in availability) / len(availability)) if availability else None
+        weeks = None
+        if depletion is not None and depletion > 0 and now is not None:
+            weeks = now / (depletion / 30.0 * 7.0)
+
+        rotation = Rotation(
+            style_key=key,
+            product_ids=tuple(pids),
+            n_observations=len(availability),
+            span_days=span,
+            availability_now=now,
+            availability_avg=avg,
+            depletion_pp_per_month=depletion,
+            weeks_on_hand=weeks,
+            discount_now=discounts[-1][1] if discounts else None,
+            discount_trend_pp_per_month=discount_trend,
+            sufficient=reason is None,
+            reason=reason,
+        )
+        self._rotation_cache[key] = rotation
+        return rotation
+
+    # — vigencia de generación —
+
+    def generation(self, pid: int | None) -> Generation | None:
+        return self.generations.get(pid) if pid is not None else None
+
+    def is_current_generation(self, pid: int | None) -> bool:
+        gen = self.generation(pid)
+        return True if gen is None else gen.is_current
 
     # — señales —
 
@@ -345,11 +582,19 @@ def build_context(db_path: Any = DB_PATH) -> IntelContext:
     for row in query("SELECT * FROM retailers", path=db_path):
         ctx.retailers[int(row["id"])] = row
 
-    # Última observación por (producto, retailer).
+    # Última observación por (producto, retailer) + serie completa (rotación).
     for row in query("SELECT * FROM price_observations ORDER BY observed_at, id", path=db_path):
         ctx.prices.setdefault(int(row["product_id"]), {})[int(row["retailer_id"])] = row
+        ctx.price_series.setdefault(int(row["product_id"]), []).append(row)
     for row in query("SELECT * FROM stock_observations ORDER BY observed_at, id", path=db_path):
         ctx.stock.setdefault(int(row["product_id"]), {})[int(row["retailer_id"])] = row
+        ctx.stock_series.setdefault(int(row["product_id"]), []).append(row)
+
+    # Stylecolors (agrupa productos que comparten style_code/sku) y vigencia de
+    # generación por linaje (ver `matching.generation_map`).
+    for pid, product in ctx.products.items():
+        ctx.stylecolors.setdefault(style_key(product), []).append(pid)
+    ctx.generations = generation_map(ctx.products)
 
     for row in query(
         "SELECT product_id, SUM(COALESCE(review_count, 1)) AS cnt, AVG(rating) AS rating "
@@ -550,14 +795,44 @@ def _rule_over_discounting_risk(ctx: IntelContext) -> list[OpportunityDraft]:
     return drafts
 
 
+def _stylecolor_label(ctx: IntelContext, key: str, pid: int) -> str:
+    """Nombre legible del stylecolor: producto + código de color."""
+    name = ctx.name(pid)
+    return name if key.startswith("product:") else f"{name} ({key})"
+
+
 def _rule_full_price_opportunity(ctx: IntelContext) -> list[OpportunityDraft]:
-    """Nike descuenta sin que el competidor esté más barato: volver a full price."""
+    """Volver a precio lleno un STYLECOLOR que rota y no está bajo presión.
+
+    Tres condiciones, y las tres son del stylecolor — no de la silueta ni de la
+    franquicia:
+
+      1. está descontado por encima de ``min_nike_discount_pct``;
+      2. el competidor comparable NO está más barato que
+         ``max_competitor_cheaper_pct`` (el descuento no responde a presión real);
+      3. **rota**: su curva de talles se está drenando al menos
+         ``rotation.rotating_min_depletion_pp_per_month`` y el markdown no viene
+         profundizándose más rápido que ``rotation.markdown_trend_pp_per_month``.
+
+    Sin serie suficiente para estimar (3) la regla NO dispara. Recomendar full
+    price sobre un colorway que en realidad hay que liquidar cuesta plata; no
+    decir nada, no.
+    """
     cfg = _rule_cfg("full_price_opportunity")
     max_cheaper = float(cfg.get("max_competitor_cheaper_pct", 0.0))
     min_discount = float(cfg.get("min_nike_discount_pct", 0.0))
+    min_depletion = float(_rotation_cfg("rotating_min_depletion_pp_per_month", 2.0))
+    max_markdown_trend = float(_rotation_cfg("markdown_trend_pp_per_month", 3.0))
     drafts: list[OpportunityDraft] = []
 
-    for nike_id in ctx.nike_ids:
+    nike_set = set(ctx.nike_ids)
+    for key in ctx.nike_stylecolors():
+        pids = [p for p in ctx.stylecolor_products(key) if p in nike_set]
+        nike_id = _representative(ctx, pids)
+        if nike_id is None:
+            continue
+
+        rotation = ctx.rotation(key)
         nike_disc = ctx.avg_discount(nike_id)
         if nike_disc is None or nike_disc < min_discount:
             continue
@@ -568,16 +843,32 @@ def _rule_full_price_opportunity(ctx: IntelContext) -> list[OpportunityDraft]:
         gap = price_comparison(ctx, nike_id, comp_id)["gap_pct"]
         if gap is None or gap > max_cheaper:
             continue
+
+        # — gate de rotación: sin datos no se opina —
+        if not rotation.sufficient:
+            continue
+        depletion = rotation.depletion_pp_per_month or 0.0
+        trend = rotation.discount_trend_pp_per_month
+        if depletion < min_depletion:
+            continue
+        if trend is not None and trend >= max_markdown_trend:
+            continue
+
+        woh = (f"{rotation.weeks_on_hand:.0f} semanas de cobertura"
+               if rotation.weeks_on_hand is not None else "cobertura no acotada")
         drafts.append(OpportunityDraft(
             opportunity_type="full_price_opportunity",
             nike_product_id=nike_id,
             competitor_product_id=comp_id,
             retailer_id=None,
-            title=f"Oportunidad de full price en {ctx.name(nike_id)}",
+            title=f"Oportunidad de full price en {_stylecolor_label(ctx, key, nike_id)}",
             description=(
-                f"Nike sostiene {_fmt(nike_disc, 1)}% de descuento mientras el competidor "
-                f"comparable ({ctx.name(comp_id)}) sólo está {_fmt(max(gap, 0.0), 1)}% por "
-                f"debajo: el descuento no responde a presión competitiva real."
+                f"El stylecolor {key} sostiene {_fmt(nike_disc, 1)}% de descuento mientras el "
+                f"competidor comparable ({ctx.name(comp_id)}) sólo está "
+                f"{_fmt(max(gap, 0.0), 1)}% por debajo, y rota: su curva de talles drena "
+                f"{_fmt(depletion, 1)}pp por mes ({woh}) con el markdown estable "
+                f"({_fmt(trend, 1)}pp/mes). El descuento no responde a presión competitiva "
+                f"real ni a exceso de inventario."
             ),
             drivers=[],
             importance_inputs=ctx.importance_inputs(
@@ -586,9 +877,81 @@ def _rule_full_price_opportunity(ctx: IntelContext) -> list[OpportunityDraft]:
             ),
             action=ACTIONS["full_price_opportunity"],
             rationale=(
-                f"Migrar a venta full price recupera hasta {_fmt(nike_disc, 1)}pp de margen: "
-                f"el gap competitivo ({_fmt(gap, 1)}%) está por debajo del umbral de "
-                f"{_fmt(max_cheaper, 1)}%."
+                f"Migrar el stylecolor {key} a venta full price recupera hasta "
+                f"{_fmt(nike_disc, 1)}pp de margen: el gap competitivo ({_fmt(gap, 1)}%) está "
+                f"por debajo del umbral de {_fmt(max_cheaper, 1)}% y la rotación "
+                f"({_fmt(depletion, 1)}pp/mes) no exige liquidar. La decisión es de ESTE "
+                f"colorway: otros de la misma silueta pueden necesitar lo contrario."
+            ),
+            country_code=ctx.product(nike_id).get("country_code"),
+        ))
+    return drafts
+
+
+def _rule_clearance_needed(ctx: IntelContext) -> list[OpportunityDraft]:
+    """Stylecolor con exceso de inventario: hay que liquidarlo sí o sí.
+
+    La hermana simétrica de `full_price_opportunity`, sobre la misma evidencia:
+    disponibilidad ALTA y SOSTENIDA (el size run no se drena) mientras el
+    descuento se profundiza. Ese colorway acumula WOH y hay que sacarlo, aunque
+    su franquicia esté competitiva en precio.
+    """
+    cfg = _rule_cfg("clearance_needed")
+    min_availability = float(cfg.get("min_availability_pct",
+                                     _rotation_cfg("high_availability_pct", 60.0)))
+    max_depletion = float(cfg.get("max_depletion_pp_per_month",
+                                  _rotation_cfg("rotating_min_depletion_pp_per_month", 2.0)))
+    min_trend = float(cfg.get("min_discount_trend_pp_per_month",
+                              _rotation_cfg("markdown_trend_pp_per_month", 3.0)))
+    min_discount = float(cfg.get("min_nike_discount_pct", 10.0))
+    drafts: list[OpportunityDraft] = []
+
+    nike_set = set(ctx.nike_ids)
+    for key in ctx.nike_stylecolors():
+        pids = [p for p in ctx.stylecolor_products(key) if p in nike_set]
+        nike_id = _representative(ctx, pids)
+        if nike_id is None:
+            continue
+
+        rotation = ctx.rotation(key)
+        if not rotation.sufficient:
+            continue
+        depletion = rotation.depletion_pp_per_month
+        trend = rotation.discount_trend_pp_per_month
+        level = rotation.availability_avg
+        discount = rotation.discount_now if rotation.discount_now is not None else ctx.avg_discount(nike_id)
+        if depletion is None or level is None or trend is None or discount is None:
+            continue
+        if level < min_availability or depletion >= max_depletion or trend < min_trend:
+            continue
+        if discount < min_discount:
+            continue
+
+        comp_id = _top_competitor(ctx, nike_id)
+        drafts.append(OpportunityDraft(
+            opportunity_type="clearance_needed",
+            nike_product_id=nike_id,
+            competitor_product_id=comp_id,
+            retailer_id=None,
+            title=f"Liquidación necesaria en {_stylecolor_label(ctx, key, nike_id)}",
+            description=(
+                f"El stylecolor {key} sostiene {_fmt(level, 1)}% de disponibilidad de talles "
+                f"con un drenaje de apenas {_fmt(depletion, 1)}pp por mes (umbral de rotación: "
+                f"{_fmt(max_depletion, 1)}pp) mientras el descuento se profundiza "
+                f"{_fmt(trend, 1)}pp por mes (hoy {_fmt(discount, 1)}%): el inventario de ESTE "
+                f"colorway no está rotando."
+            ),
+            drivers=[],
+            importance_inputs=ctx.importance_inputs(
+                nike_id, competitor_id=comp_id, promo_intensity_pct=discount,
+            ),
+            action=ACTIONS["clearance_needed"],
+            rationale=(
+                f"Con la curva de talles estancada en {_fmt(level, 1)}% y el markdown subiendo "
+                f"{_fmt(trend, 1)}pp/mes, este colorway acumula semanas de cobertura: conviene "
+                f"un plan de salida (profundidad de descuento, reubicación de stock) antes de "
+                f"que el markdown se coma el margen igual pero más tarde. NO aplica al resto "
+                f"de la silueta: cada stylecolor rota distinto."
             ),
             country_code=ctx.product(nike_id).get("country_code"),
         ))
@@ -1033,19 +1396,85 @@ def _rule_product_launch_threat(ctx: IntelContext) -> list[OpportunityDraft]:
     return drafts
 
 
+# ── diversidad: agrupación de oportunidades del mismo SKU ───
+#
+# Un mismo producto Nike puede disparar varias veces la MISMA regla: tres
+# lanzamientos de competidores distintos contra la Pegasus son tres filas de
+# `product_launch_threat` que dicen lo mismo y ocupan tres lugares del ranking.
+#
+# Se AGRUPAN, no se descartan: la fila resultante conserva los datos de todos
+# los casos (los describe uno por uno) y apunta al más grave, que es el que
+# define la acción. Esto vive DENTRO de las reglas, no en el persistidor,
+# porque `app.calibration` audita "drafts producidos vs filas persistidas" y
+# esa igualdad es lo que detecta una regla rota.
+
+
+def _group_by_product(drafts: list[OpportunityDraft], *,
+                      connector: str = "Además") -> list[OpportunityDraft]:
+    """Colapsa a una sola oportunidad los drafts del mismo producto Nike.
+
+    Preserva el orden de aparición y deja intactos los drafts sin producto
+    (las oportunidades de retailer o de segmento sin representante).
+    """
+    if not bool(section("opportunities", "diversity", "group_same_product", default=True)):
+        return drafts
+
+    grouped: dict[int, OpportunityDraft] = {}
+    extras: dict[int, list[OpportunityDraft]] = {}
+    out: list[OpportunityDraft] = []
+
+    for draft in drafts:
+        pid = draft.nike_product_id
+        if pid is None:
+            out.append(draft)
+            continue
+        if pid not in grouped:
+            grouped[pid] = draft
+            extras[pid] = []
+            out.append(draft)
+        else:
+            extras[pid].append(draft)
+
+    for pid, others in extras.items():
+        if not others:
+            continue
+        head = grouped[pid]
+        cases = " ".join(f"{connector}: {o.description}" for o in others)
+        head.description = f"{head.description} {cases}"
+        head.rationale = (
+            f"{head.rationale} Se agruparon {len(others) + 1} casos del mismo producto "
+            f"para no saturar el ranking; la acción cubre a todos."
+        )
+        head.importance_inputs = dict(head.importance_inputs)
+        head.importance_inputs["grouped_cases"] = len(others) + 1
+    return out
+
+
+def _grouped(rule):
+    """Envuelve una regla para que agrupe sus drafts por producto Nike."""
+
+    def wrapped(ctx: IntelContext) -> list[OpportunityDraft]:
+        return _group_by_product(rule(ctx))
+
+    wrapped.__name__ = getattr(rule, "__name__", "rule")
+    wrapped.__doc__ = rule.__doc__
+    return wrapped
+
+
 RULES = {
-    "price_competitiveness_risk": _rule_price_competitiveness_risk,
-    "over_discounting_risk": _rule_over_discounting_risk,
-    "full_price_opportunity": _rule_full_price_opportunity,
-    "assortment_gap": _rule_assortment_gap,
-    "distribution_gap": _rule_distribution_gap,
-    "share_of_shelf_risk": _rule_share_of_shelf_risk,
-    "competitor_momentum": _rule_competitor_momentum,
-    "competitor_stockout_opportunity": _rule_competitor_stockout_opportunity,
-    "assortment_white_space": _rule_assortment_white_space,
-    "premiumization_opportunity": _rule_premiumization_opportunity,
-    "promotional_pressure": _rule_promotional_pressure,
-    "product_launch_threat": _rule_product_launch_threat,
+    "price_competitiveness_risk": _grouped(_rule_price_competitiveness_risk),
+    "over_discounting_risk": _grouped(_rule_over_discounting_risk),
+    "full_price_opportunity": _grouped(_rule_full_price_opportunity),
+    "clearance_needed": _grouped(_rule_clearance_needed),
+    "assortment_gap": _grouped(_rule_assortment_gap),
+    "distribution_gap": _grouped(_rule_distribution_gap),
+    "share_of_shelf_risk": _grouped(_rule_share_of_shelf_risk),
+    "competitor_momentum": _grouped(_rule_competitor_momentum),
+    "competitor_stockout_opportunity": _grouped(_rule_competitor_stockout_opportunity),
+    "assortment_white_space": _grouped(_rule_assortment_white_space),
+    "premiumization_opportunity": _grouped(_rule_premiumization_opportunity),
+    "promotional_pressure": _grouped(_rule_promotional_pressure),
+    "product_launch_threat": _grouped(_rule_product_launch_threat),
 }
 
 
@@ -1053,13 +1482,20 @@ RULES = {
 
 
 def _representative(ctx: IntelContext, candidates: list[int]) -> int | None:
-    """Producto Nike más relevante de una lista (por importancia de franquicia)."""
+    """Producto Nike de referencia de un conjunto (segmento, stylecolor, ...).
+
+    Criterio, en orden: importancia de la franquicia -> **generación vigente**
+    -> proxy de facturación. La vigencia entra en el medio a propósito: define
+    QUÉ Pegasus representa a "daily running" (la 42, no la 41), pero no puede
+    hacer que una franquicia menor le gane a una franquicia mayor.
+    """
     if not candidates:
         return None
     return max(
         candidates,
         key=lambda pid: (
             scoring.franchise_importance(ctx.product(pid).get("franchise")),
+            1 if ctx.is_current_generation(pid) else 0,
             ctx.revenue_proxy_raw(pid) or 0.0,
         ),
     )
@@ -1073,13 +1509,22 @@ def _top_competitor(ctx: IntelContext, nike_id: int | None) -> int | None:
 
 
 def _nike_counterpart(ctx: IntelContext, comp_id: int) -> int | None:
-    """Producto Nike enfrentado a un competidor: por match, si no por segmento."""
-    best: tuple[float, int] | None = None
+    """Producto Nike enfrentado a un competidor: por match, si no por segmento.
+
+    A igualdad de match gana la generación vigente: el equipo comercial defiende
+    la Metcon 10, no la 9. (El score de match ya viene atenuado para las
+    generaciones salientes — ver `matching._apply_generation_penalty` —, esto
+    resuelve los empates que quedan.)
+    """
+    best: tuple[float, int, int] | None = None
     for (nike_id, other), score in ctx.pair_scores.items():
-        if other == comp_id and (best is None or score > best[0]):
-            best = (score, nike_id)
+        if other != comp_id:
+            continue
+        candidate = (score, 1 if ctx.is_current_generation(nike_id) else 0, nike_id)
+        if best is None or candidate[:2] > best[:2]:
+            best = candidate
     if best:
-        return best[1]
+        return best[2]
     return _representative(ctx, ctx.products_in_segment(ctx.segment_of(comp_id), nike=True))
 
 
@@ -1100,25 +1545,85 @@ def _drivers_from(score: Any) -> list[dict]:
     ]
 
 
-def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
-    """Ejecuta las 12 reglas, puntúa, y persiste. Idempotente (borra y recalcula)."""
-    ctx = build_context(db_path)
-    families = section("opportunities", "families", default={}) or {}
+def _diversity_factors(rows: list[tuple]) -> list[float]:
+    """Factor de prioridad por repetición del mismo producto Nike.
 
-    counts: dict[str, int] = {name: 0 for name in OPPORTUNITY_TYPES}
+    El Opportunity Center ordena por `business_importance`, así que un producto
+    con muchas oportunidades legítimas se queda con toda la primera pantalla:
+    en la base demo, 8 de las 10 primeras filas eran la misma zapatilla. Una
+    lista así no sirve para decidir — el que la lee ya sabía que ese producto
+    importa.
+
+    En vez de descartar filas (perdería oportunidades reales), la n-ésima
+    oportunidad de un mismo producto entra al ranking con la prioridad
+    atenuada:
+
+        factor = max(min_factor, repeat_decay ** k)      # k = 0, 1, 2, ...
+
+    La más grave de cada producto NO se toca (k=0, factor 1.0): compite de igual
+    a igual. Las repeticiones bajan pero nunca desaparecen — con `min_factor`
+    conservan un piso — así que siguen estando en la lista, filtrables por
+    producto y por tipo, con su importancia original guardada en `drivers`.
+    """
+    cfg = section("opportunities", "diversity", default={}) or {}
+    if not bool(cfg.get("enabled", True)):
+        return [1.0] * len(rows)
+
+    decay = float(cfg.get("repeat_decay", 0.80))
+    floor = float(cfg.get("min_factor", 0.40))
+
+    order = sorted(range(len(rows)), key=lambda i: -float(rows[i][1].score))
+    seen: dict[int, int] = {}
+    factors = [1.0] * len(rows)
+    for i in order:
+        pid = rows[i][0].nike_product_id
+        if pid is None:                      # oportunidades de retailer/segmento
+            continue
+        k = seen.get(pid, 0)
+        seen[pid] = k + 1
+        factors[i] = max(floor, decay ** k) if k else 1.0
+    return factors
+
+
+def _diversity_driver(base: float, adjusted: float, factor: float) -> dict:
+    """Driver informativo: qué importancia tenía la fila antes de la atenuación."""
+    return {
+        "name": "diversity_factor",
+        "value": round(factor, 4),
+        "contribution": 0.0,
+        "weight": 0.0,
+        "detail": {
+            "base_importance": round(base, 2),
+            "adjusted_importance": round(adjusted, 2),
+            "reason": ("no es la oportunidad más grave de este producto Nike: baja en el "
+                       "ranking para que la lista no la ocupe un solo SKU"),
+        },
+    }
+
+
+def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
+    """Ejecuta las reglas, puntúa, y persiste. Idempotente (borra y recalcula)."""
+    ctx = build_context(db_path)
+
+    counts: dict[str, int] = {name: 0 for name in ALL_OPPORTUNITY_TYPES}
     rows: list[tuple] = []
 
-    for opportunity_type in OPPORTUNITY_TYPES:
+    for opportunity_type in ALL_OPPORTUNITY_TYPES:
         for draft in RULES[opportunity_type](ctx):
             importance = scoring.business_importance(draft.importance_inputs, ctx)
             drivers = draft.drivers or _drivers_from(importance)
             rows.append((draft, importance, drivers))
             counts[opportunity_type] += 1
 
+    factors = _diversity_factors(rows)
+
     with get_conn(db_path) as conn:
         conn.execute("DELETE FROM recommendations")
         conn.execute("DELETE FROM opportunities")
-        for draft, importance, drivers in rows:
+        for (draft, importance, drivers), factor in zip(rows, factors):
+            score = round(importance.score * factor, 2)
+            if factor < 1.0:
+                drivers = [*drivers, _diversity_driver(importance.score, score, factor)]
             cur = conn.execute(
                 "INSERT INTO opportunities (opportunity_type, family, severity, "
                 "nike_product_id, competitor_product_id, retailer_id, country_code, title, "
@@ -1126,15 +1631,15 @@ def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     draft.opportunity_type,
-                    families.get(draft.opportunity_type),
-                    scoring.severity(importance.score),
+                    family_of(draft.opportunity_type),
+                    scoring.severity(score),
                     draft.nike_product_id,
                     draft.competitor_product_id,
                     draft.retailer_id,
                     draft.country_code,
                     draft.title,
                     draft.description,
-                    round(importance.score, 2),
+                    score,
                     importance.confidence,
                     to_json(drivers),
                 ),
@@ -1146,7 +1651,7 @@ def run_opportunities(db_path: Any = DB_PATH) -> dict[str, int]:
                     cur.lastrowid,
                     draft.action,
                     draft.rationale,
-                    round(importance.score, 2),
+                    score,
                     importance.confidence,
                     to_json(drivers),
                 ),

@@ -6,10 +6,22 @@ import KPICard from '@/components/ui/KPICard'
 import { fetchJson, errorMessage } from '@/lib/fetchJson'
 import { formatRatioPct } from '@/lib/utils'
 
+interface MarcaDiagnosticRow {
+  raw: string
+  hex: string
+  n: number
+}
+
 interface SummaryResponse {
   byCanal: Record<string, { marca: string; wins: number; pct: number }[]>
   global: { nike: number | null; adidas: number | null; puma: number | null; n: number }
   totalByCanal: Record<string, number>
+  /** Sólo llega cuando alguna marca no apareció en la base. Ver /api/shelf/summary. */
+  diagnostics?: {
+    message: string
+    marcasFaltantes: string[]
+    marcasEnLaBase: MarcaDiagnosticRow[]
+  }
 }
 
 interface SearchRow {
@@ -75,6 +87,48 @@ export default function ShelfPage() {
           <div>
             <p className="text-sm font-bold text-red-700">No se pudieron cargar los datos de Share of Shelf</p>
             <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/*
+        Diagnóstico de marcas. Sólo aparece si el endpoint no pudo resolver
+        alguna de las tres marcas: entonces muestra los valores CRUDOS de
+        `marca` que sí hay en la base, con su hexadecimal, que es lo que
+        permite ver los espacios invisibles que causaron el bug original
+        (' Nike ' pasaba INITCAP pero no el filtro). Así el próximo valor raro
+        se diagnostica desde la propia pantalla, sin abrir la base.
+      */}
+      {summary?.diagnostics && (
+        <div className="nike-card border border-amber-200 bg-amber-50">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-amber-800">
+                Faltan datos de {summary.diagnostics.marcasFaltantes.join(', ')}
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">{summary.diagnostics.message}</p>
+              <div className="overflow-x-auto mt-2">
+                <table className="text-[11px]">
+                  <thead>
+                    <tr className="text-left text-amber-700">
+                      <th className="pr-4 py-1">Valor de marca</th>
+                      <th className="pr-4 py-1">Hex (UTF-8)</th>
+                      <th className="pr-4 py-1">Filas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.diagnostics.marcasEnLaBase.map((m) => (
+                      <tr key={m.hex} className="text-amber-900">
+                        <td className="pr-4 py-0.5 font-mono">{JSON.stringify(m.raw)}</td>
+                        <td className="pr-4 py-0.5 font-mono">{m.hex}</td>
+                        <td className="pr-4 py-0.5 tabular-nums">{m.n}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}

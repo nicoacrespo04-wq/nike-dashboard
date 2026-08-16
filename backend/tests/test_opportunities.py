@@ -20,6 +20,28 @@ RECENT_LAUNCH = (TODAY - timedelta(days=30)).isoformat()
 OLD_LAUNCH = (TODAY - timedelta(days=900)).isoformat()
 OBS_DATE = TODAY.isoformat()
 
+# Las reglas de stylecolor (`full_price_opportunity`, `clearance_needed`) miden
+# ROTACIÓN, y eso necesita una SERIE, no una foto. El fixture observa tres veces
+# con 30 días de separación; la última observación es exactamente la de antes,
+# así que todas las reglas que leen "el último dato" ven lo mismo que siempre.
+OBS_DATES = [(TODAY - timedelta(days=60)).isoformat(),
+             (TODAY - timedelta(days=30)).isoformat(),
+             OBS_DATE]
+
+#: Descuento en las DOS primeras observaciones (la tercera es la del row).
+#: Default: descuento plano (sin presión de markdown).
+DISCOUNT_HISTORY: dict[int, tuple[float, float]] = {
+    2: (18.0, 24.0),      # Vomero: markdown que se profundiza +6pp/mes
+    3: (19.0, 19.5),      # Invincible: markdown estable
+}
+
+#: Disponibilidad en las DOS primeras observaciones.
+#: Default: `actual + 6` y `actual + 3` => drena 3pp/mes (el stylecolor rota).
+AVAILABILITY_HISTORY: dict[int, tuple[float, float]] = {
+    2: (80.0, 81.0),      # Vomero: curva de talles estancada (no rota)
+    3: (96.0, 92.0),      # Invincible: drena 4pp/mes (rota)
+}
+
 FAMILIES = section("opportunities", "families")
 
 
@@ -70,8 +92,11 @@ def _products(conn):
     ]
     conn.executemany(
         "INSERT INTO products (id, brand_id, product_name, franchise, category, use_case, "
-        "lifecycle_stage, msrp, launch_date, country_code) VALUES (?,?,?,?,?,?,?,?,?,'AR')",
-        rows,
+        "lifecycle_stage, msrp, launch_date, style_code, country_code) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,'AR')",
+        # El `style_code` es la identidad del STYLECOLOR: la unidad sobre la que
+        # deciden `full_price_opportunity` y `clearance_needed`.
+        [(*row, f"SC{row[0]:03d}-{100 + row[0]}") for row in rows],
     )
 
 
@@ -101,7 +126,11 @@ def _prices(conn):
     conn.executemany(
         "INSERT INTO price_observations (product_id, retailer_id, observed_at, full_price, "
         "current_price, discount_pct, currency) VALUES (?,?,?,?,?,?,'ARS')",
-        [(p, r, OBS_DATE, f, c, d) for p, r, f, c, d in rows],
+        [
+            (p, r, when, f, c, disc)
+            for p, r, f, c, d in rows
+            for when, disc in zip(OBS_DATES, (*DISCOUNT_HISTORY.get(p, (d, d)), d))
+        ],
     )
 
 
@@ -117,7 +146,12 @@ def _stock(conn):
     conn.executemany(
         "INSERT INTO stock_observations (product_id, retailer_id, observed_at, in_stock, "
         "availability_pct, sizes_available, sizes_total) VALUES (?,?,?,?,?,?,?)",
-        [(p, r, OBS_DATE, 1 if a > 0 else 0, a, int(a / 10), 10) for p, r, a in rows],
+        [
+            (p, r, when, 1 if av > 0 else 0, av, int(av / 10), 10)
+            for p, r, a in rows
+            for when, av in zip(OBS_DATES,
+                                (*AVAILABILITY_HISTORY.get(p, (a + 6.0, a + 3.0)), a))
+        ],
     )
 
 
@@ -202,12 +236,20 @@ def _by_type(path) -> dict[str, list[dict]]:
 
 def test_dispara_las_doce_reglas(db):
     counts = opportunities.run_opportunities(db)
-    disparadas = {t for t in opportunities.OPPORTUNITY_TYPES if counts[t] > 0}
+    disparadas = {t for t in opportunities.ALL_OPPORTUNITY_TYPES if counts[t] > 0}
     assert len(disparadas) >= 6
-    assert disparadas == set(opportunities.OPPORTUNITY_TYPES), (
-        f"no dispararon: {set(opportunities.OPPORTUNITY_TYPES) - disparadas}"
+    assert disparadas == set(opportunities.ALL_OPPORTUNITY_TYPES), (
+        f"no dispararon: {set(opportunities.ALL_OPPORTUNITY_TYPES) - disparadas}"
     )
-    assert counts["opportunities"] == sum(counts[t] for t in opportunities.OPPORTUNITY_TYPES)
+    assert counts["opportunities"] == sum(counts[t] for t in opportunities.ALL_OPPORTUNITY_TYPES)
+
+
+def test_los_doce_tipos_historicos_siguen_declarados():
+    """`app.calibration` declara umbral y señal por cada uno: no se toca la tupla."""
+    assert len(opportunities.OPPORTUNITY_TYPES) == 12
+    assert set(opportunities.EXTRA_OPPORTUNITY_TYPES).isdisjoint(opportunities.OPPORTUNITY_TYPES)
+    assert set(opportunities.RULES) == set(opportunities.ALL_OPPORTUNITY_TYPES)
+    assert set(opportunities.ACTIONS) == set(opportunities.ALL_OPPORTUNITY_TYPES)
 
 
 def test_price_competitiveness_risk_cuantifica_gap_y_retailers(db):
@@ -231,9 +273,23 @@ def test_over_discounting_risk_detecta_descuento_sin_necesidad(db):
 
 
 def test_full_price_opportunity(db):
+    """Volver a full price se decide POR STYLECOLOR, según su rotación.
+
+    Regla de negocio: no se vuelve a precio lleno todos los stylecolors de una
+    silueta o franquicia, porque cada colorway rota distinto. El producto 3
+    (Invincible) drena 4pp/mes: rota, puede volver a full price. El producto 2
+    (Vomero) tiene la curva de talles estancada: acumula WOH y hay que
+    liquidarlo, aunque su franquicia esté competitiva en precio.
+    """
     opportunities.run_opportunities(db)
-    ids = {r["nike_product_id"] for r in _by_type(db)["full_price_opportunity"]}
-    assert {2, 3} <= ids
+    by_type = _by_type(db)
+
+    full_price = {r["nike_product_id"] for r in by_type["full_price_opportunity"]}
+    assert 3 in full_price
+    assert 2 not in full_price, "un stylecolor que no rota no vuelve a full price"
+
+    clearance = {r["nike_product_id"] for r in by_type.get("clearance_needed", [])}
+    assert 2 in clearance, "el stylecolor estancado tiene que salir como liquidación"
 
 
 def test_assortment_gap_cuenta_skus(db):

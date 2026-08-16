@@ -61,16 +61,45 @@ competitive_match:
       price_band:     0.25
 
   semantic:
-    # Peso de los campos de taxonomía en el score semántico determinístico
+    # Peso de los campos de taxonomía en el score semántico determinístico.
+    #
+    # ── `category` es CANÓNICO, `sport` es su ALIAS ──────────────────────
+    # Son el mismo concepto de negocio (la categoría deportiva: running,
+    # football, basketball, training, tennis, lifestyle…). Ponderarlos por
+    # separado contaba la MISMA señal dos veces: 0.25 del peso semántico
+    # (0.15 + 0.10) para una sola dimensión. Peor todavía: hasta la
+    # unificación, `products.category` guardaba en realidad la DIVISIÓN
+    # (footwear/apparel), constante en un corpus de calzado, así que esos
+    # 0.15 valían 1.0 en el 100% de los pares — peso puro de inflación.
+    #
+    # Ahora `category` concentra el peso de la dimensión y `sport` queda en
+    # 0.0: la columna sigue existiendo y `enrichment` la mantiene
+    # sincronizada, pero NO vuelve a sumar. Es 0.0, no borrada, para que
+    # cualquiera que lea esta config vea explícito que el alias existe y
+    # está deliberadamente sin peso.
+    #
+    # ── `division` es nueva ──────────────────────────────────────────────
+    # FW / AP / EQ. Peso BAJO a propósito: es una dimensión de 3 valores,
+    # así que en un catálogo de calzado vale 1.0 casi siempre y un peso alto
+    # sería otra vez inflación. El veto real ("dos divisiones distintas no
+    # compiten") corresponde a `hard_mismatch`, no a un peso grande.
+    # Los 0.05 salen de `text_similarity`: es la única señal DERIVADA
+    # (TF-IDF/embeddings de la descripción) y no debía pesar más que la
+    # taxonomía declarada del negocio.
+    #
+    # Suma = 1.00 (informativo: `_blend` renormaliza sobre los campos con datos).
     field_weights:
       use_case:                 0.30
-      category:                 0.15
-      sport:                    0.10
+      category:                 0.25   # CANÓNICO (categoría deportiva)
+      division:                 0.05   # FW|AP|EQ
       performance_vs_lifestyle: 0.10
       gender:                   0.10
       subcategory:              0.05
-      text_similarity:          0.20   # embeddings/TF-IDF de descripción
-    # Si dos productos no comparten gender o category, el score se atenúa
+      sport:                    0.00   # ALIAS de `category`: no cuenta dos veces
+      text_similarity:          0.15   # embeddings/TF-IDF de descripción
+    # Si dos productos no comparten gender, category o division, el score se atenúa.
+    # (`division` entra en el veto en cuanto `matching._score_semantic` la
+    # incorpore; ver backend/docs/taxonomy.md § "cambios pendientes".)
     hard_mismatch_penalty: 0.45
 
   visual:
@@ -270,6 +299,10 @@ opportunities:
     price_competitiveness_risk:      pricing
     over_discounting_risk:           pricing
     full_price_opportunity:          pricing
+    # La contracara de full_price: mismo eje de decisión (qué hacer con el
+    # precio de ESE stylecolor), resultado opuesto. Van juntas en `pricing`
+    # para que quien mira decisiones de precio vea las dos caras.
+    clearance_needed:                pricing
     premiumization_opportunity:      pricing
     promotional_pressure:            pricing
     assortment_gap:                  assortment
@@ -360,19 +393,90 @@ brand_intelligence:
 
 # ── ENRIQUECIMIENTO ─────────────────────────────────────────
 enrichment:
-  version: "1.0.0"
-  # Bandas de precio en ARS (país-dependiente)
+  version: "1.1.0"
+
+  # ── BANDAS DE PRECIO EN PLATA ───────────────────────────────
+  # La banda YA NO es una etiqueta cualitativa (entry/mid/premium): el
+  # nombre de la banda ES el rango en moneda del país. Lo que el negocio
+  # quiere ver es el monto, no una gama inventada.
+  #
+  # Formato: `<label monetario>: [min, max]`, ordenadas de menor a mayor.
+  #   · La CLAVE es el label canónico que se guarda en `products.price_band`.
+  #   · El ORDEN de las claves define la distancia ordinal entre bandas que
+  #     usa `matching._price_band_similarity` (misma mecánica que antes: el
+  #     decaimiento por cercanía sigue funcionando sin tocar ese módulo).
+  #   · Los montos `[min, max)` son el intervalo real: `min` inclusivo,
+  #     `max` exclusivo. `enrichment` los persiste en `price_band_min` /
+  #     `price_band_max` para que la UI muestre plata y no una etiqueta.
+  #   · El techo de la ÚLTIMA banda es un centinela: se guarda como NULL
+  #     (banda abierta) y el label lleva el sufijo `open_top`.
+  #
+  # CAMBIAR LA CANTIDAD DE BANDAS NO REQUIERE TOCAR CÓDIGO: se agregan o
+  # se quitan claves acá. La única regla es que la clave coincida con el
+  # label que `enrichment.price_band_label()` deriva de `[min, max]`
+  # (lo verifica `tests/test_enrichment.py::test_price_band_keys_are_canonical_labels`,
+  # así una banda mal escrita falla en CI en vez de degradar el scoring en silencio).
+  price_band_format:
+    default: {thousands_sep: "",  open_top: "+", separator: "-", currency_prefix: ""}
+    AR:      {thousands_sep: ".", open_top: "+", separator: "-", currency_prefix: ""}
+    US:      {thousands_sep: ",", open_top: "+", separator: "-", currency_prefix: ""}
+
   price_bands:
     AR:
-      entry:         [0,       90000]
-      mid:           [90000,   160000]
-      premium:       [160000,  260000]
-      super-premium: [260000,  99999999]
+      "0-90.000":        [0,       90000]
+      "90.000-160.000":  [90000,   160000]
+      "160.000-260.000": [160000,  260000]
+      "260.000+":        [260000,  99999999]
     US:
-      entry:         [0,   90]
-      mid:           [90,  140]
-      premium:       [140, 200]
-      super-premium: [200, 99999]
+      "0-90":    [0,   90]
+      "90-140":  [90,  140]
+      "140-200": [140, 200]
+      "200+":    [200, 99999]
+
+  # ALIAS LEGACY de las bandas: nombre cualitativo por posición (mismo orden
+  # que `price_bands[<país>]`). No se borró la gama: se movió a
+  # `products.price_tier`, para no romper a quien todavía razona por
+  # entry/mid/premium mientras la UI muestra los montos.
+  # Si la lista es más corta que las bandas, las bandas sobrantes quedan sin tier.
+  price_band_tiers:
+    AR: [entry, mid, premium, super-premium]
+    US: [entry, mid, premium, super-premium]
+
+  # ── DIVISIÓN (FW / AP / EQ) ─────────────────────────────────
+  # Criterio de normalización REUTILIZADO de `web/src/lib/utils.ts::normalizeDivision`
+  # (mismo orden de evaluación: FOOTWEAR/FW -> FW, APP/AP -> AP, EQUIP/EQ -> EQ),
+  # extendido con los sinónimos ES que ya usaba `ingest/mapping.py`.
+  # `code`: el valor que se guarda en `products.division`.
+  # `contains`: subcadenas (sin acentos, mayúsculas) que resuelven a ese código.
+  # `exact`: valores que resuelven sólo por igualdad exacta.
+  #
+  # ÚNICA diferencia con el front: ahí la regla es `includes('FOOT')`, acá es
+  # `FOOTWEAR`. El backend corre este normalizador también sobre `category`
+  # (para rescatar la división que la ingesta guardaba ahí), y con `FOOT` la
+  # categoría **football** caería en FW. `FOOT` queda como coincidencia exacta,
+  # así no se pierde ningún valor real de la columna de división.
+  division:
+    codes:
+      FW:
+        contains: [FOOTWEAR, CALZADO, ZAPATILLA, SNEAKER, BOTIN, SHOE]
+        exact:    [FW, F, FOOT]
+      AP:
+        contains: [APPAREL, APPARELL, INDUMENTARIA, ROPA, VESTIMENTA, TEXTIL]
+        exact:    [AP, A, APP]
+      EQ:
+        contains: [EQUIP, ACCESOR, ACCESSOR]
+        exact:    [EQ, E]
+    # Fallback por texto cuando NO hay columna de división: keywords que
+    # alcanzan para afirmar la división del producto. Sólo se usa si hay
+    # evidencia; si no hay, `division` queda NULL (no se inventa).
+    text_evidence:
+      AP: [camiseta, camisetas, remera, jersey, short, shorts, pantalon, campera,
+           buzo, hoodie, medias, calza, top deportivo, indumentaria, chaqueta,
+           conjunto, musculosa, sujetador deportivo]
+      EQ: [pelota, balon, mochila, bolso, guantes, botella, canillera, gorra,
+           accesorio, accesorios, equipamiento, banda elastica, colchoneta]
+      FW: [zapatilla, zapatillas, botin, botines, calzado, sneaker, sneakers,
+           shoe, shoes, sandalia, ojota, running shoe]
 
   lifecycle:
     # Días desde launch_date

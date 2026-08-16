@@ -155,7 +155,32 @@ _DEFAULTS: dict[str, Any] = {
     },
 
     # ── Taxonomía ────────────────────────────────────────────
-    # `division` / `division_competitor` -> products.category
+    # `division` / `division_competitor` -> products.division (FW | AP | EQ).
+    #
+    # MISMO CRITERIO que `web/src/lib/utils.ts::normalizeDivision`
+    # (FOOTWEAR o FW => footwear, APPAREL o AP => apparel, EQUIP o EQ =>
+    # equipment, evaluados en ese orden), extendido con los sinónimos ES que
+    # ya vivían en `division_map`. Se guarda el CÓDIGO, que es la unidad de
+    # negocio; el nombre largo lo pone el front.
+    #
+    # `contains`: subcadena (sobre el texto en mayúsculas y sin acentos).
+    # `exact`:    sólo por igualdad exacta (para los códigos y abreviaturas).
+    # Mismo vocabulario que `enrichment.division.codes` en weights.yaml — ver
+    # ahí por qué `FOOT` y `APP` son exactos y no subcadena.
+    "division_code_map": {
+        "FW": {"contains": ["FOOTWEAR", "CALZADO", "ZAPATILLA", "SNEAKER", "BOTIN", "SHOE"],
+               "exact":    ["FW", "F", "FOOT"]},
+        "AP": {"contains": ["APPAREL", "APPARELL", "INDUMENTARIA", "ROPA", "VESTIMENTA", "TEXTIL"],
+               "exact":    ["AP", "A", "APP"]},
+        "EQ": {"contains": ["EQUIP", "ACCESOR", "ACCESSOR"],
+               "exact":    ["EQ", "E"]},
+    },
+
+    # LEGACY: `division` / `division_competitor` -> products.category.
+    # Se conserva porque `map_category` sigue alimentando la columna
+    # `category` en esta capa (ver el docstring de `map_product`): la
+    # unificación category/sport y el rescate de la división a partir de este
+    # valor los hace `services/enrichment.py`, que es el dueño de la taxonomía.
     "division_map": {
         "footwear": "footwear", "footwear division": "footwear", "calzado": "footwear",
         "apparel": "apparel", "apparel division": "apparel", "indumentaria": "apparel",
@@ -543,8 +568,43 @@ def retailer_for_side(row: dict, side: str, default_country: str | None = None) 
 # 3. Taxonomía
 # ============================================================
 
+def map_division(value: Any) -> str | None:
+    """`division` / `division_competitor` -> `products.division` (FW | AP | EQ).
+
+    ``'FOOTWEAR DIVISION'`` -> ``'FW'`` · ``'Apparel'`` -> ``'AP'`` ·
+    ``'EQUIPMENT'`` / ``'Accesorios'`` -> ``'EQ'`` · ``'fw'`` -> ``'FW'``.
+
+    Mismo criterio (y mismo orden de evaluación) que
+    ``web/src/lib/utils.ts::normalizeDivision``. Sin evidencia devuelve
+    ``None``: la división no se inventa acá — si falta, la infiere
+    ``services/enrichment.py`` desde categoría/descripción.
+    """
+    text = clean_text(value)
+    if text is None:
+        return None
+    text = re.sub(r"\s+", " ", _strip_accents(text).upper()).strip()
+    if not text:
+        return None
+
+    codes = ingest_config()["division_code_map"]
+    for code, rules in codes.items():                       # 1) igualdad exacta
+        if text in {str(x).upper() for x in rules.get("exact", ())}:
+            return str(code).upper()
+    for code, rules in codes.items():                       # 2) subcadena
+        for needle in rules.get("contains", ()):
+            if str(needle).upper() in text:
+                return str(code).upper()
+    return None
+
+
 def map_category(value: Any) -> str | None:
-    """`division` -> `products.category` ('FOOTWEAR DIVISION' -> 'footwear')."""
+    """LEGACY: `division` -> `products.category` ('FOOTWEAR DIVISION' -> 'footwear').
+
+    Se mantiene tal cual por compatibilidad de esta capa. El valor que produce
+    es una DIVISIÓN, no una categoría deportiva: `services/enrichment.py` lo
+    usa como evidencia para completar `products.division` y después reescribe
+    `category` con la categoría canónica (== `sport`).
+    """
     text = norm_lower(value)
     if text is None:
         return None
@@ -673,6 +733,25 @@ def map_product(row: dict, side: str = COMPETITOR, *, country: str | None = None
     Los campos que son responsabilidad de `enrichment`
     (`normalized_product_name`, `use_case`, `price_band`, `lifecycle_stage`,
     `enrichment_version`) NO se escriben acá.
+
+    TAXONOMÍA — reparto de responsabilidades
+    ----------------------------------------
+    Esta capa es una traducción de la FORMA de la fuente, no la dueña de la
+    taxonomía. Por eso:
+
+      * `division` (nuevo) sale directo de `division` / `division_competitor`
+        normalizado a FW/AP/EQ: es la dimensión que faltaba en el modelo.
+      * `category` sigue saliendo del mapeo LEGACY de la columna `division`
+        (footwear/apparel/accessories) y `sport` de la columna `category` de
+        la fuente. `services/enrichment.py` —dueño de la taxonomía— unifica
+        después: rescata la división de ese `category` legacy y reescribe
+        `category` con la categoría deportiva canónica, dejando `sport` como
+        alias sincronizado. Ver `backend/docs/taxonomy.md`.
+
+    PENDIENTE (fuera de este módulo): `pricing_data.PRODUCT_COLUMNS` todavía
+    no incluye `division`, así que el valor mapeado acá no se persiste desde
+    la ingesta y `enrichment` lo reconstruye desde `category`. Agregar
+    `"division"` a esa tupla hace que el dato de la fuente mande.
     """
     country_code = (country or map_country(row)).upper()
     brand = map_brand(row, side)
@@ -683,6 +762,7 @@ def map_product(row: dict, side: str = COMPETITOR, *, country: str | None = None
         sku = style_color
         style_code = style_color
         franchise = clean_text(row.get("franchise_scrapper"))
+        division = map_division(row.get("division"))
         category = map_category(row.get("division"))
         sport = map_sport(row.get("category"))
         gender = map_gender(row.get("gender"))
@@ -695,6 +775,7 @@ def map_product(row: dict, side: str = COMPETITOR, *, country: str | None = None
         name = clean_text(row.get("product_name_competitor")) or sku
         style_code = None
         franchise = clean_text(row.get("franchise_competitor"))
+        division = map_division(row.get("division_competitor"))
         category = map_category(row.get("division_competitor"))
         sport = map_sport(row.get("category_competitor"))
         gender = map_gender(row.get("gender_competitor"))
@@ -710,6 +791,8 @@ def map_product(row: dict, side: str = COMPETITOR, *, country: str | None = None
         "sku": sku,
         "style_code": style_code,
         "franchise": franchise,
+        # Dimensión de negocio de Nike: FW | AP | EQ.
+        "division": division,
         "category": category,
         # `silueta` describe la silueta comparada (BOTIN, RUNNING, ...); aplica
         # a ambos lados porque la fila es una comparación like-for-like.

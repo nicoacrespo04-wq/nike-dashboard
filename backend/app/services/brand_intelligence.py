@@ -30,6 +30,16 @@ Reglas duras que respeta este módulo
    sólo se citan los ejemplos públicos ya agregados en la DB.
 5. **Determinismo**: la fecha "hoy" se deriva del MÁXIMO ``period_end``
    observado en los datos, nunca de ``date.today()``.
+6. **Trazabilidad**: cada ejemplo de evidencia declara ``{text, type, source,
+   url, date}``. Si NO hay URL, se publica ``url: null`` + ``url_reason``
+   (motivo verificable), nunca se omite la evidencia: el usuario tiene que
+   poder distinguir "no hay link" de "no hay evidencia".
+7. **Ventana de comparación configurable**: ``build_context(window=...)``
+   acepta ``month`` (default, = comportamiento histórico), ``quarter``,
+   ``year`` o ``window_days``/``compare_days`` explícitos. Si el histórico
+   disponible no alcanza para la ventana pedida, el contexto lo declara
+   (``window_info()["available"] is False`` + ``reason``) en vez de publicar
+   una variación contra una ventana vacía.
 
 Todo score compuesto pasa por ``common.combine`` (explicabilidad uniforme).
 """
@@ -61,6 +71,196 @@ MAX_EVIDENCE_EXAMPLES = 3
 # Señales de mercado que produce este módulo (las demás filas de market_signals
 # pertenecen a otros servicios y no se tocan).
 SIGNAL_TYPES = ("social_momentum", "editorial_momentum", "review_momentum")
+
+
+# ── ventanas de comparación ─────────────────────────────────
+#
+# El default sigue siendo el histórico: `current_window_days` /
+# `previous_window_days` de `brand_intelligence` en weights.yaml (30/30). Los
+# presets nuevos se leen de `brand_intelligence.comparison_windows.<preset>`
+# con `section(..., default=...)`; si esa clave no existe en weights.yaml (hoy
+# no existe) se usan los fallbacks declarados acá, en un único lugar.
+
+DEFAULT_WINDOW = "month"
+
+#: Presets y su fallback ``(días de la ventana actual, días de comparación)``.
+WINDOW_FALLBACK_DAYS: dict[str, tuple[int, int]] = {
+    "month": (30, 30),
+    "quarter": (90, 90),
+    "year": (365, 365),
+}
+
+WINDOW_LABELS: dict[str, str] = {
+    "month": "mes anterior",
+    "quarter": "trimestre anterior",
+    "year": "año anterior",
+    "custom": "ventana a medida",
+}
+
+
+@dataclass(frozen=True)
+class WindowSpec:
+    """Ventana actual + ventana contra la que se compara, en días."""
+
+    name: str
+    label: str
+    current_days: int
+    compare_days: int
+
+    @property
+    def required_days(self) -> int:
+        """Histórico mínimo para que la comparación sea medible."""
+        return self.current_days + self.compare_days
+
+    @property
+    def acceleration_days(self) -> int:
+        """Histórico mínimo para poder calcular la derivada segunda."""
+        return self.current_days + 2 * self.compare_days
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "window": self.name,
+            "label": self.label,
+            "window_days": self.current_days,
+            "compare_days": self.compare_days,
+            "required_days": self.required_days,
+        }
+
+
+def _configured_window_days(name: str) -> tuple[int, int]:
+    """Días de un preset, leídos de weights.yaml con fallback declarado."""
+    if name == "month":
+        # Claves históricas: cambiarlas cambia el default de todo el módulo.
+        current = int(section("brand_intelligence", "current_window_days", default=30) or 30)
+        compare = int(section("brand_intelligence", "previous_window_days", default=30) or 30)
+        return current, compare
+    fallback_current, fallback_compare = WINDOW_FALLBACK_DAYS[name]
+    current = int(section("brand_intelligence", "comparison_windows", name, "window_days",
+                          default=fallback_current) or fallback_current)
+    compare = int(section("brand_intelligence", "comparison_windows", name, "compare_days",
+                          default=fallback_compare) or fallback_compare)
+    return current, compare
+
+
+def resolve_window(window: str | None = None, *, window_days: int | None = None,
+                   compare_days: int | None = None) -> WindowSpec:
+    """Traduce ``window`` / ``window_days`` + ``compare_days`` a un :class:`WindowSpec`.
+
+    * ``window=None`` ⇒ ``month`` ⇒ exactamente el comportamiento histórico.
+    * ``window_days``/``compare_days`` explícitos ganan sobre el preset y
+      producen una ventana ``custom``; si sólo se pasa uno, el otro lo iguala.
+    * Un preset o un número inválido levanta ``ValueError``: preferimos el 400
+      antes que calcular contra una ventana que el usuario no pidió.
+    """
+    if window_days is not None or compare_days is not None:
+        current = int(window_days) if window_days is not None else int(compare_days)  # type: ignore[arg-type]
+        compare = int(compare_days) if compare_days is not None else current
+        if current < 1 or compare < 1:
+            raise ValueError("window_days y compare_days tienen que ser >= 1")
+        return WindowSpec("custom", WINDOW_LABELS["custom"], current, compare)
+
+    name = (window or DEFAULT_WINDOW).strip().lower()
+    if name not in WINDOW_FALLBACK_DAYS:
+        raise ValueError(
+            f"ventana desconocida: {window!r}. Opciones: "
+            f"{', '.join(sorted(WINDOW_FALLBACK_DAYS))} "
+            f"(o window_days=N y compare_days=M).")
+    current, compare = _configured_window_days(name)
+    return WindowSpec(name, WINDOW_LABELS[name], current, compare)
+
+
+def window_info(spec: WindowSpec, *, data_start: date | None,
+                data_end: date | None) -> dict[str, Any]:
+    """Ventana pedida + si el histórico disponible alcanza para sostenerla.
+
+    Cuando ``available`` es ``False`` la ventana de comparación cae fuera del
+    histórico: los volúmenes del período actual siguen siendo hechos observados,
+    pero no hay contra qué compararlos y toda variación sale ``null``. Nunca se
+    rellena con un número inventado.
+    """
+    history = (data_end - data_start).days if (data_start and data_end) else None
+    cur_end = data_end
+    cur_start = (cur_end - timedelta(days=spec.current_days)) if cur_end else None
+    prev_start = (cur_end - timedelta(days=spec.required_days)) if cur_end else None
+    prior_start = (cur_end - timedelta(days=spec.acceleration_days)) if cur_end else None
+    comparison = history is not None and history >= spec.required_days
+    acceleration = history is not None and history >= spec.acceleration_days
+
+    info: dict[str, Any] = {
+        **spec.as_dict(),
+        "current": [cur_start.isoformat() if cur_start else None,
+                    cur_end.isoformat() if cur_end else None],
+        "previous": [prev_start.isoformat() if prev_start else None,
+                     cur_start.isoformat() if cur_start else None],
+        "prior": [prior_start.isoformat() if prior_start else None,
+                  prev_start.isoformat() if prev_start else None],
+        "data_start": data_start.isoformat() if data_start else None,
+        "data_end": data_end.isoformat() if data_end else None,
+        "history_days": history,
+        "available": comparison,
+        "comparison_available": comparison,
+        "acceleration_available": acceleration,
+        "reason": None,
+    }
+    if history is None:
+        info["reason"] = ("No hay ninguna observación en la base para este país: "
+                          "sin datos no hay ventana que calcular.")
+    elif not comparison:
+        info["reason"] = (
+            f"El histórico disponible cubre {history} días "
+            f"({info['data_start']} → {info['data_end']}) y la comparación contra el "
+            f"{spec.label} necesita {spec.required_days}. La ventana anterior queda "
+            f"fuera de los datos, así que las variaciones no se publican (salen null) "
+            f"en vez de compararse contra cero.")
+    elif not acceleration:
+        info["reason"] = (
+            f"Alcanza para comparar contra el {spec.label} ({spec.required_days} días "
+            f"sobre {history} disponibles) pero no para la aceleración, que necesita "
+            f"una tercera ventana ({spec.acceleration_days} días).")
+    return info
+
+
+def observation_bounds(db_path: Path | str = DB_PATH,
+                       country: str | None = None) -> tuple[date | None, date | None]:
+    """``(primera, última)`` observación del país, con SQL de agregación barato.
+
+    Permite responder "¿alcanza el histórico para esta ventana?" sin cargar
+    todas las observaciones en memoria (que es lo que hace ``build_context``).
+    """
+    code = str(country or section("brand_intelligence", "country", default="AR") or "AR")
+    queries = (
+        ("SELECT MIN(period_end) AS lo, MAX(period_end) AS hi "
+         "FROM social_mention_aggregates WHERE country_code = ?", (code,)),
+        ("SELECT MIN(published_at) AS lo, MAX(published_at) AS hi "
+         "FROM editorial_mentions WHERE country_code = ?", (code,)),
+        ("SELECT MIN(r.observed_at) AS lo, MAX(r.observed_at) AS hi FROM reviews r "
+         "JOIN products p ON p.id = r.product_id "
+         "LEFT JOIN retailers rt ON rt.id = r.retailer_id "
+         "WHERE p.country_code = ? OR rt.country_code = ?", (code, code)),
+    )
+    moments: list[date] = []
+    for sql, params in queries:
+        try:
+            rows = query(sql, params, path=db_path)
+        except Exception:  # noqa: BLE001 - tabla ausente: se ignora esa fuente
+            continue
+        for row in rows:
+            for key in ("lo", "hi"):
+                moment = parse_date(row.get(key))
+                if moment:
+                    moments.append(moment)
+    if not moments:
+        return None, None
+    return min(moments), max(moments)
+
+
+def window_report(db_path: Path | str = DB_PATH, *, country: str | None = None,
+                  window: str | None = None, window_days: int | None = None,
+                  compare_days: int | None = None) -> dict[str, Any]:
+    """Sobre de ventana sin cargar el análisis completo (lo usa la API)."""
+    spec = resolve_window(window, window_days=window_days, compare_days=compare_days)
+    data_start, data_end = observation_bounds(db_path, country)
+    return window_info(spec, data_start=data_start, data_end=data_end)
 
 
 # ── léxico determinístico (español rioplatense) ─────────────
@@ -383,6 +583,12 @@ class BrandContext:
     high_min_volume: int
     medium_min_volume: int
     min_volume_to_emit: int
+    window: WindowSpec = field(
+        default_factory=lambda: WindowSpec("month", WINDOW_LABELS["month"], 30, 30))
+    data_start: date | None = None
+    data_end: date | None = None
+    editorial_policies: dict[str, dict[str, Any]] = field(default_factory=dict)
+    social_policies: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     # ── ventanas ──
     @property
@@ -392,6 +598,29 @@ class BrandContext:
     @property
     def period_end(self) -> str | None:
         return self.cur_end.isoformat() if self.cur_end else None
+
+    @property
+    def history_days(self) -> int | None:
+        """Días de histórico realmente observados en la base."""
+        if self.data_start is None or self.data_end is None:
+            return None
+        return (self.data_end - self.data_start).days
+
+    @property
+    def comparison_available(self) -> bool:
+        """¿El histórico cubre la ventana de comparación pedida?"""
+        history = self.history_days
+        return history is not None and history >= self.window.required_days
+
+    @property
+    def acceleration_available(self) -> bool:
+        """¿Y la tercera ventana, la que hace falta para la aceleración?"""
+        history = self.history_days
+        return history is not None and history >= self.window.acceleration_days
+
+    def window_info(self) -> dict[str, Any]:
+        """Ventana pedida + si los datos alcanzan para sostenerla."""
+        return window_info(self.window, data_start=self.data_start, data_end=self.data_end)
 
     @property
     def min_volume(self) -> int:
@@ -447,8 +676,16 @@ class BrandContext:
         return "LOW"
 
 
-def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
-    """Carga y normaliza todas las señales de consumidor del país configurado."""
+def build_context(db_path: Path | str = DB_PATH, *, window: str | None = None,
+                  window_days: int | None = None,
+                  compare_days: int | None = None) -> BrandContext:
+    """Carga y normaliza todas las señales de consumidor del país configurado.
+
+    ``window`` / ``window_days`` / ``compare_days`` eligen contra qué período se
+    compara (ver :func:`resolve_window`). El default reproduce exactamente el
+    comportamiento histórico (mes contra mes anterior).
+    """
+    spec = resolve_window(window, window_days=window_days, compare_days=compare_days)
     country = str(section("brand_intelligence", "country", default="AR") or "AR")
     taxonomy_raw = section("brand_intelligence", "taxonomy", default={}) or {}
     taxonomy = {dim: list(topics or []) for dim, topics in taxonomy_raw.items()}
@@ -475,15 +712,14 @@ def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
     # está configurado se cae al comportamiento histórico (= MEDIUM).
     min_volume_to_emit = int(section("brand_intelligence", "confidence", "min_volume_to_emit",
                                      default=medium_min_volume) or medium_min_volume)
-    current_days = int(section("brand_intelligence", "current_window_days", default=30) or 30)
-    previous_days = int(section("brand_intelligence", "previous_window_days", default=30) or 30)
+    current_days, previous_days = spec.current_days, spec.compare_days
 
     brands = {int(r["id"]): r for r in query("SELECT id, name, is_focus FROM brands",
                                              path=db_path)}
     focus_brand_id = next((bid for bid, b in sorted(brands.items()) if b.get("is_focus")), None)
     products = {int(r["id"]): r for r in query(
         "SELECT id, brand_id, product_name, franchise, category, subcategory, sport, "
-        "use_case, country_code FROM products", path=db_path)}
+        "use_case, country_code, url FROM products", path=db_path)}
     country_row = query("SELECT name FROM countries WHERE code = ?", (country,), path=db_path)
     country_name = str(country_row[0]["name"]) if country_row else country
 
@@ -517,6 +753,9 @@ def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
         if moment:
             candidates.append(moment)
     today = max(candidates) if candidates else None
+    # `data_start` es el histórico REAL disponible: con él se decide si la
+    # ventana pedida tiene con qué compararse (ver `BrandContext.window_info`).
+    data_start = min(candidates) if candidates else None
 
     ctx = BrandContext(
         db_path=db_path,
@@ -542,6 +781,11 @@ def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
         high_min_volume=high_min_volume,
         medium_min_volume=medium_min_volume,
         min_volume_to_emit=min_volume_to_emit,
+        window=spec,
+        data_start=data_start,
+        data_end=today,
+        editorial_policies=editorial_source_policies(),
+        social_policies=social_source_policies(),
     )
 
     ctx.entries = _build_entries(ctx, social_rows, review_rows, editorial_rows)
@@ -550,25 +794,226 @@ def build_context(db_path: Path | str = DB_PATH) -> BrandContext:
     return ctx
 
 
-def _social_evidence(row: dict[str, Any]) -> list[dict[str, Any]]:
-    """Ejemplos públicos ya agregados. Nunca identifica individuos."""
+# ── trazabilidad de fuentes ─────────────────────────────────
+#
+# Cada ejemplo de evidencia sale con `{text, type, source_name, url, date}` y,
+# cuando NO hay URL, con `url_status` + `url_reason`. La regla es simétrica a
+# la regla anti-invención: así como un insight sin evidencia no se emite, una
+# evidencia sin link no se esconde — se publica diciendo por qué no lo tiene.
+
+EVIDENCE_TYPE_LABELS: dict[str, str] = {
+    "editorial": "Nota editorial",
+    "review": "Reseña de producto",
+    "social": "Conversación social agregada",
+}
+
+#: Etiqueta legible del `source_type` de un agregado social.
+SOCIAL_SOURCE_LABELS: dict[str, str] = {
+    "forum": "foro público",
+    "social": "red social",
+    "community": "comunidad",
+    "blog_comments": "comentarios de blog",
+}
+
+URL_STATUS_OK = "ok"
+URL_STATUS_SOCIAL_AGGREGATE = "social_aggregate_privacy"
+URL_STATUS_REVIEW_NOT_STORED = "review_url_not_stored"
+URL_STATUS_EDITORIAL_MISSING = "editorial_url_missing"
+
+#: Motivo publicable de cada estado de URL. Textos verificables contra el
+#: esquema o contra la política de privacidad — no excusas genéricas.
+URL_REASONS: dict[str, str | None] = {
+    URL_STATUS_OK: None,
+    URL_STATUS_SOCIAL_AGGREGATE: (
+        "Señal social agregada: `social_mention_aggregates` guarda conteos por "
+        "período, no posts, y `collectors/social.py::scrub()` borra URLs, "
+        "handles, perfiles, mails y teléfonos antes de persistir. Linkear al "
+        "post original exigiría guardar el post (y con él a su autor), así que "
+        "por política de privacidad esta evidencia no tiene URL."),
+    URL_STATUS_REVIEW_NOT_STORED: (
+        "La tabla `reviews` no tiene columna de URL: la reseña se guarda con "
+        "producto, retailer, rating y fecha, pero sin permalink. Se publica la "
+        "ficha del producto como contexto navegable."),
+    URL_STATUS_EDITORIAL_MISSING: (
+        "La mención editorial se guardó sin `url` en `editorial_mentions`: la "
+        "fuente y la fecha sí están, el enlace directo no."),
+}
+
+#: Claves que SIEMPRE viajan en un ejemplo de evidencia, aunque valgan `null`.
+#: Sin esto `url: null` se perdía al serializar y "no hay link" era
+#: indistinguible de "no hay evidencia".
+EVIDENCE_REQUIRED_KEYS = frozenset({
+    "text", "type", "type_label", "source", "source_name", "source_label",
+    "url", "url_available", "url_status", "url_reason", "date", "date_field",
+    "source_policy",
+})
+
+
+def _collector_registry() -> dict[str, Any]:
+    """Registro de colectores, o vacío si la capa de adquisición no carga."""
+    try:
+        from app.collectors import registered
+    except Exception:  # noqa: BLE001 - la trazabilidad nunca tumba el análisis
+        return {}
+    try:
+        return registered() or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _policy_card(collector_name: str, collector: Any) -> dict[str, Any] | None:
+    policy = getattr(collector, "policy", None)
+    if policy is None:
+        return None
+    return {
+        "collector": collector_name,
+        "source_name": policy.source_name,
+        "homepage": policy.homepage,
+        "access": policy.access,
+        "terms": policy.terms,
+        "stores": policy.stores,
+        "enabled": bool(getattr(collector, "enabled", False)),
+    }
+
+
+def source_catalog() -> list[dict[str, Any]]:
+    """Ficha pública de las fuentes registradas (para el panel de fuentes).
+
+    Es el "de dónde salen los datos" a nivel fuente: nombre, homepage, tipo de
+    acceso, ToS y qué guarda cada colector. Complementa el link por evidencia,
+    que es el "de dónde sale ESTE dato".
+    """
+    cards = []
+    for name, collector in sorted(_collector_registry().items()):
+        card = _policy_card(name, collector)
+        if card:
+            cards.append({**card, "table": getattr(collector, "table", None)})
+    return cards
+
+
+def editorial_source_policies() -> dict[str, dict[str, Any]]:
+    """``{nombre de fuente normalizado: ficha}`` de los colectores editoriales.
+
+    `editorial_mentions.source_name` es el mismo string que declara la
+    `SourcePolicy` del colector de feed, así que el cruce es exacto (no es una
+    heurística de nombres parecidos).
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for name, collector in sorted(_collector_registry().items()):
+        if getattr(collector, "table", None) != "editorial_mentions":
+            continue
+        card = _policy_card(name, collector)
+        if card:
+            out.setdefault(_norm(card["source_name"]), card)
+    return out
+
+
+def social_source_policies() -> dict[str, dict[str, Any]]:
+    """``{source_type: ficha}``, SÓLO cuando la atribución es inequívoca.
+
+    `social_mention_aggregates` no guarda qué colector escribió la fila (el
+    esquema no tiene esa columna) y las filas del pipeline demo vienen de
+    `app/seed.py`, no de un colector. Atribuirle una plataforma concreta a un
+    `source_type` genérico sería inventar la fuente: se resuelve sólo si UN
+    ÚNICO colector habilitado declara ese `source_type`.
+    """
+    candidates: dict[str, list[dict[str, Any]]] = {}
+    for name, collector in sorted(_collector_registry().items()):
+        if getattr(collector, "table", None) != "social_mention_aggregates":
+            continue
+        source_type = getattr(collector, "source_type", None)
+        if not source_type or not getattr(collector, "enabled", False):
+            continue
+        card = _policy_card(name, collector)
+        if card:
+            candidates.setdefault(str(source_type), []).append(card)
+    return {k: v[0] for k, v in candidates.items() if len(v) == 1}
+
+
+def _evidence_item(*, text: Any, kind: str, source_name: Any, url: Any,
+                   url_status: str, when: Any, date_field: str,
+                   source_label: str | None = None,
+                   policy: dict[str, Any] | None = None,
+                   **extra: Any) -> dict[str, Any]:
+    """Ejemplo de evidencia en la forma canónica ``{texto, tipo, fuente, url, fecha}``."""
+    clean_url = str(url).strip() if url not in (None, "") else None
+    status = url_status if clean_url is None else URL_STATUS_OK
+    item: dict[str, Any] = {
+        "text": str(text).strip(),
+        "type": kind,
+        "type_label": EVIDENCE_TYPE_LABELS.get(kind, kind),
+        # `source` se mantiene por compatibilidad: es el mismo valor que `type`
+        # y ya lo consumen los clientes actuales.
+        "source": kind,
+        "source_name": str(source_name) if source_name else kind,
+        "source_label": source_label or (str(source_name) if source_name else kind),
+        "url": clean_url,
+        "url_available": clean_url is not None,
+        "url_status": status,
+        "url_reason": URL_REASONS.get(status),
+        "date": str(when) if when else None,
+        "date_field": date_field,
+        "source_policy": policy,
+    }
+    item.update({k: v for k, v in extra.items() if v is not None})
+    return item
+
+
+def _social_evidence(ctx: "BrandContext", row: dict[str, Any]) -> list[dict[str, Any]]:
+    """Ejemplos públicos ya agregados. Nunca identifica individuos.
+
+    Sin URL por diseño: ver ``URL_REASONS[URL_STATUS_SOCIAL_AGGREGATE]``.
+    """
     samples = from_json(row.get("sample_evidence"), default=[]) or []
     if isinstance(samples, str):
         samples = [samples]
+    source_type = str(row.get("source_type") or "social")
     out: list[dict[str, Any]] = []
     for sample in samples:
         text = sample if isinstance(sample, str) else (
             sample.get("text") if isinstance(sample, dict) else None)
         if not text:
             continue
-        out.append({
-            "source": "social",
-            "source_name": row.get("source_type") or "social",
-            "text": str(text).strip(),
-            "period_start": row.get("period_start"),
-            "period_end": row.get("period_end"),
-        })
+        out.append(_evidence_item(
+            text=text, kind="social", source_name=source_type,
+            source_label=SOCIAL_SOURCE_LABELS.get(source_type, source_type),
+            url=None, url_status=URL_STATUS_SOCIAL_AGGREGATE,
+            when=row.get("period_end"), date_field="period_end",
+            policy=ctx.social_policies.get(source_type),
+            period_start=row.get("period_start"),
+            period_end=row.get("period_end")))
     return out
+
+
+def social_evidence_examples(rows: Iterable[dict[str, Any]], *,
+                             limit: int = MAX_EVIDENCE_EXAMPLES) -> list[dict[str, Any]]:
+    """Ejemplos trazables de filas crudas de ``social_mention_aggregates``.
+
+    Es la puerta pública para quien tiene las filas a mano y no quiere pagar un
+    ``build_context`` completo (la API de tópicos). Devuelve los mismos ítems
+    canónicos que la evidencia de un insight: con ``url: null`` y el motivo.
+    """
+    policies = social_source_policies()
+    proxy = _EvidenceOnlyContext(policies)
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        for item in _social_evidence(proxy, row):  # type: ignore[arg-type]
+            text = (item.get("text") or "").strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            out.append(item)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+@dataclass
+class _EvidenceOnlyContext:
+    """Lo mínimo que ``_social_evidence`` necesita del contexto."""
+
+    social_policies: dict[str, dict[str, Any]]
 
 
 def _build_entries(ctx: BrandContext, social_rows: list[dict[str, Any]],
@@ -596,7 +1041,7 @@ def _build_entries(ctx: BrandContext, social_rows: list[dict[str, Any]],
             "topic_raw": row.get("topic"),
             "intent_raw": row.get("intent"),
             "text": None,
-            "evidence": _social_evidence(row),
+            "evidence": _social_evidence(ctx, row),
         })
 
     for row in review_rows:
@@ -606,14 +1051,22 @@ def _build_entries(ctx: BrandContext, social_rows: list[dict[str, Any]],
         rating = row.get("rating")
         sentiment = clamp((float(rating) - 2.5) / 2.5, -1.0, 1.0) if rating is not None else None
         text = (row.get("review_text") or "").strip()
-        evidence = [{
-            "source": "review",
-            "source_name": row.get("source") or row.get("retailer_name") or "review",
-            "text": text,
-            "rating": rating,
-            "observed_at": row.get("observed_at"),
-            "product": row.get("product_name"),
-        }] if text else []
+        product = ctx.products.get(int(row["product_id"])) if row.get("product_id") else None
+        evidence = [_evidence_item(
+            text=text, kind="review",
+            source_name=row.get("source") or row.get("retailer_name") or "review",
+            # `reviews` no guarda permalink (ver URL_REASONS): la ficha del
+            # producto es lo más cerca que se puede llevar al usuario.
+            url=None, url_status=URL_STATUS_REVIEW_NOT_STORED,
+            when=row.get("observed_at"), date_field="observed_at",
+            rating=rating,
+            product=row.get("product_name"),
+            product_id=row.get("product_id"),
+            retailer=row.get("retailer_name"),
+            context_url=(product or {}).get("url"),
+            context_label="Ficha del producto",
+            observed_at=row.get("observed_at"),
+        )] if text else []
         entries.append({
             "source": "review",
             "source_label": f"review:{row.get('source') or row.get('retailer_name') or 'review'}",
@@ -634,13 +1087,17 @@ def _build_entries(ctx: BrandContext, social_rows: list[dict[str, Any]],
         if window is None:
             continue
         text = " ".join(filter(None, [row.get("title"), row.get("excerpt")])).strip()
-        evidence = [{
-            "source": "editorial",
-            "source_name": row.get("source_name") or "editorial",
-            "text": (row.get("excerpt") or row.get("title") or "").strip(),
-            "url": row.get("url"),
-            "published_at": row.get("published_at"),
-        }] if (row.get("excerpt") or row.get("title")) else []
+        source_name = row.get("source_name") or "editorial"
+        evidence = [_evidence_item(
+            text=(row.get("excerpt") or row.get("title") or "").strip(),
+            kind="editorial", source_name=source_name,
+            url=row.get("url"), url_status=URL_STATUS_EDITORIAL_MISSING,
+            when=row.get("published_at"), date_field="published_at",
+            policy=ctx.editorial_policies.get(_norm(source_name)),
+            title=row.get("title"),
+            mention_type=row.get("mention_type"),
+            published_at=row.get("published_at"),
+        )] if (row.get("excerpt") or row.get("title")) else []
         for side in ("product_a_id", "product_b_id"):
             product_id = row.get(side)
             if product_id is None:
@@ -747,7 +1204,7 @@ def _build_pair_entries(ctx: BrandContext,
             "volume": float(value),
             "sentiment": (float(row["sentiment_score"])
                           if row.get("sentiment_score") is not None else None),
-            "evidence": _social_evidence(row),
+            "evidence": _social_evidence(ctx, row),
             "topic_raw": row.get("topic"),
         })
     return pairs
@@ -869,6 +1326,14 @@ def _momentum_from_bucket(ctx: BrandContext, bucket: Bucket,
         "sources": sorted(s for s in bucket.sources if s),
         "period_start": ctx.period_start,
         "period_end": ctx.period_end,
+        # Toda lectura de momentum viaja con la ventana con la que se calculó:
+        # un número sin su período de comparación no es interpretable.
+        "window": ctx.window_info(),
+        # Unidades explícitas: `score` es 0..100, `trend` es %, `trend_ratio` y
+        # `acceleration` son RATIOS (0.62 = +62%). Mezclarlas sin decirlo es
+        # exactamente lo que hacía ilegible la tabla de momentum.
+        "units": {"score": "score_0_100", "volume": "count", "trend": "pct",
+                  "trend_ratio": "ratio", "acceleration": "ratio"},
     }
 
 
@@ -917,7 +1382,13 @@ def conversation_momentum(topic: str, ctx: BrandContext) -> dict[str, Any]:
 
 
 def _collect_examples(buckets: Iterable[Bucket]) -> list[dict[str, Any]]:
-    """1..3 ejemplos textuales públicos, deduplicados y deterministas."""
+    """1..3 ejemplos textuales públicos, deduplicados y deterministas.
+
+    Los campos de trazabilidad (``url``, ``url_status``, ``url_reason``, ...)
+    viajan SIEMPRE, incluso en ``null``: antes se filtraban todos los valores
+    nulos y una evidencia sin link quedaba indistinguible de una sin fuente.
+    El resto de las claves opcionales se sigue podando.
+    """
     items: list[dict[str, Any]] = []
     for bucket in buckets:
         items.extend(bucket.evidence)
@@ -928,7 +1399,8 @@ def _collect_examples(buckets: Iterable[Bucket]) -> list[dict[str, Any]]:
         if not text or text in seen:
             continue
         seen.add(text)
-        examples.append({k: v for k, v in item.items() if v is not None})
+        examples.append({k: v for k, v in item.items()
+                         if v is not None or k in EVIDENCE_REQUIRED_KEYS})
         if len(examples) >= MAX_EVIDENCE_EXAMPLES:
             break
     return examples
@@ -957,7 +1429,10 @@ def _emit(ctx: BrandContext, *, insight_type: str, dimension: str | None, topic:
         "examples": examples,
         "metrics": {k: (round(v, 4) if isinstance(v, float) else v)
                     for k, v in metrics.items()},
-        "window": {"current": [ctx.period_start, ctx.period_end],
+        # `current` y `previous_days` se conservan (los consumen los clientes
+        # actuales); el resto del sobre dice CONTRA QUÉ se comparó y si el
+        # histórico alcanzaba.
+        "window": {**ctx.window_info(),
                    "previous_days": (ctx.cur_start - ctx.prev_start).days
                    if ctx.cur_start and ctx.prev_start else None},
     }
@@ -1444,6 +1919,8 @@ def detect_trends(ctx: BrandContext) -> list[dict[str, Any]]:
             "confidence": momentum["confidence"],
             "period_start": ctx.period_start,
             "period_end": ctx.period_end,
+            "window": momentum["window"],
+            "units": momentum["units"],
             **extra,
         })
 
@@ -1567,8 +2044,54 @@ _SIGNAL_BY_SOURCE = {"social": "social_momentum",
                      "review": "review_momentum"}
 
 
+#: Unidad de cada campo de una fila de momentum publicada por este módulo.
+#: `value` es un score 0..100 (NO un volumen) y `delta`/`acceleration` son
+#: RATIOS (0.62 = +62%). La confusión entre esto y `share_of_shelf` —que está
+#: en % y en puntos porcentuales— es lo que hacía ilegible la tabla.
+MOMENTUM_SIGNAL_UNITS: dict[str, str] = {
+    "value": "score_0_100",
+    "delta": "ratio",
+    "acceleration": "ratio",
+    "volume": "count",
+}
+
+#: Qué cuenta el volumen absoluto de cada fuente. "Volumen" a secas no dice
+#: nada: 100 menciones de foro y 100 notas editoriales no son lo mismo.
+VOLUME_UNITS: dict[str, str] = {
+    "social": "menciones",
+    "editorial": "notas",
+    "review": "reviews",
+}
+
+
+def _volume_unit(source: str) -> str:
+    return VOLUME_UNITS.get(source, "observaciones")
+
+
+def _entity_label(ctx: BrandContext, entity_type: str, entity_id: Any) -> str:
+    """Nombre legible de la entidad de una señal (nunca "Producto #17")."""
+    if entity_type == "brand":
+        try:
+            return ctx.brand_name(int(entity_id))
+        except (TypeError, ValueError):
+            return str(entity_id)
+    if entity_type == "product":
+        try:
+            return ctx.product_name(int(entity_id))
+        except (TypeError, ValueError):
+            return str(entity_id)
+    # franchise / topic: el id ya es el nombre.
+    return str(entity_id)
+
+
 def build_market_signals(ctx: BrandContext) -> list[dict[str, Any]]:
-    """Señales de mercado por marca, producto y franquicia (las tres fuentes)."""
+    """Señales de mercado por marca, producto y franquicia (las tres fuentes).
+
+    Las filas persisten sólo las columnas de ``_SIGNAL_COLUMNS``; el resto de
+    las claves (``volume``, ``units``, ``entity_label``, ...) son contexto para
+    quien consume la función en memoria — por ejemplo la API, que necesita
+    publicar el volumen absoluto y la unidad de cada número.
+    """
     if not ctx.has_data:
         return []
     signals: list[dict[str, Any]] = []
@@ -1608,6 +2131,19 @@ def build_market_signals(ctx: BrandContext) -> list[dict[str, Any]]:
                     "acceleration": momentum["acceleration"],
                     "period_start": ctx.period_start,
                     "period_end": ctx.period_end,
+                    # ── no persistido: contexto para la API ──
+                    "entity_label": _entity_label(ctx, entity_type, entity_id),
+                    "volume": momentum["volume"],
+                    "volume_previous": momentum["volume_previous"],
+                    "volume_prior": momentum["volume_prior"],
+                    "volume_unit": _volume_unit(source),
+                    "trend_pct": momentum["trend"],
+                    "direction": momentum["direction"],
+                    "confidence": momentum["confidence"],
+                    "coverage": momentum["coverage"],
+                    "sources": momentum["sources"],
+                    "units": MOMENTUM_SIGNAL_UNITS,
+                    "window": momentum["window"],
                 })
     return signals
 
@@ -1622,9 +2158,21 @@ _SIGNAL_COLUMNS = ("signal_type", "entity_type", "entity_id", "country_code", "v
                    "delta", "acceleration", "period_start", "period_end")
 
 
-def run_brand_intelligence(db_path: Path | str = DB_PATH) -> dict[str, int]:
-    """Calcula y persiste señales de mercado e insights de marca (idempotente)."""
-    ctx = build_context(db_path)
+def run_brand_intelligence(db_path: Path | str = DB_PATH, *, window: str | None = None,
+                           window_days: int | None = None,
+                           compare_days: int | None = None) -> dict[str, int]:
+    """Calcula y persiste señales de mercado e insights de marca (idempotente).
+
+    ``window``/``window_days``/``compare_days`` eligen el período de
+    comparación y bajan por toda la cadena (``build_market_signals``,
+    ``generate_insights``, ``detect_trends``, ``social_competition_signals``)
+    vía el contexto. El default es el histórico: mes contra mes anterior.
+
+    OJO: esto ESCRIBE. La API no lo usa para ventanas a medida — recalcula en
+    memoria con ``build_context(window=...)`` y no toca lo persistido.
+    """
+    ctx = build_context(db_path, window=window, window_days=window_days,
+                        compare_days=compare_days)
     signals = build_market_signals(ctx)
     insights = generate_insights(ctx)
     trends = detect_trends(ctx)
