@@ -1,0 +1,74 @@
+# Blueprint de Render para el motor de inteligencia.
+#
+# Render se eligió por una razón concreta: es de los pocos PaaS donde un disco
+# persistente viene con el plan pago más barato y se configura acá mismo, sin
+# clicks. Railway y Fly sirven igual — lo que NO sirve es cualquier runtime
+# serverless (Vercel, Lambda), porque la base SQLite se construye en disco y
+# tiene que sobrevivir entre requests y reinicios.
+#
+# Uso:  Render → New → Blueprint → apuntar a este repo → Root Directory: backend
+
+services:
+  - type: web
+    name: nike-intelligence-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter          # el free tier NO tiene disco persistente
+    region: oregon
+    healthCheckPath: /api/health
+
+    disk:
+      name: intelligence-data
+      mountPath: /data     # tiene que coincidir con CI_DB_PATH del Dockerfile
+      sizeGB: 1
+
+    envVars:
+      # Ruta de la base, sobre el disco persistente.
+      - key: CI_DB_PATH
+        value: /data/intelligence.db
+
+      # OBLIGATORIA en un deploy público. Sin esta variable la API queda
+      # ABIERTA: cualquiera puede leer todo el análisis competitivo.
+      # Generala con:  python -c "import secrets; print(secrets.token_urlsafe(32))"
+      # y poné el MISMO valor en INTELLIGENCE_API_KEY del proyecto de Vercel.
+      - key: CI_API_KEY
+        sync: false        # se carga a mano en el dashboard, no vive en el repo
+
+      # El browser nunca le pega directo a esta API: va por el proxy de Next
+      # (/api/intelligence/...), que corre server-side. Por eso CORS puede
+      # quedar cerrado.
+      - key: CI_CORS_ORIGINS
+        value: ""
+
+      - key: CI_RATE_LIMIT
+        value: "120"
+      - key: CI_RATE_LIMIT_WINDOW
+        value: "60"
+
+      # Render corre detrás de un proxy: sin esto el rate limit ve una sola IP
+      # para todo el tráfico y limita a todos juntos.
+      - key: CI_TRUST_FORWARDED_FOR
+        value: "1"
+
+      # Para ingerir los datos reales desde Supabase con
+      # `python -m app.ingest --dsn $DATABASE_URL`. Opcional: sin esto el
+      # motor corre con el dataset demo.
+      - key: DATABASE_URL
+        sync: false
+
+# Recalcular semanalmente. El pipeline es idempotente y el historial
+# sobrevive al recálculo (ver app/services/history.py), así que se puede
+# correr sin miedo a perder el triaje.
+#   Descomentar cuando la ingesta desde Supabase esté configurada:
+#
+#   - type: cron
+#     name: nike-intelligence-refresh
+#     runtime: docker
+#     dockerfilePath: ./Dockerfile
+#     schedule: "0 21 * * 1"        # lunes 21:00 UTC, después de los scrapers
+#     dockerCommand: sh -c "python -m app.ingest --dsn $DATABASE_URL --incremental && python -m app.pipeline --keep"
+#     disk:
+#       name: intelligence-data
+#       mountPath: /data
+#       sizeGB: 1
