@@ -43,7 +43,7 @@ Si una pantalla no aporta a una de estas cinco, no va en el MVP.
                      │  SQLite (MVP) · portable a Postgres
                      └────────────────────────┬───────────────────────────
                                               ▼
-                              FastAPI  ──▶  Next.js (frontend/)
+                              FastAPI  ──▶  Next.js (web/)
 ```
 
 **Decisión clave: los servicios escriben, la API sólo lee.** Los routers hacen
@@ -245,14 +245,16 @@ backend/
   config/weights.yaml       TODO el scoring, editable sin tocar código
   data/{raw,processed,sample}
   tests/
-frontend/                   Next.js — la plataforma nueva
-web/                        dashboard legacy (Nike Analytics) — sigue vivo
+web/                        dashboard único — 10 solapas en una sola app
+  src/app/(dashboard)/        RETAIL & PRICING (4) + intelligence/ (6)
+  src/app/api/intelligence/   proxy al backend FastAPI
 db/  scraper/               carga a Postgres y adapters de scraping existentes
 ```
 
-`frontend/` va separado de `web/` a propósito: el dashboard legacy sigue en
-producción y en mantenimiento, y mezclarlos habría acoplado dos ciclos de vida
-distintos.
+Hubo un `frontend/` separado mientras se construía la plataforma, para no
+acoplarlo al dashboard en producción. Una vez estable se unificó en `web/`:
+mantener dos apps Next.js con la misma capa de presentación era pedir que se
+desincronizaran.
 
 ---
 
@@ -265,8 +267,8 @@ pip install -r requirements.txt
 python -m app.pipeline                        # construye y puebla la base
 uvicorn app.main:app --reload --port 8000     # http://localhost:8000/docs
 
-# Frontend
-cd frontend
+# Frontend (las 10 solapas)
+cd web
 npm install && npm run dev                    # http://localhost:3000
 ```
 
