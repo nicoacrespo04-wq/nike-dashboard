@@ -115,6 +115,19 @@ def run_all(db_path: Path | str = DB_PATH, *, reset: bool = True,
         if stages and name not in stages:
             continue
 
+        # `seed` carga el dataset DEMO y lo hace con `drop=True`, o sea borrando
+        # el archivo SQLite entero. Sin `reset` eso destruye lo que haya: si los
+        # datos vinieron de `app.ingest`, recalcular con --keep los reemplazaba
+        # por los 45 productos de demostración sin avisar, y todo el análisis
+        # posterior salía de datos de mentira. `--keep` significa "no toques los
+        # datos que hay", así que se omite salvo que lo pidan explícitamente
+        # con `--stage seed`.
+        if name == "seed" and not reset and not stages:
+            report[name] = {"status": "skipped",
+                            "reason": "--keep conserva los datos existentes "
+                                      "(usá --stage seed para forzar el dataset demo)"}
+            continue
+
         func = _resolve(module_name, func_name)
         if func is None:
             report[name] = {"status": "skipped", "reason": f"{module_name}.{func_name} no disponible"}
