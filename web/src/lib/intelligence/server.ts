@@ -48,7 +48,27 @@ import type {
   RetailMediaQuery,
 } from './api'
 
-/** Base del backend de inteligencia. Configurable por entorno. */
+/**
+ * ¿Alguien configuró dónde vive el motor?
+ *
+ * Es la distinción que separa los dos únicos motivos por los que estas
+ * pantallas fallan, y que exigen respuestas opuestas: "nadie lo desplegó
+ * todavía" vs. "está desplegado y se cayó". Sin esto el dashboard decía lo
+ * mismo en los dos casos.
+ */
+export function intelligenceApiConfigured(): boolean {
+  return Boolean(process.env.INTELLIGENCE_API_URL?.trim())
+}
+
+/**
+ * Base del backend de inteligencia.
+ *
+ * El default a localhost es para desarrollo: `npm run dev` con el uvicorn al
+ * lado funciona sin configurar nada. En Vercel ese default no sirve para nada
+ * —no hay ningún :8000 dentro del contenedor de la Lambda— y por eso las 6
+ * solapas de Intelligence aparecen caídas en un deploy donde nadie seteó
+ * `INTELLIGENCE_API_URL`. No es un bug del dashboard: falta desplegar el motor.
+ */
 export const INTELLIGENCE_API_BASE = (
   process.env.INTELLIGENCE_API_URL ?? 'http://localhost:8000'
 ).replace(/\/+$/, '')
@@ -88,12 +108,56 @@ export function intelligenceHeaders(extra?: Record<string, string>): Record<stri
 /** Cuánto esperamos al backend antes de cortar (el pipeline puede ser lento). */
 export const TIMEOUT_MS = 20_000
 
-/** Mensaje único de "no está levantado". Es la copy que ve el usuario. */
-export const OFFLINE_MESSAGE =
-  'El motor de inteligencia no está disponible — levantalo con `uvicorn app.main:app --port 8000` desde la carpeta backend/.'
+/**
+ * Copy única de "el motor no contestó". La ve el usuario final, no un dev.
+ *
+ * Antes era una constante con el comando de uvicorn adentro. El problema no era
+ * el tono sino que era FALSA en producción: a alguien mirando el dashboard en
+ * Vercel, "levantalo con uvicorn desde backend/" lo manda a un repo que no tiene
+ * y a una terminal que no va a abrir, para arreglar algo que no está roto en su
+ * máquina. Y peor: escondía el diagnóstico real, que es que el motor nunca se
+ * desplegó.
+ *
+ * Es una función y no una constante porque el mensaje correcto depende de si
+ * `INTELLIGENCE_API_URL` está seteada, y eso se resuelve por request en el
+ * servidor (una constante de módulo lo congelaría en el build).
+ *
+ * Sigue siendo UNA sola definición: la usan el proxy `/api/intelligence/*` y
+ * `fetchIntelligence`, que son los dos únicos lugares donde se sabe que el
+ * motor no contestó.
+ */
+export function offlineMessage(): string {
+  if (!intelligenceApiConfigured()) {
+    return (
+      'Las 6 solapas de Intelligence las calcula un servicio aparte del dashboard ' +
+      '(el motor de inteligencia), y todavía no está configurado: falta la variable ' +
+      'INTELLIGENCE_API_URL. El resto del dashboard —Competencia, Share of Shelf, ' +
+      'Control Retailers y Assortment— no depende del motor y sigue funcionando ' +
+      'normal. Para activarlo hay que desplegar el motor y pegar su URL en esa ' +
+      'variable: los pasos están en docs/deploy.md del repo.'
+    )
+  }
+  // Se relee del entorno en vez de usar `INTELLIGENCE_API_BASE`, que se congela
+  // al importar el módulo. En Next da lo mismo (el módulo se importa con el
+  // entorno ya cargado), pero este mensaje es justamente el que lee alguien
+  // depurando la configuración: tiene que mostrar el valor VIGENTE, no el que
+  // había cuando el proceso levantó.
+  const base = (process.env.INTELLIGENCE_API_URL ?? '').trim().replace(/\/+$/, '')
+  return (
+    `El motor de inteligencia está configurado en ${base} pero no ` +
+    'respondió. Suele ser una de tres: el servicio está dormido o caído (si está en ' +
+    'el plan free de Render se duerme solo tras 15 minutos sin uso y la primera ' +
+    'visita tarda cerca de un minuto en despertarlo — reintentá), la URL de ' +
+    'INTELLIGENCE_API_URL está mal escrita, o el servicio se quedó sin desplegar. ' +
+    'Abrí esa URL con /api/health al final para ver cuál de las tres es.'
+  )
+}
 
 export const TIMEOUT_MESSAGE =
-  'El motor de inteligencia no respondió a tiempo. Verificá que el proceso de `uvicorn` siga vivo y que el pipeline haya terminado.'
+  'El motor de inteligencia tardó demasiado en responder. Si acaba de arrancar, ' +
+  'está reconstruyendo su base de datos (tarda cerca de un minuto) — esperá y ' +
+  'reintentá. Si sigue igual después de un par de intentos, revisá los logs del ' +
+  'servicio: probablemente el pipeline no llegó a terminar.'
 
 // ── Política de caché por endpoint ──────────────────────────────────
 
@@ -199,7 +263,7 @@ export async function fetchIntelligence<T>(
     const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError'
     return {
       ok: false,
-      error: timedOut ? TIMEOUT_MESSAGE : OFFLINE_MESSAGE,
+      error: timedOut ? TIMEOUT_MESSAGE : offlineMessage(),
       status: timedOut ? 504 : 503,
     }
   }

@@ -60,6 +60,53 @@ interface FranchisesResponse {
   franchises: FranchiseRow[]
 }
 
+// ── Gap analysis (ver web/src/app/api/pricing/gaps/route.ts) ─────────
+// Un "gap" NO es una franquicia de la competencia sin homónima en Nike (ese
+// era el bug: los nombres de franquicia nunca coinciden entre marcas, así que
+// gaps ≈ totales). Es un SEGMENTO COMPARABLE —silueta × división × categoría ×
+// género × banda de precio— donde la competencia tiene surtido relevante y
+// Nike está muy por debajo. El criterio lo decide y lo publica el servidor.
+
+/** Un segmento donde la competencia tiene surtido y Nike casi no. */
+interface GapSegmentRow {
+  silueta: string
+  division: string
+  category: string
+  gender: string
+  gender_label: string
+  band: string
+  band_label: string
+  nike_skus: number
+  competitor_skus: number
+  gap_skus: number
+  coverage: number
+  nike_avg_price: number | null
+  competitor_avg_price: number | null
+}
+
+interface GapCompetitorBlock {
+  marca: string
+  label: string
+  relevant_segments: number
+  gap_segments: number
+  gap_skus: number
+  gaps: GapSegmentRow[]
+}
+
+interface GapsResponse {
+  universeLabel: string
+  universeDescription: string
+  criteria: {
+    minCompetitorSkus: number
+    maxCoverageRatio: number
+    segmentAxes: string[]
+    description: string
+  }
+  segments: number
+  skusSinBanda: { nike: number; adidas: number; puma: number }
+  competitors: { adidas: GapCompetitorBlock; puma: GapCompetitorBlock }
+}
+
 type Tab = 'franchises' | 'siluetas' | 'gaps'
 
 const MARCA_COLOR: Record<string, string> = {
@@ -94,6 +141,7 @@ const price = (v: number | string | null | undefined): string =>
 export default function AssortmentPage() {
   const [franchises, setFranchises] = useState<FranchiseRow[]>([])
   const [siluetasData, setSiluetasData] = useState<SiluetasResponse | null>(null)
+  const [gapsData, setGapsData] = useState<GapsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('franchises')
@@ -107,20 +155,21 @@ export default function AssortmentPage() {
   useEffect(() => {
     let cancelled = false
     // `/api/pricing/franchises` sin `marca` devuelve SÓLO Adidas y Puma (es su
-    // default, pensado para la pantalla de Competencia). Acá hace falta también
-    // Nike: sin sus franquicias, `nikeNames` queda vacío y el gap analysis
-    // reporta que NINGUNA franquicia de la competencia tiene equivalente —los
-    // KPIs de gaps daban exactamente el total de franquicias—. Por eso se pide
-    // en dos llamadas y se juntan.
+    // default, pensado para la pantalla de Competencia) y alcanza: acá sus
+    // franquicias se listan, no se cruzan contra las de Nike. El cruce entre
+    // marcas lo hace `/api/pricing/gaps` en SQL y sobre segmentos comparables,
+    // porque hacerlo por NOMBRE de franquicia no comparaba nada (los nombres
+    // son propios de cada marca) y devolvía gaps ≈ totales.
     Promise.all([
       fetchJson<FranchisesResponse>('/api/pricing/franchises'),
-      fetchJson<FranchisesResponse>('/api/pricing/franchises?marca=NIKE'),
       fetchJson<SiluetasResponse>('/api/pricing/siluetas'),
+      fetchJson<GapsResponse>('/api/pricing/gaps'),
     ])
-      .then(([fr, nike, si]) => {
+      .then(([fr, si, gp]) => {
         if (cancelled) return
-        setFranchises([...(fr.franchises ?? []), ...(nike.franchises ?? [])])
+        setFranchises(fr.franchises ?? [])
         setSiluetasData(si)
+        setGapsData(gp)
         setError(null)
       })
       .catch((err) => {
@@ -128,6 +177,7 @@ export default function AssortmentPage() {
         setError(errorMessage(err))
         setFranchises([])
         setSiluetasData(null)
+        setGapsData(null)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -169,14 +219,11 @@ export default function AssortmentPage() {
   const siluetas = useMemo(() => siluetasData?.siluetas ?? [], [siluetasData])
   const bands = useMemo(() => siluetasData?.bands ?? [], [siluetasData])
 
-  const nikeF = franchises.filter((f) => f.marca === 'NIKE')
   const adidasF = franchises.filter((f) => f.marca === 'ADIDAS')
   const pumaF = franchises.filter((f) => f.marca === 'PUMA')
 
-  // Gap analysis: franchises Adidas/Puma sin equivalente Nike
-  const nikeNames = new Set(nikeF.map((f) => f.franchise?.toLowerCase()))
-  const gapsAdidas = adidasF.filter((f) => !nikeNames.has(f.franchise?.toLowerCase()))
-  const gapsPuma = pumaF.filter((f) => !nikeNames.has(f.franchise?.toLowerCase()))
+  const gapAdidas = gapsData?.competitors.adidas ?? null
+  const gapPuma = gapsData?.competitors.puma ?? null
 
   // Una fila por silueta, con las tres marcas como series del gráfico.
   const chartRows: SiluetaChartRow[] = useMemo(() => {
@@ -216,8 +263,26 @@ export default function AssortmentPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard loading={loading} title="Franchises Adidas" value={adidasF.length} subtitle="modelos monitoreados" color="#0046CC" />
         <KPICard loading={loading} title="Franchises Puma" value={pumaF.length} subtitle="modelos monitoreados" color="#E4032E" />
-        <KPICard loading={loading} title="Gaps Adidas vs Nike" value={gapsAdidas.length} subtitle="sin equivalente Nike" color="#E31837" />
-        <KPICard loading={loading} title="Gaps Puma vs Nike" value={gapsPuma.length} subtitle="sin equivalente Nike" color="#F5A623" />
+        {/* El valor es la cantidad de SEGMENTOS gap, y el subtítulo trae su
+            denominador: sin él, "5" no se puede leer (¿de cuántos?). El
+            criterio completo viaja en el tooltip, tal cual lo devolvió el
+            servidor — no hay umbral escondido en el cliente. */}
+        <KPICard
+          loading={loading}
+          title="Gaps Adidas vs Nike"
+          value={gapAdidas ? gapAdidas.gap_segments : null}
+          subtitle={gapSubtitle(gapAdidas)}
+          hint={gapsData?.criteria.description}
+          color="#E31837"
+        />
+        <KPICard
+          loading={loading}
+          title="Gaps Puma vs Nike"
+          value={gapPuma ? gapPuma.gap_segments : null}
+          subtitle={gapSubtitle(gapPuma)}
+          hint={gapsData?.criteria.description}
+          color="#F5A623"
+        />
       </div>
 
       {/* Tabs */}
@@ -327,33 +392,7 @@ export default function AssortmentPage() {
 
       {/* Tab: Product Gap Analysis */}
       {tab === 'gaps' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {([
-            ['Franchises Adidas sin equivalente Nike', '#0046CC', gapsAdidas, 'Adidas'],
-            ['Franchises Puma sin equivalente Nike', '#E4032E', gapsPuma, 'Puma'],
-          ] as const).map(([title, color, rows, marca]) => (
-            <div className="nike-card" key={title}>
-              <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-1 flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: color }} />
-                {title}
-              </h2>
-              <p className="text-xs text-gray-400 mb-4">
-                {rows.length} modelos {marca} no matcheados contra Nike
-              </p>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {rows.slice(0, 30).map((f) => (
-                  <div key={f.franchise} className="flex items-center justify-between py-2 border-b border-gray-50">
-                    <span className="text-sm font-medium text-gray-800">{f.franchise}</span>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span>{num(f.count)} SKUs</span>
-                      <span className="font-semibold text-gray-700">{price(f.avg_price)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <GapAnalysis data={gapsData} loading={loading} />
       )}
     </div>
   )
@@ -587,6 +626,167 @@ function SiluetaDetailPanel({ silueta, bands, detail, loading, error }: SiluetaD
           la franquicia pero no caen en ninguna banda, así que las bandas pueden sumar menos
           que el total.
         </p>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Product Gap Analysis
+// ─────────────────────────────────────────────────────────────────────
+
+/** Subtítulo del KPI: el número solo no se puede leer sin su denominador. */
+function gapSubtitle(block: GapCompetitorBlock | null): string | undefined {
+  if (!block) return undefined
+  if (block.relevant_segments === 0) return 'sin segmentos con surtido relevante'
+  return `de ${block.relevant_segments} segmentos con surtido ${block.label} · faltan ${block.gap_skus} SKUs`
+}
+
+interface GapAnalysisProps {
+  data: GapsResponse | null
+  loading: boolean
+}
+
+/**
+ * Los gaps de surtido, uno por competidor.
+ *
+ * Todo lo que se muestra viene del servidor: los segmentos, el criterio con el
+ * que se los marcó y las bandas de precio (las MISMAS de la pestaña "Siluetas",
+ * ver `lib/priceBands.ts` — no puede haber dos definiciones de banda en la
+ * misma pantalla). Acá no se decide nada, ni se rellena un número que no vino.
+ */
+function GapAnalysis({ data, loading }: GapAnalysisProps) {
+  if (loading) {
+    return (
+      <div className="nike-card">
+        <p className="text-xs text-gray-400">Calculando gaps de surtido…</p>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="nike-card">
+        <p className="text-xs text-gray-400">
+          No se pudo calcular el gap analysis. Sin ese dato la pantalla no muestra nada:
+          un cero acá se leería como &ldquo;no hay gaps&rdquo;.
+        </p>
+      </div>
+    )
+  }
+
+  const blocks: readonly (readonly [GapCompetitorBlock, string])[] = [
+    [data.competitors.adidas, MARCA_COLOR.ADIDAS],
+    [data.competitors.puma, MARCA_COLOR.PUMA],
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="nike-card">
+        <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-1">
+          Qué se está midiendo
+        </h2>
+        <p className="text-xs text-gray-500">
+          Un gap es un <strong>segmento comparable</strong> donde la competencia puso surtido
+          y Nike casi no tiene. El segmento son los ejes que las tres marcas comparten
+          —{data.criteria.segmentAxes.join(' × ').toLowerCase()}—, nunca el nombre de la
+          franquicia: &ldquo;Ultraboost&rdquo; y &ldquo;Pegasus&rdquo; no se pueden comparar
+          por nombre.
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          <strong>Criterio:</strong> {data.criteria.description}
+        </p>
+        <p className="text-[11px] text-gray-400 mt-2">
+          Universo: {data.universeLabel} — {data.universeDescription} Se evaluaron{' '}
+          {data.segments.toLocaleString('es-AR')} segmentos con dato completo; los SKUs sin
+          silueta, categoría o género quedan fuera porque no se los puede ubicar en ninguno.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {blocks.map(([block, color]) => (
+          <GapBlock key={block.marca} block={block} color={color} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+interface GapBlockProps {
+  block: GapCompetitorBlock
+  color: string
+}
+
+function GapBlock({ block, color }: GapBlockProps) {
+  return (
+    <div className="nike-card !p-0 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100">
+        <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full" style={{ background: color }} />
+          Dónde {block.label} tiene surtido y Nike no
+        </h2>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {block.gap_segments} de {block.relevant_segments} segmentos con surtido{' '}
+          {block.label} relevante · faltan {block.gap_skus} SKUs para igualar el surtido de{' '}
+          {block.label} en esos segmentos.
+        </p>
+      </div>
+
+      {block.gaps.length === 0 ? (
+        <p className="px-5 py-8 text-xs text-gray-400">
+          {block.relevant_segments === 0
+            ? `No hay ningún segmento donde ${block.label} llegue al mínimo de SKUs del criterio, así que no hay nada que comparar.`
+            : `No hay gaps con este criterio: en los ${block.relevant_segments} segmentos donde ${block.label} tiene surtido relevante, Nike está presente.`}
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="nike-table">
+            <thead>
+              <tr>
+                <th>Segmento</th>
+                <th>Banda de precio</th>
+                <th className="text-right">{block.label}</th>
+                <th className="text-right">Nike</th>
+                <th className="text-right">Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {block.gaps.map((g) => (
+                <tr key={`${g.silueta}|${g.division}|${g.category}|${g.gender}|${g.band}`}>
+                  <td>
+                    <span className="font-medium text-gray-900">{g.silueta}</span>
+                    <span className="block text-[11px] text-gray-500">
+                      {g.category} · {g.gender_label} · {g.division}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap text-xs text-gray-600">{g.band_label}</td>
+                  <td className="text-right tabular-nums">
+                    <span className="font-mono font-semibold text-gray-900">
+                      {g.competitor_skus}
+                    </span>
+                    <span className="block text-[11px] text-gray-500">
+                      {price(g.competitor_avg_price)}
+                    </span>
+                  </td>
+                  <td className="text-right tabular-nums">
+                    <span className="font-mono text-gray-900">{g.nike_skus}</span>
+                    <span className="block text-[11px] text-gray-500">
+                      {price(g.nike_avg_price)}
+                    </span>
+                  </td>
+                  <td className="text-right tabular-nums">
+                    <span className="font-mono font-bold" style={{ color }}>
+                      +{g.gap_skus}
+                    </span>
+                    <span className="block text-[11px] text-gray-500">
+                      Nike cubre {Math.round(g.coverage * 100)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

@@ -43,7 +43,7 @@ import { NextResponse } from 'next/server'
 import {
   INTELLIGENCE_API_BASE,
   INTELLIGENCE_CACHE_TAG,
-  OFFLINE_MESSAGE,
+  offlineMessage,
   TIMEOUT_MESSAGE,
   TIMEOUT_MS,
   cacheRuleFor,
@@ -101,7 +101,7 @@ async function forward(request: Request, context: RouteContext): Promise<Respons
     // `TimeoutError` / `AbortError` vienen como DOMException; el resto son
     // fallos de conexión (ECONNREFUSED, DNS, etc.).
     const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError'
-    return errorResponse(timedOut ? TIMEOUT_MESSAGE : OFFLINE_MESSAGE, timedOut ? 504 : 503)
+    return errorResponse(timedOut ? TIMEOUT_MESSAGE : offlineMessage(), timedOut ? 504 : 503)
   }
 
   const payload = await upstream.text()

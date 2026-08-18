@@ -2,15 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { isValidPriceSql, validPriceSql } from '@/lib/price'
 import { canonicalMarcaSql } from '@/lib/marca'
-import { RETAILERS_AR_SQL } from '@/lib/scrapers'
+import { RETAILERS_AR_SQL, retailerKey, retailerKeySql, retailerLabel } from '@/lib/scrapers'
 
 export const dynamic = 'force-dynamic'
 
 // Excluir canales propios de Nike y D2C de la competencia: acá medimos
-// cumplimiento de PVP de los RETAILERS. La comparación va por clave canónica
-// de scraper: en los datos reales conviven 'ADIDAS_7' y 'adidas_7', y un
-// `NOT IN ('ADIDAS_7')` deja pasar el segundo (ver `lib/scrapers.ts`).
+// cumplimiento de PVP de los RETAILERS ARGENTINOS. La comparación va por clave
+// canónica de scraper: en los datos reales conviven 'ADIDAS_7' y 'adidas_7', y
+// un `NOT IN ('ADIDAS_7')` deja pasar el segundo (ver `lib/scrapers.ts`).
+//
+// `RETAILERS_AR_SQL` ahora también acota el PAÍS. Antes no lo hacía y este
+// endpoint devolvía `OpenSports_CL` (135 filas), `StockCenter_CL` (24),
+// `Sporting_CL` (15) y 7 retailers chilenos más, midiendo su "cumplimiento"
+// contra un `precio_sugerido` que es de la lista de precios ARGENTINA — o sea
+// comparando un precio en CLP contra un PVP en ARS. Medido con
+// `curl /api/pricing/pvp-compliance`.
 const ONLY_RETAILERS = RETAILERS_AR_SQL
+
+// Un retailer = una clave canónica, no una escritura del scraper. Sin esto la
+// tabla listaba 40 filas para 10 retailers: Open Sports aparecía tres veces
+// ('OpenSports_AR' 2.281 filas / 'opensports' 2.278 / 'Open Sports' 2.205) con
+// tres porcentajes de cumplimiento distintos (5% / 7% / 6%), ninguno el real.
+// Ver `lib/scrapers.ts::retailerKeySql` y `retailerLabel`.
+const RETAILER = retailerKeySql('scraper')
 
 // Marca canónica: `UPPER(marca) = 'NIKE'` se queda con CERO filas ante un
 // ' Nike ' con un espacio invisible, y la pantalla entera queda vacía sin
@@ -26,7 +40,10 @@ const HAS_PVP = isValidPriceSql('precio_sugerido')
 
 /** Cumplimiento de PVP de un retailer, tal cual sale de Postgres. */
 interface RetailerComplianceRow {
-  scraper: string | null
+  /** Clave canónica del retailer (sin casing, sin puntuación, sin sufijo de país). */
+  scraper: string
+  /** Todas las escrituras crudas con las que el scraper nombró a este retailer. */
+  variants: string[]
   total: string
   with_pvp: string
   compliant: string
@@ -58,7 +75,8 @@ export async function GET(req: NextRequest) {
       // `without_price` en vez de desbalancear la tabla.
       query<RetailerComplianceRow>(`
         SELECT
-          scraper,
+          ${RETAILER}                 AS scraper,
+          ARRAY_AGG(DISTINCT scraper) AS variants,
           COUNT(*) AS total,
           COUNT(*) FILTER (WHERE ${HAS_PVP} AND ${HAS_PRICE}) AS with_pvp,
           COUNT(*) FILTER (
@@ -79,7 +97,7 @@ export async function GET(req: NextRequest) {
         FROM pricing_data
         WHERE ${IS_NIKE}
           AND ${ONLY_RETAILERS}
-        GROUP BY scraper
+        GROUP BY ${RETAILER}
         ORDER BY total DESC
       `),
 
@@ -87,7 +105,7 @@ export async function GET(req: NextRequest) {
       // este array (ése era el bug: LIMIT 100 fijo => el KPI decía 100).
       query(`
         SELECT
-          scraper, style_color, marketing_name, franchise_scrapper,
+          ${RETAILER} AS scraper_key, scraper, style_color, marketing_name, franchise_scrapper,
           ${PRICE} AS competitor_final_price,
           ${PVP}   AS precio_sugerido,
           ROUND(((${PRICE} - ${PVP}) / ${PVP} * 100)::numeric, 1) AS diff_pct,
@@ -114,18 +132,36 @@ export async function GET(req: NextRequest) {
       `),
     ])
 
+    // La etiqueta se decide una sola vez por retailer y se reusa en las dos
+    // tablas, para que "Open Sports" se llame igual arriba y abajo.
+    const labelByKey = new Map(byRetailer.map((r) => [r.scraper, retailerLabel(r.variants)]))
+
     const retailersWithPVP = byRetailer.map((r) => ({
       ...r,
+      // `scraper` viaja como la ETIQUETA legible (es lo que la UI ya
+      // renderiza tal cual); la clave canónica queda aparte por si hace falta.
+      scraper: labelByKey.get(r.scraper) ?? r.scraper,
+      scraper_key: r.scraper,
       compliance_pct: Number(r.with_pvp) > 0
         ? Math.round((Number(r.compliant) / Number(r.with_pvp)) * 100)
         : null,
+    }))
+
+    // Misma etiqueta en el detalle de violaciones. Si una violación viniera de
+    // un retailer que no quedó en el agregado, se recalcula su clave en vez de
+    // mostrar el nombre crudo.
+    const violationsLabeled = (violations as Record<string, unknown>[]).map((v) => ({
+      ...v,
+      scraper:
+        labelByKey.get(String(v.scraper_key ?? retailerKey(String(v.scraper ?? '')))) ??
+        String(v.scraper ?? ''),
     }))
 
     const violationsTotal = parseInt(String(violationsCount[0]?.total ?? '0')) || 0
 
     return NextResponse.json({
       retailers: retailersWithPVP,
-      violations,
+      violations: violationsLabeled,
       violations_total: violationsTotal,
       violations_page: page,
       violations_page_size: pageSize,

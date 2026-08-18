@@ -6,7 +6,7 @@ Dashboard de inteligencia competitiva para Nike Argentina — desarrollado por S
 - **Frontend**: Next.js 14 + TypeScript + Tailwind + Recharts
 - **DB**: PostgreSQL (Supabase)
 - **Scrapers**: Python 3.11 + requests/curl_cffi/Playwright
-- **Deploy**: Vercel (frontend) + GitHub Actions (scrapers semanales)
+- **Deploy**: Vercel (dashboard) + Render (motor de intelligence) + GitHub Actions (scrapers semanales)
 
 ## Dashboards
 1. **Competencia** — Adidas & Puma: franchises, siluetas, BML, precios (D2C vs B2B)
@@ -48,12 +48,29 @@ SMTP_USER=...           (opcional, para alertas de scrapers)
 SMTP_PASS=...
 ```
 
-## Deploy en Vercel
+## Deploy
 
-1. Importar repo en vercel.com
-2. Root directory: `web`
-3. Agregar env vars: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
-4. Deploy
+**Son dos piezas, y hay que desplegar las dos.** Vercel sirve el dashboard; el
+motor de Competitive Intelligence es un servicio Python aparte que va a Render.
+Con sólo Vercel, las 4 solapas de retail funcionan y las 6 de **Intelligence**
+muestran un cartel diciendo que el motor no está configurado — es el síntoma de
+"está todo roto" más reportado del proyecto, y la causa es simplemente esa.
+
+📖 **Pasos exactos, con nombres de botón: [`docs/deploy.md`](docs/deploy.md)**
+
+Resumen:
+
+1. **Motor** → Render (free tier, sin tarjeta). *New +* → *Blueprint* → este
+   repo → Root Directory `backend`. El repo ya trae `backend/render.yaml`.
+   Variables a cargar: `DATABASE_URL` y `CI_API_KEY`.
+   Verificar en `https://TU-MOTOR.onrender.com/api/health`.
+2. **Dashboard** → Vercel. Importar repo, Root Directory `web`, env vars
+   `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, más
+   `INTELLIGENCE_API_URL` (la URL de Render) e `INTELLIGENCE_API_KEY` (el mismo
+   valor que `CI_API_KEY`). **Redesplegar** después de agregarlas.
+
+> Sin `CI_API_KEY` el motor queda **abierto en internet**: cualquiera con la URL
+> lee todo el análisis competitivo.
 
 ## Scrapers (GitHub Actions)
 

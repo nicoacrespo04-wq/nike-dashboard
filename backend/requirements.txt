@@ -11,12 +11,14 @@ httpx>=0.27
 # Desarrollo
 pytest>=8.2
 
-# ── Opcional: ingesta desde PostgreSQL/Supabase ─────────────
-# Sólo hace falta para `python -m app.ingest --dsn ...` (leer `pricing_data`
-# de Postgres). El motor, el pipeline demo y `--csv` funcionan sin esto, y el
-# módulo lo importa dentro de la función con un error claro si falta.
-#
-#   pip install psycopg2-binary>=2.9
+# ── Ingesta desde PostgreSQL/Supabase ───────────────────────
+# Era opcional cuando el único camino era el dataset demo local. Dejó de serlo:
+# en el deploy, `docker-entrypoint.sh` construye la base con
+# `python -m app.ingest --dsn $DATABASE_URL`, así que sin esto el contenedor
+# levanta y se queda para siempre con los 45 productos de demostración.
+# Localmente se puede seguir laburando sin Postgres (`--csv` y el pipeline demo
+# no lo tocan); el módulo lo importa dentro de la función y avisa si falta.
+psycopg2-binary>=2.9
 
 # ── Opcionales: modelos locales ─────────────────────────────
 # El motor funciona sin esto (usa TF-IDF de scikit-learn y comparación

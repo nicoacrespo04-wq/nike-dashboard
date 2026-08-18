@@ -729,8 +729,43 @@ export interface OverviewResponse {
   assortment_gaps: Opportunity[];
 }
 
+/**
+ * Estado del motor de inteligencia.
+ *
+ * `status` responde "¿este motor sirve para algo ahora mismo?":
+ *   - `ok`        hay datos utilizables
+ *   - `building`  está reconstruyendo su base (arranque en frío del free tier,
+ *                 ~46 s). No hay nada roto; hay que esperar.
+ *   - `degraded`  hay productos pero el pipeline no produjo su salida
+ *   - `empty`     no hay datos y nadie los está cargando (falta DATABASE_URL
+ *                 o la ingesta falló)
+ *
+ * El HTTP es 200 en los cuatro casos: el proceso está vivo y respondiendo.
+ */
+export type HealthStatus = 'ok' | 'building' | 'degraded' | 'empty';
+
+export interface HealthData {
+  status: HealthStatus;
+  products: number;
+  price_observations: number;
+  opportunities: number;
+  competitive_matches: number;
+  /** `supabase` si el motor tiene DATABASE_URL; `demo` si va a levantar los 45
+   *  productos de demostración. Explica de una una base sospechosamente chica. */
+  expected_source: 'supabase' | 'demo';
+  build?: {
+    state: 'building' | 'ready' | 'failed';
+    at?: number;
+    age_seconds?: number;
+    detail?: string;
+  };
+}
+
 export interface HealthResponse {
-  status: string;
+  status: HealthStatus;
+  /** Opcional en el tipo porque un motor desplegado antes de este cambio no lo
+   *  manda: la UI tiene que seguir funcionando contra esa versión. */
+  data?: HealthData;
   tables: Record<string, number>;
   empty_tables: string[];
 }

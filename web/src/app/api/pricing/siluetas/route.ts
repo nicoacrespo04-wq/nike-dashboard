@@ -4,6 +4,7 @@ import { validPriceSql } from '@/lib/price'
 import { canonicalMarca, canonicalMarcaSql, marcaKey, type MarcaKey } from '@/lib/marca'
 import { OBSERVED_SKU_SQL, parseUniverse, UNIVERSES } from '@/lib/scrapers'
 import { PRICE_BANDS, priceBandOrder, priceBandSql } from '@/lib/priceBands'
+import { isPresentSql, presentOrNullSql } from '@/lib/missing'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,24 +23,21 @@ const SKU = OBSERVED_SKU_SQL
  * Marcadores de "no hay dato" que el scraper escribe como si fueran valores.
  * Sin esto el gráfico encabeza con '-' y 's/d', que no son siluetas, y el
  * desglose muestra una franquicia llamada 's/d'.
+ *
+ * La lista vivía acá como un literal propio y era la ÚNICA route que los
+ * filtraba, así que el resto de `/api/pricing/*` seguía mostrándolos. Ahora
+ * sale de `lib/missing.ts`, que es la definición compartida (y que agrega los
+ * disfraces que a esta copia le faltaban: '#n/a', 'n/d', 'sin datos',
+ * '#value!', '#ref!').
  */
-const PLACEHOLDERS = ['-', '--', 's/d', 'sd', 'n/a', 'na', 'nan', 'null', 'none', 'sin dato']
-const PLACEHOLDER_LIST = PLACEHOLDERS.map((p) => `'${p}'`).join(',')
-
-const SILUETA_IS_REAL = `LOWER(BTRIM(silueta)) NOT IN (${PLACEHOLDER_LIST})`
+const SILUETA_IS_REAL = isPresentSql('silueta')
 
 /**
  * Una franquicia sin nombre (o con un marcador de ausencia) se agrupa como
  * "Sin franquicia": el surtido sigue contado, pero no se lo presenta como si
  * fuera una franquicia más.
  */
-const FRANCHISE = `
-  COALESCE(
-    NULLIF(
-      CASE WHEN LOWER(BTRIM(franchise_competitor)) IN (${PLACEHOLDER_LIST}) THEN ''
-           ELSE BTRIM(franchise_competitor) END,
-      ''),
-    'Sin franquicia')`
+const FRANCHISE = `COALESCE(${presentOrNullSql('franchise_competitor')}, 'Sin franquicia')`
 
 export interface SiluetaRow {
   silueta: string

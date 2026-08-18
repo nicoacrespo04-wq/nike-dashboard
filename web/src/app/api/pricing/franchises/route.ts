@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { validPriceSql } from '@/lib/price'
 import { canonicalMarca, canonicalMarcaSql } from '@/lib/marca'
-import { OBSERVED_SKU_SQL, scraperInSql, scraperNotInSql, BRAND_SITE_SCRAPERS, COMPETITOR_D2C_AR } from '@/lib/scrapers'
+import { AR_ONLY_SQL, OBSERVED_SKU_SQL, scraperInSql, scraperNotInSql, BRAND_SITE_SCRAPERS, COMPETITOR_D2C_AR } from '@/lib/scrapers'
+import { isPresentSql } from '@/lib/missing'
+import { labelKey, labelKeySql, pickLabel } from '@/lib/labels'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,9 +51,21 @@ export async function GET(req: NextRequest) {
   const gender   = searchParams.get('gender')   ?? ''
   const canal    = searchParams.get('canal')    ?? '' // 'd2c' | 'b2b' | ''
 
+  // El `IS NOT NULL AND <> ''` de antes dejaba pasar los "nulos disfrazados"
+  // del scraper, y no era un detalle: medido con
+  // `curl /api/pricing/franchises`, las DOS franquicias más grandes que
+  // devolvía este endpoint eran `'-'` (21 SKUs de Puma) y `'s/d'` (17 de
+  // Adidas), o sea que el gráfico "Top Franchises" encabezaba con dos cosas
+  // que no son franquicias. Un solo predicado compartido, ver `lib/missing.ts`.
   const baseConditions: string[] = [
-    `franchise_competitor IS NOT NULL`,
-    `franchise_competitor <> ''`,
+    isPresentSql('franchise_competitor'),
+    // Universo: esta pantalla compara marcas EN ARGENTINA. El filtro de
+    // `canal` decide el canal (D2C vs retailer) pero no el país, así que sin
+    // esto los 10 retailers chilenos (`Dexter_CL`, `OpenSports_CL`…) sumaban
+    // sus SKUs y sus precios en CLP a las franquicias argentinas. Es el mismo
+    // error de mezclar universos que documenta `lib/scrapers.ts`; acá va
+    // explícito y no como efecto colateral de otro filtro.
+    AR_ONLY_SQL,
   ]
   const params: unknown[] = []
   let idx = 1
@@ -63,7 +77,10 @@ export async function GET(req: NextRequest) {
   else               { baseConditions.push(`${MARCA_CANON} IN ('ADIDAS','PUMA')`) }
 
   if (division) { baseConditions.push(`UPPER(division_competitor) LIKE $${idx++}`); params.push(`%${division.toUpperCase()}%`) }
-  if (gender)   { baseConditions.push(`gender_competitor = $${idx++}`); params.push(gender) }
+  // `gender_competitor` tiene el mismo problema de casing que `category`:
+  // conviven 'MENS'/'Mens' y 'WOMENS'/'Womens', así que un `= 'MENS'` literal
+  // se comía la mitad de las filas. Se compara por clave normalizada.
+  if (gender)   { baseConditions.push(`${labelKeySql('gender_competitor')} = $${idx++}`); params.push(labelKey(gender)) }
 
   // Los nombres de scraper llegan con casing y separadores inconsistentes
   // ('ADIDAS_7' / 'adidas_7'): las comparaciones van por clave canónica.
@@ -79,7 +96,13 @@ export async function GET(req: NextRequest) {
   const categoriesParams = [...params]
 
   const conditions = [...baseConditions]
-  if (category) { conditions.push(`category_competitor = $${idx++}`); params.push(category) }
+  // La categoría llega desde el `<select>` que arma este mismo endpoint, así
+  // que el valor elegido es la ETIQUETA de un grupo, no un valor crudo de la
+  // columna. Se compara por clave normalizada (`labelKeySql`) para que elegir
+  // "Running" traiga también las filas escritas 'RUNNING' — que en el fixture
+  // son 35.113 contra 6.508, o sea que el filtro viejo escondía el 84% de la
+  // categoría según qué variante hubiera quedado en el `<select>`.
+  if (category) { conditions.push(`${labelKeySql('category_competitor')} = $${idx++}`); params.push(labelKey(category)) }
   const where = conditions.join(' AND ')
 
   try {
@@ -115,19 +138,27 @@ export async function GET(req: NextRequest) {
         LIMIT 100
       `, params),
 
-      query<{ category: string }>(`
-        SELECT DISTINCT category_competitor AS category
+      // Una fila por categoría CANÓNICA, con todas las escrituras crudas que
+      // el scraper usó para ella. La etiqueta se elige en TypeScript con
+      // `pickLabel()` (criterio determinístico y estable, ver `lib/labels.ts`):
+      // antes este `SELECT DISTINCT` devolvía
+      // `['-','BASKETBALL','FOOTBALL/SOCCER','RUNNING','Running','SPORTSWEAR','TRAINING','s/d']`
+      // — 8 opciones para 5 categorías reales, con 's/d' ofrecido al usuario.
+      query<{ key: string; variants: string[] }>(`
+        SELECT
+          ${labelKeySql('category_competitor')}      AS key,
+          ARRAY_AGG(DISTINCT category_competitor)    AS variants
         FROM pricing_data
         WHERE ${categoriesWhere}
-          AND category_competitor IS NOT NULL
-          AND category_competitor <> ''
-        ORDER BY category
+          AND ${isPresentSql('category_competitor')}
+        GROUP BY 1
+        ORDER BY 1
       `, categoriesParams),
     ])
 
     return NextResponse.json({
       franchises: rows,
-      categories: categories.map((c) => c.category),
+      categories: categories.map((c) => pickLabel(c.variants)),
     })
   } catch (err) {
     console.error('[/api/pricing/franchises]', err)

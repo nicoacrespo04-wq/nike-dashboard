@@ -10,6 +10,7 @@ import {
   type MarcaDiagnosticRow,
   type MarcaKey,
 } from '@/lib/marca'
+import { isPresentSql } from '@/lib/missing'
 import {
   OBSERVED_SKU_SQL,
   parseUniverse,
@@ -188,7 +189,11 @@ export async function GET(req: NextRequest) {
         FROM pricing_data
         WHERE ${universeSql}
           AND ${MARCA_CANON} IS NOT NULL
-          AND franchise_competitor IS NOT NULL AND franchise_competitor <> ''
+          -- Mismo criterio que /api/pricing/franchises: el <> '' de antes
+          -- dejaba pasar los "nulos disfrazados", y top_adidas / top_puma
+          -- encabezaban con 's/d' (27 SKUs) y '-' (23). Medido con
+          -- curl /api/pricing/summary. Ver lib/missing.ts.
+          AND ${isPresentSql('franchise_competitor')}
         GROUP BY 1, 2
         ORDER BY count DESC
       `),

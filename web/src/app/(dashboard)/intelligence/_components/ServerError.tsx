@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { ErrorState } from '@/components/ui'
-import { CommandHint } from '@/components/intelligence/hints'
 
 /**
  * Estado de error de una pantalla resuelta en el servidor.
@@ -12,12 +11,20 @@ import { CommandHint } from '@/components/intelligence/hints'
  * eso el botón vive acá: reintentar es volver a renderizar la ruta en el
  * servidor (`router.refresh()`), no re-pedir desde el browser.
  *
- * El mensaje que llega ya trae el comando para levantar el motor — es la misma
- * copy que emite el proxy, definida una sola vez en `lib/intelligence/server`.
+ * El mensaje que llega ya es accionable y viene de una sola definición
+ * (`offlineMessage()` en `lib/intelligence/server`), que distingue "el motor no
+ * está configurado" de "está configurado y no responde".
+ *
+ * Acá NO va el comando de `uvicorn`. Lo tenía, y era una respuesta equivocada
+ * para el caso más común de todos: alguien mirando el dashboard en Vercel, donde
+ * no hay ninguna terminal en la que escribirlo y donde el problema real es que
+ * el motor nunca se desplegó. El comando sigue vivo en `CommandHint`, que es lo
+ * que muestran los estados VACÍOS (base levantada pero sin filas) — ahí sí es la
+ * acción correcta, y se ve casi siempre en desarrollo local.
  */
 export default function ServerError({
   description,
-  title = 'No pudimos cargar el motor de inteligencia',
+  title = 'Las solapas de Intelligence no están disponibles',
   size = 'md',
 }: {
   description: string
@@ -26,16 +33,11 @@ export default function ServerError({
 }) {
   const router = useRouter()
   return (
-    <div>
-      <ErrorState
-        title={title}
-        description={description}
-        onRetry={() => router.refresh()}
-        size={size}
-      />
-      <div className="mx-auto max-w-md px-4 pb-2">
-        <CommandHint />
-      </div>
-    </div>
+    <ErrorState
+      title={title}
+      description={description}
+      onRetry={() => router.refresh()}
+      size={size}
+    />
   )
 }

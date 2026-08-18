@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from app import build_state
 from app.api.serializers import (count, expand_opportunities, expand_retail_media,
                                  product_card, products_by_id, table_exists)
 from app.auth import security_status
@@ -156,24 +157,93 @@ def overview(country: str = "AR", limit: int = Query(6, ge=1, le=25)) -> dict[st
     }
 
 
+#: Sin estas tablas el motor no puede responder NADA útil: no hay productos que
+#: comparar ni precios con los que compararlos. El resto de las tablas pueden
+#: estar vacías legítimamente (no hay reviews, no se corrieron los collectors)
+#: y eso no convierte al servicio en inservible.
+CORE_TABLES = ("products", "price_observations")
+
+#: Todo lo que se cuenta en el health check. El orden es el del pipeline.
+HEALTH_TABLES = ("brands", "countries", "retailers", "products", "product_attributes",
+                 "price_observations", "stock_observations", "reviews", "editorial_mentions",
+                 "social_mention_aggregates", "competitive_matches", "competitive_match_factors",
+                 "market_signals", "brand_insights", "opportunities", "recommendations",
+                 "retail_media_opportunities")
+
+
 @router.get("/health")
 def health() -> dict[str, Any]:
-    """Estado del pipeline: qué tablas tienen datos y cuáles faltan.
+    """Estado del motor: si la base tiene datos utilizables, y si no, por qué.
 
     Endpoint público: nunca pide API key (lo consulta la cinta de estado del
     dashboard para saber si el motor está vivo). Publica además cómo quedó
     configurada la seguridad — sin filtrar la key — para poder verificar de un
     vistazo que un deploy quedó cerrado.
+
+    `status` responde la única pregunta que importa en un deploy: **¿este motor
+    sirve para algo ahora mismo?** Antes devolvía `"ok"` fijo, así que un
+    contenedor recién levantado con la base vacía informaba exactamente lo mismo
+    que uno con 995 productos cargados, y `curl /api/health` no servía para
+    verificar un deploy. Los cuatro estados posibles:
+
+    * ``ok``        — hay datos; el motor responde consultas reales.
+    * ``building``  — el arranque todavía está construyendo la base (ver
+                      `app.build_state`). Hay que esperar, no hay nada roto.
+    * ``degraded``  — hay productos pero el pipeline no llegó a producir su
+                      salida (matches/oportunidades). Suele ser una etapa que
+                      falló: las pantallas cargan pero salen a medias.
+    * ``empty``     — no hay datos y nadie los está cargando. Acá sí hay un
+                      problema de configuración: falta `DATABASE_URL` o la
+                      ingesta falló.
+
+    El HTTP sigue siendo 200 en los cuatro casos, a propósito: el proceso ESTÁ
+    vivo y respondiendo. Un 503 haría que el health check de Render matara el
+    contenedor justo mientras construye su base, que es el único momento en que
+    con seguridad no hay que matarlo.
     """
-    tables = ["brands", "countries", "retailers", "products", "product_attributes",
-              "price_observations", "stock_observations", "reviews", "editorial_mentions",
-              "social_mention_aggregates", "competitive_matches", "competitive_match_factors",
-              "market_signals", "brand_insights", "opportunities", "recommendations",
-              "retail_media_opportunities"]
-    counts = {t: count(t) for t in tables}
+    counts = {t: count(t) for t in HEALTH_TABLES}
+    empty = [t for t, n in counts.items() if n == 0]
+    has_core = all(counts.get(t, 0) > 0 for t in CORE_TABLES)
+    has_output = counts.get("opportunities", 0) > 0 or counts.get("competitive_matches", 0) > 0
+
+    build = build_state.read()
+    building = bool(build and build.get("state") == build_state.BUILDING)
+
+    # `building` gana sobre el contenido, y el orden importa: durante los ~26 s
+    # del pipeline las tablas se van llenando de a una, así que a mitad de camino
+    # ya hay `competitive_matches` pero todavía no hay `opportunities`. Con el
+    # chequeo de contenido primero, el health check anunciaba `ok` mientras el
+    # pipeline seguía corriendo — verificado en una corrida real: a los 32 s
+    # decía `ok` con `opportunities: 0`. Quien mira el health para saber si el
+    # deploy terminó se lo creía y abría el dashboard a medio llenar.
+    if building:
+        status = "building"
+    elif has_core and has_output:
+        status = "ok"
+    elif has_core:
+        status = "degraded"
+    else:
+        status = "empty"
+
+    data: dict[str, Any] = {
+        "status": status,
+        # Resumen en una línea para el humano que corre `curl` y no quiere leer
+        # 17 contadores para saber si el deploy anduvo.
+        "products": counts.get("products", 0),
+        "price_observations": counts.get("price_observations", 0),
+        "opportunities": counts.get("opportunities", 0),
+        "competitive_matches": counts.get("competitive_matches", 0),
+        # De dónde SALDRÍA la base en este entorno. Explica al toque una base
+        # con 45 productos en producción: dice `demo` ⇒ falta `DATABASE_URL`.
+        "expected_source": build_state.source_hint(),
+    }
+    if build is not None:
+        data["build"] = build
+
     return {
-        "status": "ok",
+        "status": status,
+        "data": data,
         "tables": counts,
-        "empty_tables": [t for t, n in counts.items() if n == 0],
+        "empty_tables": empty,
         "security": security_status(),
     }

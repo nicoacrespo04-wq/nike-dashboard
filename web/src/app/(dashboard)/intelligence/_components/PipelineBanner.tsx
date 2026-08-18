@@ -8,8 +8,9 @@ import RefreshButton from './RefreshButton'
  *
  * Responde dos preguntas antes de que el usuario se pregunte por qué una
  * pantalla está vacía:
- *   1. ¿El backend está vivo?  (si no, cómo levantarlo)
- *   2. ¿El pipeline corrió?    (qué tablas quedaron sin datos)
+ *   1. ¿El motor está vivo?    (si no, por qué y qué hacer — ver `offlineMessage`)
+ *   2. ¿Está cargando todavía? (arranque en frío: no hay nada que arreglar)
+ *   3. ¿El pipeline corrió?    (qué tablas quedaron sin datos)
  *
  * Server Component a propósito: la cinta no tiene interacción salvo el
  * reintento, y resolverla en el servidor evita el round-trip cliente y —sobre
@@ -33,7 +34,7 @@ export default async function PipelineBanner() {
       >
         <AlertTriangle size={15} className="flex-shrink-0 text-bml-lose-ink" aria-hidden="true" />
         <span className="text-xs font-semibold text-bml-lose-ink">
-          Motor de inteligencia no disponible
+          Las solapas de Intelligence no están disponibles
         </span>
         <span className="min-w-0 flex-1 text-2xs leading-relaxed text-bml-lose-ink/80">
           {result.error}
@@ -44,6 +45,30 @@ export default async function PipelineBanner() {
   }
 
   const data = result.data
+
+  // Arranque en frío: el motor está vivo pero todavía cargando su base. Sin este
+  // caso, durante ese minuto la cinta muestra "3/17 tablas con datos" en rojo —
+  // que es cierto y a la vez completamente engañoso: no falta nada, está
+  // trabajando. El free tier de Render pasa por acá cada vez que se despierta.
+  if (data.data?.status === 'building') {
+    return (
+      <div
+        role="status"
+        className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-bml-meet-soft bg-bml-meet-soft px-4 py-2.5"
+      >
+        <Database size={13} className="flex-shrink-0 text-bml-meet-ink" aria-hidden="true" />
+        <span className="text-xs font-semibold text-bml-meet-ink">
+          El motor está cargando sus datos
+        </span>
+        <span className="min-w-0 flex-1 text-2xs leading-relaxed text-bml-meet-ink/80">
+          Tarda alrededor de un minuto. Las pantallas de Intelligence van a estar
+          incompletas hasta que termine; el resto del dashboard no se ve afectado.
+        </span>
+        <RefreshButton />
+      </div>
+    )
+  }
+
   const total = Object.keys(data.tables).length
   const filled = total - data.empty_tables.length
   const rows = Object.values(data.tables).reduce((acc, n) => acc + n, 0)

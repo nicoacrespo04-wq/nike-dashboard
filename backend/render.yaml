@@ -1,12 +1,46 @@
 # Blueprint de Render para el motor de inteligencia.
 #
-# Render se eligió por una razón concreta: es de los pocos PaaS donde un disco
-# persistente viene con el plan pago más barato y se configura acá mismo, sin
-# clicks. Railway y Fly sirven igual — lo que NO sirve es cualquier runtime
-# serverless (Vercel, Lambda), porque la base SQLite se construye en disco y
-# tiene que sobrevivir entre requests y reinicios.
-#
 # Uso:  Render → New → Blueprint → apuntar a este repo → Root Directory: backend
+# Pasos completos, con nombres de botón: docs/deploy.md
+#
+# ── Por qué Render y no otra cosa ────────────────────────────────────────────
+#
+# Lo que NO sirve, y esto es categórico: cualquier runtime serverless (Vercel,
+# Netlify, Lambda). El motor construye una base SQLite en disco y la consulta
+# entre requests; con filesystem efímero y de sólo lectura no hay motor.
+#
+# Entre los PaaS que sí sirven, las alternativas reales son Railway y Fly.io. El
+# `Dockerfile` es el mismo en los tres y no hay lock-in — lo único que cambia es
+# dónde se declaran las variables y el disco. Render se elige acá porque tiene
+# free tier de verdad (Railway pasó a crédito mensual que se agota; Fly pide
+# tarjeta), y porque el blueprint deja el servicio definido en el repo en vez de
+# en una consola web que nadie puede revisar en un code review.
+#
+# ── Este archivo define el plan FREE ─────────────────────────────────────────
+#
+# Sus dos limitaciones, que son las que explican el diseño del arranque:
+#
+#   1. NO hay disco persistente. La base se reconstruye en cada arranque en frío
+#      (~46 s medidos: 20 s de ingesta + 26 s de pipeline sobre 70.000 filas).
+#      `docker-entrypoint.sh` la construye en segundo plano para que el puerto
+#      ligue enseguida; mientras tanto `/api/health` devuelve `status: building`.
+#   2. El servicio SE DUERME tras 15 minutos sin tráfico. La primera visita
+#      después de la siesta paga el arranque en frío completo (contenedor + los
+#      46 s de reconstrucción). Para un dashboard que se mira algunas veces por
+#      día es tolerable; si molesta, la salida es el plan Starter — abajo está
+#      todo lo que hay que cambiar, son cuatro líneas.
+#
+# ── Para pasar a Starter (con disco persistente) ─────────────────────────────
+#
+#      plan: starter
+#      disk:
+#        name: intelligence-data
+#        mountPath: /data          # tiene que coincidir con CI_DB_PATH
+#        sizeGB: 1
+#
+# Con el disco montado, `CI_BOOTSTRAP=auto` ve la base ya construida y NO la
+# reconstruye: el arranque pasa a ser instantáneo y los datos se refrescan con
+# el cron del final de este archivo.
 
 services:
   - type: web
@@ -14,30 +48,49 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: starter          # el free tier NO tiene disco persistente
+    plan: free
     region: oregon
+
+    # Render considera vivo al servicio en cuanto esto responde 200. El endpoint
+    # devuelve 200 también mientras construye la base (`status: building`) — a
+    # propósito: un 503 durante la construcción haría que Render matara el
+    # contenedor justo en el único momento en que hay que dejarlo trabajar.
     healthCheckPath: /api/health
 
-    disk:
-      name: intelligence-data
-      mountPath: /data     # tiene que coincidir con CI_DB_PATH del Dockerfile
-      sizeGB: 1
-
     envVars:
-      # Ruta de la base, sobre el disco persistente.
+      # Ruta de la base dentro del contenedor. En free vive en la capa efímera;
+      # en Starter, sobre el disco montado en /data.
       - key: CI_DB_PATH
         value: /data/intelligence.db
 
+      # auto = construir sólo si la base está vacía. En free eso es "en cada
+      # arranque en frío" (no hay disco); en Starter, "una sola vez".
+      - key: CI_BOOTSTRAP
+        value: auto
+
+      # ── Las dos que hay que cargar A MANO en el dashboard de Render ────────
+      # (`sync: false` significa: Render las pide al crear el Blueprint y NO
+      #  quedan escritas en el repo, que es público.)
+
+      # Postgres de Supabase, de donde sale la base real.
+      # SIN esta variable el motor levanta igual, pero con el dataset DEMO de 45
+      # productos: sirve para comprobar que el deploy anduvo, no para decidir
+      # nada. `/api/health` lo delata con `expected_source: "demo"`.
+      - key: DATABASE_URL
+        sync: false
+
       # OBLIGATORIA en un deploy público. Sin esta variable la API queda
-      # ABIERTA: cualquiera puede leer todo el análisis competitivo.
+      # ABIERTA: cualquiera con la URL lee todo el análisis competitivo.
+      # `app/auth.py` la valida contra el header X-API-Key en todo lo que no sea
+      # /api/health ni la documentación.
       # Generala con:  python -c "import secrets; print(secrets.token_urlsafe(32))"
       # y poné el MISMO valor en INTELLIGENCE_API_KEY del proyecto de Vercel.
       - key: CI_API_KEY
-        sync: false        # se carga a mano en el dashboard, no vive en el repo
+        sync: false
 
       # El browser nunca le pega directo a esta API: va por el proxy de Next
-      # (/api/intelligence/...), que corre server-side. Por eso CORS puede
-      # quedar cerrado.
+      # (/api/intelligence/...), que corre server-side. Por eso CORS va cerrado:
+      # nada legítimo llega desde un origen web.
       - key: CI_CORS_ORIGINS
         value: ""
 
@@ -47,28 +100,43 @@ services:
         value: "60"
 
       # Render corre detrás de un proxy: sin esto el rate limit ve una sola IP
-      # para todo el tráfico y limita a todos juntos.
+      # para todo el tráfico y termina limitando a todos los usuarios juntos.
       - key: CI_TRUST_FORWARDED_FOR
         value: "1"
 
-      # Para ingerir los datos reales desde Supabase con
-      # `python -m app.ingest --dsn $DATABASE_URL`. Opcional: sin esto el
-      # motor corre con el dataset demo.
-      - key: DATABASE_URL
-        sync: false
-
-# Recalcular semanalmente. El pipeline es idempotente y el historial
-# sobrevive al recálculo (ver app/services/history.py), así que se puede
-# correr sin miedo a perder el triaje.
-#   Descomentar cuando la ingesta desde Supabase esté configurada:
+# ── Refresco semanal de los datos ────────────────────────────────────────────
+#
+# Los cron jobs de Render NO están en el free tier. En free el refresco es
+# gratis igual: como no hay disco, cada arranque en frío ya reingesta lo último
+# que haya en Supabase.
+#
+# Con plan Starter + disco, la base persiste y deja de refrescarse sola: ahí este
+# cron pasa a ser necesario. Descomentalo cuando actives el disco.
+#
+# El pipeline es idempotente y el historial y el triaje sobreviven al recálculo
+# (app/services/history.py los rescata alrededor del reset), así que se puede
+# correr sin miedo a perder el estado que cargó el equipo.
 #
 #   - type: cron
 #     name: nike-intelligence-refresh
 #     runtime: docker
 #     dockerfilePath: ./Dockerfile
+#     dockerContext: .
+#     plan: starter
+#     region: oregon
 #     schedule: "0 21 * * 1"        # lunes 21:00 UTC, después de los scrapers
-#     dockerCommand: sh -c "python -m app.ingest --dsn $DATABASE_URL --incremental && python -m app.pipeline --keep"
+#     # OJO: `--keep` en el pipeline no es opcional. Sin él, la etapa `seed`
+#     # borra la base entera y siembra los 45 productos demo encima de los datos
+#     # reales, en silencio. Ver docker-entrypoint.sh.
+#     dockerCommand: >
+#       sh -c "python -m app.ingest --dsn $DATABASE_URL --incremental &&
+#              python -m app.pipeline --keep --source ingest"
 #     disk:
 #       name: intelligence-data
 #       mountPath: /data
 #       sizeGB: 1
+#     envVars:
+#       - key: CI_DB_PATH
+#         value: /data/intelligence.db
+#       - key: DATABASE_URL
+#         sync: false

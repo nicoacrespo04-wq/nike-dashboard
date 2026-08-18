@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { sanitizeRowsPrices, validPriceSql } from '@/lib/price'
 import { canonicalMarca, canonicalMarcaSql } from '@/lib/marca'
-import { BRAND_SITE_SCRAPERS, D2C_AR_SCRAPERS, scraperInSql, scraperNotInSql } from '@/lib/scrapers'
+import { AR_ONLY_SQL, BRAND_SITE_SCRAPERS, D2C_AR_SCRAPERS, scraperInSql, scraperNotInSql } from '@/lib/scrapers'
+import { labelKey, labelKeySql } from '@/lib/labels'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +41,11 @@ export async function GET(req: NextRequest) {
   const search    = searchParams.get('search')    ?? ''
   const canal     = searchParams.get('canal')     ?? ''
 
-  const conditions: string[] = []
+  // Mismo universo que los agregados de la misma pantalla: sin esto la tabla
+  // de detalle mostraba filas de `Dexter_CL` / `OpenSports_CL` (precios en CLP)
+  // que NO estaban en los gráficos de arriba, y los dos bloques se
+  // contradecían. Ver `lib/scrapers.ts`.
+  const conditions: string[] = [AR_ONLY_SQL]
   const params: unknown[] = []
   let idx = 1
 
@@ -51,7 +56,10 @@ export async function GET(req: NextRequest) {
   if (marcaCanonica) { conditions.push(`${canonicalMarcaSql('marca')} = $${idx++}`); params.push(marcaCanonica) }
   if (franchise) { conditions.push(`franchise_competitor ILIKE $${idx++}`); params.push(`%${franchise}%`) }
   if (silueta)   { conditions.push(`silueta = $${idx++}`);                  params.push(silueta) }
-  if (category)  { conditions.push(`category_competitor = $${idx++}`);      params.push(category) }
+  // La categoría viene del `<select>` que arma /api/pricing/franchises, que
+  // devuelve la ETIQUETA del grupo. Se compara por clave normalizada para que
+  // 'RUNNING' y 'Running' sean la misma categoría (ver `lib/labels.ts`).
+  if (category)  { conditions.push(`${labelKeySql('category_competitor')} = $${idx++}`); params.push(labelKey(category)) }
   if (bml)       { conditions.push(`bml_final_price = $${idx++}`);          params.push(bml) }
   if (gender)    { conditions.push(`gender_competitor = $${idx++}`);        params.push(gender) }
   if (scraper)   { conditions.push(`scraper = $${idx++}`);                  params.push(scraper) }

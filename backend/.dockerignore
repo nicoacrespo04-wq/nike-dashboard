@@ -1,0 +1,23 @@
+# Qué NO entra a la imagen.
+#
+# El caso importante es `data/processed/`: ahí está el SQLite de desarrollo. Si
+# se colara en la imagen, el contenedor arrancaría con la base de la máquina de
+# quien buildeó —muy probablemente el dataset demo de 45 productos— y
+# `CI_BOOTSTRAP=auto` la vería poblada y NO construiría la real. El deploy
+# quedaría sirviendo datos de mentira sin un solo error.
+data/processed/
+data/**/*.db
+*.db
+
+.cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Los tests no se corren dentro de la imagen y pesan 2,4 MB de fixtures.
+tests/
+
+.git/
+.gitignore
