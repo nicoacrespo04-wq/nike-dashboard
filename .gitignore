@@ -14,3 +14,7 @@ __pycache__/
 .venv/
 backend/data/processed/
 backend/.cache/
+
+# Cache incremental de TypeScript: se regenera en cada `tsc`/`next build`,
+# así que estaba ensuciando el diff de todos los commits sin aportar nada.
+*.tsbuildinfo
