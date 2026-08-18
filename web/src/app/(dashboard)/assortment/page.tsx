@@ -106,13 +106,20 @@ export default function AssortmentPage() {
 
   useEffect(() => {
     let cancelled = false
+    // `/api/pricing/franchises` sin `marca` devuelve SÓLO Adidas y Puma (es su
+    // default, pensado para la pantalla de Competencia). Acá hace falta también
+    // Nike: sin sus franquicias, `nikeNames` queda vacío y el gap analysis
+    // reporta que NINGUNA franquicia de la competencia tiene equivalente —los
+    // KPIs de gaps daban exactamente el total de franquicias—. Por eso se pide
+    // en dos llamadas y se juntan.
     Promise.all([
       fetchJson<FranchisesResponse>('/api/pricing/franchises'),
+      fetchJson<FranchisesResponse>('/api/pricing/franchises?marca=NIKE'),
       fetchJson<SiluetasResponse>('/api/pricing/siluetas'),
     ])
-      .then(([fr, si]) => {
+      .then(([fr, nike, si]) => {
         if (cancelled) return
-        setFranchises(fr.franchises ?? [])
+        setFranchises([...(fr.franchises ?? []), ...(nike.franchises ?? [])])
         setSiluetasData(si)
         setError(null)
       })

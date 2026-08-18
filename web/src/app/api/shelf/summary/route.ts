@@ -82,6 +82,20 @@ export interface ShelfSummaryResponse {
   diagnostics: {
     marcasFaltantes: string[]
     marcasEnLaBase: MarcaDiagnosticRow[]
+    /**
+     * Lo que devolvió LA QUERY que alimenta los KPIs, tal cual. `marcasEnLaBase`
+     * cuenta filas sin filtrar; esto pasa por `WHERE nike_visibility IS NOT
+     * NULL` y por la normalización de marca, que es donde el dato se pierde.
+     * Sin esto sólo se sabe que el KPI quedó vacío, no en qué paso.
+     */
+    globalRows: {
+      marca: string
+      canonica: string | null
+      n: number
+      terms: number
+      avgVisibility: unknown
+      avgTipo: string
+    }[]
     message?: string
   }
 }
@@ -193,6 +207,14 @@ export async function GET() {
     const diagnostics: ShelfSummaryResponse['diagnostics'] = {
       marcasFaltantes,
       marcasEnLaBase,
+      globalRows: globalRows.map((r) => ({
+        marca: r.marca,
+        canonica: canonicalMarca(r.marca),
+        n: r.n,
+        terms: r.terms,
+        avgVisibility: r.avg_visibility,
+        avgTipo: r.avg_visibility === null ? 'null' : typeof r.avg_visibility,
+      })),
     }
     if (marcasFaltantes.length > 0) {
       diagnostics.message =

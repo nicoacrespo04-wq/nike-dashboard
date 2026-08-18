@@ -28,6 +28,15 @@ interface SummaryResponse {
     message?: string
     marcasFaltantes: string[]
     marcasEnLaBase: MarcaDiagnosticRow[]
+    /** Lo que devolvió la query que alimenta los KPIs, sin interpretar. */
+    globalRows?: {
+      marca: string
+      canonica: string | null
+      n: number
+      terms: number
+      avgVisibility: unknown
+      avgTipo: string
+    }[]
   }
 }
 
@@ -146,6 +155,50 @@ export default function ShelfPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Lo que devolvió la query de los KPIs. `marcasEnLaBase` cuenta
+                  filas sin filtrar; esta tabla pasa por el filtro de
+                  visibilidad y por la normalización, que es donde el dato se
+                  pierde. Una tabla vacía acá significa que el filtro se llevó
+                  todo; una fila con `canonica: null` significa que la marca no
+                  se resolvió. */}
+              <div className="mt-3 overflow-x-auto">
+                <p className="text-[11px] font-semibold text-amber-800 mb-1">
+                  Filas que devolvió la query de los KPIs
+                </p>
+                {summary.diagnostics.globalRows && summary.diagnostics.globalRows.length > 0 ? (
+                  <table className="text-xs">
+                    <thead>
+                      <tr className="text-left text-amber-800">
+                        <th className="pr-4 py-1">marca normalizada</th>
+                        <th className="pr-4 py-1">canónica</th>
+                        <th className="pr-4 py-1">filas</th>
+                        <th className="pr-4 py-1">términos</th>
+                        <th className="pr-4 py-1">avg</th>
+                        <th className="pr-4 py-1">tipo JS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summary.diagnostics.globalRows.map((r) => (
+                        <tr key={r.marca} className="text-amber-900">
+                          <td className="pr-4 py-0.5 font-mono">{JSON.stringify(r.marca)}</td>
+                          <td className="pr-4 py-0.5 font-mono">{String(r.canonica)}</td>
+                          <td className="pr-4 py-0.5 tabular-nums">{r.n}</td>
+                          <td className="pr-4 py-0.5 tabular-nums">{r.terms}</td>
+                          <td className="pr-4 py-0.5 font-mono">{JSON.stringify(r.avgVisibility)}</td>
+                          <td className="pr-4 py-0.5 font-mono">{r.avgTipo}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-xs text-amber-900">
+                    La query no devolvió ninguna fila: el filtro
+                    <code className="mx-1">nike_visibility IS NOT NULL</code>
+                    se llevó todo el conjunto.
+                  </p>
+                )}
               </div>
             </div>
           </div>
