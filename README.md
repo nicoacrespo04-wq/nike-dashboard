@@ -61,7 +61,8 @@ muestran un cartel diciendo que el motor no está configurado — es el síntoma
 Resumen:
 
 1. **Motor** → Render (free tier, sin tarjeta). *New +* → *Blueprint* → este
-   repo → Root Directory `backend`. El repo ya trae `backend/render.yaml`.
+   repo. El repo ya trae `render.yaml` en la raíz (declara `rootDir: backend`),
+   o directamente el link de un click que está en `docs/deploy.md`.
    Variables a cargar: `DATABASE_URL` y `CI_API_KEY`.
    Verificar en `https://TU-MOTOR.onrender.com/api/health`.
 2. **Dashboard** → Vercel. Importar repo, Root Directory `web`, env vars

@@ -58,7 +58,20 @@ Tené a mano estas dos cosas, las vas a necesitar en el paso 1:
 ## 1. Desplegar el motor en Render
 
 Render es gratis para esto y no pide tarjeta. El repo ya trae todo configurado
-(`backend/render.yaml` y `backend/Dockerfile`), así que no hay que escribir nada.
+(`render.yaml` en la raíz y `backend/Dockerfile`), así que no hay que escribir
+nada ni elegir carpetas: el `rootDir: backend` va declarado adentro del propio
+blueprint.
+
+**Atajo — el link de un click:**
+
+<https://render.com/deploy?repo=https://github.com/nicoacrespo04-wq/nike-dashboard>
+
+Ese link abre Render directamente en la pantalla de crear el Blueprint con este
+repo ya seleccionado. Te va a pedir iniciar sesión (lo más rápido es *Sign in
+with GitHub*) y después saltá al punto 5 de acá abajo, que es lo único que hay
+que completar a mano.
+
+Si preferís hacerlo a mano, o el link no te lleva a ningún lado:
 
 1. Entrá a [render.com](https://render.com) y creá una cuenta (**Get Started**;
    lo más rápido es *Sign in with GitHub*).
@@ -68,8 +81,8 @@ Render es gratis para esto y no pide tarjeta. El repo ya trae todo configurado
 4. En la pantalla que aparece:
    - **Blueprint Name**: poné lo que quieras (ej. `nike-intelligence`).
    - **Branch**: `main`.
-   - Render lee `backend/render.yaml` solo. Si te pide **Root Directory**,
-     escribí `backend`.
+   - No busques un campo **Root Directory**: los Blueprints no lo tienen. Render
+     lee `render.yaml` de la raíz del repo y de ahí saca `rootDir: backend`.
 5. Más abajo, Render pide las variables marcadas como secretas. Son **dos**:
 
    | Campo | Qué pegar |
@@ -184,7 +197,7 @@ Son dos cosas, y conviene saberlas antes de que sorprendan:
 
 Si ese minuto de espera molesta, la salida es el plan **Starter** (pago) con
 disco persistente: el arranque pasa a ser instantáneo. Está todo explicado y
-listo para descomentar en `backend/render.yaml` — son cuatro líneas, más el cron
+listo para descomentar en `render.yaml` — son cuatro líneas, más el cron
 semanal que ahí pasa a ser necesario (con disco, la base ya no se refresca sola).
 
 ---

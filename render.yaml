@@ -1,7 +1,16 @@
 # Blueprint de Render para el motor de inteligencia.
 #
-# Uso:  Render → New → Blueprint → apuntar a este repo → Root Directory: backend
+# Uso:  Render → New → Blueprint → apuntar a este repo. Nada más: el servicio
+#       queda definido acá, incluido `rootDir: backend`.
 # Pasos completos, con nombres de botón: docs/deploy.md
+#
+# ── Por qué este archivo vive en la RAÍZ del repo y no en backend/ ───────────
+#
+# Un Blueprint de Render NO tiene "Root Directory" en la pantalla de creación:
+# Render busca `render.yaml` en la raíz del repositorio y si no lo encuentra
+# corta con "no render.yaml found". El directorio del servicio se declara acá
+# adentro, con `rootDir`. Con el archivo en `backend/` el botón de Blueprint no
+# encontraba nada y el deploy de un click no existía.
 #
 # ── Por qué Render y no otra cosa ────────────────────────────────────────────
 #
@@ -46,6 +55,9 @@ services:
   - type: web
     name: nike-intelligence-api
     runtime: docker
+    # `rootDir` mueve el contexto a backend/: por eso las rutas de abajo son
+    # relativas a esa carpeta y no a la raíz del repo.
+    rootDir: backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
@@ -120,6 +132,7 @@ services:
 #   - type: cron
 #     name: nike-intelligence-refresh
 #     runtime: docker
+#     rootDir: backend
 #     dockerfilePath: ./Dockerfile
 #     dockerContext: .
 #     plan: starter
